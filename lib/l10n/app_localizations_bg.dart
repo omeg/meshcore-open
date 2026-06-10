@@ -2208,6 +2208,165 @@ class AppLocalizationsBg extends AppLocalizations {
       'Прегледайте телеметрията на сензорите и системните статистики';
 
   @override
+  String get telemetryLog_title => 'Telemetry Log';
+
+  @override
+  String get telemetryLog_subtitle =>
+      'Fetch the repeater\'s recorded sensor history';
+
+  @override
+  String get telemetryLog_refresh => 'Refresh';
+
+  @override
+  String get telemetryLog_restart => 'Re-fetch from start';
+
+  @override
+  String get telemetryLog_fetch => 'Fetch telemetry log';
+
+  @override
+  String get telemetryLog_chunkSize => 'Chunk size (bytes)';
+
+  @override
+  String get telemetryLog_backgroundHint =>
+      'You can leave this screen — the fetch continues and you\'ll be notified when it finishes.';
+
+  @override
+  String telemetryLog_busyElsewhere(String repeater) {
+    return 'A telemetry log fetch is already running for $repeater.';
+  }
+
+  @override
+  String get telemetryLog_idleHint =>
+      'Pull this repeater\'s recorded sensor history over the mesh.';
+
+  @override
+  String get telemetryLog_retry => 'Try again';
+
+  @override
+  String get telemetryLog_fetching => 'Fetching telemetry log…';
+
+  @override
+  String telemetryLog_bytes(int fetched, int total) {
+    return '$fetched / $total bytes';
+  }
+
+  @override
+  String get telemetryLog_unauthorized =>
+      'Admin login required to read the telemetry log.';
+
+  @override
+  String telemetryLog_error(String error) {
+    return 'Fetch failed: $error';
+  }
+
+  @override
+  String get telemetryLog_noResponse =>
+      'No response from the repeater. It may be offline or out of range, or its firmware may not support telemetry logging.';
+
+  @override
+  String get telemetryLog_noLog => 'This repeater has no telemetry log.';
+
+  @override
+  String get telemetryLog_noSamples => 'The log has no samples yet.';
+
+  @override
+  String telemetryLog_samples(int count) {
+    return '$count samples';
+  }
+
+  @override
+  String get telemetryLog_loggingActive => 'Logging active';
+
+  @override
+  String telemetryLog_interval(int seconds) {
+    return 'Interval: ${seconds}s';
+  }
+
+  @override
+  String get telemetryLog_resumed =>
+      'Resumed from the previously fetched bytes.';
+
+  @override
+  String telemetryLog_channel(int number) {
+    return 'Channel $number';
+  }
+
+  @override
+  String get telemetryLog_time => 'Time';
+
+  @override
+  String get telemetryLog_recentSamples => 'Recent samples';
+
+  @override
+  String get telemetryLog_share => 'Share log file';
+
+  @override
+  String get telemetryLog_reveal => 'Show file location';
+
+  @override
+  String get telemetryLog_export => 'Export to folder…';
+
+  @override
+  String get telemetryLog_exportTitle => 'Export telemetry log';
+
+  @override
+  String telemetryLog_exported(String location) {
+    return 'Exported to $location';
+  }
+
+  @override
+  String get telemetryLog_exportFailed => 'Export failed';
+
+  @override
+  String get telemetryLog_exportFolder => 'Export folder';
+
+  @override
+  String get telemetryLog_storageFolder => 'Storage folder';
+
+  @override
+  String get telemetryLog_open => 'Open';
+
+  @override
+  String get telemetryLog_exportFolderNotSet => 'Not set';
+
+  @override
+  String get telemetryLog_choose => 'Choose…';
+
+  @override
+  String get telemetryLog_change => 'Change…';
+
+  @override
+  String telemetryLog_exportFolderSet(String folder) {
+    return 'Export folder set to $folder';
+  }
+
+  @override
+  String telemetryLog_pathCopied(String path) {
+    return 'Path copied: $path';
+  }
+
+  @override
+  String telemetryLog_savedTo(String filename) {
+    return 'Saved to $filename';
+  }
+
+  @override
+  String telemetryLog_savedLogs(int count) {
+    return 'Saved logs ($count)';
+  }
+
+  @override
+  String get telemetryLog_delete => 'Delete';
+
+  @override
+  String get telemetryLog_deleteTitle => 'Delete log file?';
+
+  @override
+  String telemetryLog_deleteConfirm(String filename) {
+    return 'Permanently delete $filename?';
+  }
+
+  @override
   String get repeater_cli => 'Команден ред (CLI)';
 
   @override
@@ -4075,6 +4234,16 @@ class AppLocalizationsBg extends AppLocalizations {
 
   @override
   String get notification_activityTitle => 'Активност на MeshCore';
+
+  @override
+  String get notification_telemetryLogSavedTitle => 'Telemetry log saved';
+
+  @override
+  String get notification_telemetryLogEmptyTitle => 'No telemetry log to fetch';
+
+  @override
+  String get notification_telemetryLogFailedTitle =>
+      'Telemetry log fetch failed';
 
   @override
   String notification_messagesCount(int count) {

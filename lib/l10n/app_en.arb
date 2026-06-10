@@ -1162,6 +1162,110 @@
   "repeater_statusSubtitle": "View repeater status, stats, and neighbors",
   "repeater_telemetry": "Telemetry",
   "repeater_telemetrySubtitle": "View telemetry of sensors and system stats",
+  "telemetryLog_title": "Telemetry Log",
+  "telemetryLog_subtitle": "Fetch the repeater's recorded sensor history",
+  "telemetryLog_refresh": "Refresh",
+  "telemetryLog_restart": "Re-fetch from start",
+  "telemetryLog_fetch": "Fetch telemetry log",
+  "telemetryLog_chunkSize": "Chunk size (bytes)",
+  "telemetryLog_backgroundHint": "You can leave this screen — the fetch continues and you'll be notified when it finishes.",
+  "telemetryLog_busyElsewhere": "A telemetry log fetch is already running for {repeater}.",
+  "@telemetryLog_busyElsewhere": {
+    "placeholders": {
+      "repeater": { "type": "String" }
+    }
+  },
+  "telemetryLog_idleHint": "Pull this repeater's recorded sensor history over the mesh.",
+  "telemetryLog_retry": "Try again",
+  "telemetryLog_fetching": "Fetching telemetry log…",
+  "telemetryLog_bytes": "{fetched} / {total} bytes",
+  "@telemetryLog_bytes": {
+    "placeholders": {
+      "fetched": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "telemetryLog_unauthorized": "Admin login required to read the telemetry log.",
+  "telemetryLog_error": "Fetch failed: {error}",
+  "@telemetryLog_error": {
+    "placeholders": {
+      "error": { "type": "String" }
+    }
+  },
+  "telemetryLog_noResponse": "No response from the repeater. It may be offline or out of range, or its firmware may not support telemetry logging.",
+  "telemetryLog_noLog": "This repeater has no telemetry log.",
+  "telemetryLog_noSamples": "The log has no samples yet.",
+  "telemetryLog_samples": "{count} samples",
+  "@telemetryLog_samples": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "telemetryLog_loggingActive": "Logging active",
+  "telemetryLog_interval": "Interval: {seconds}s",
+  "@telemetryLog_interval": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "telemetryLog_resumed": "Resumed from the previously fetched bytes.",
+  "telemetryLog_channel": "Channel {number}",
+  "@telemetryLog_channel": {
+    "placeholders": {
+      "number": { "type": "int" }
+    }
+  },
+  "telemetryLog_time": "Time",
+  "telemetryLog_recentSamples": "Recent samples",
+  "telemetryLog_share": "Share log file",
+  "telemetryLog_reveal": "Show file location",
+  "telemetryLog_export": "Export to folder…",
+  "telemetryLog_exportTitle": "Export telemetry log",
+  "telemetryLog_exported": "Exported to {location}",
+  "@telemetryLog_exported": {
+    "placeholders": {
+      "location": { "type": "String" }
+    }
+  },
+  "telemetryLog_exportFailed": "Export failed",
+  "telemetryLog_exportFolder": "Export folder",
+  "telemetryLog_storageFolder": "Storage folder",
+  "telemetryLog_open": "Open",
+  "telemetryLog_exportFolderNotSet": "Not set",
+  "telemetryLog_choose": "Choose…",
+  "telemetryLog_change": "Change…",
+  "telemetryLog_exportFolderSet": "Export folder set to {folder}",
+  "@telemetryLog_exportFolderSet": {
+    "placeholders": {
+      "folder": { "type": "String" }
+    }
+  },
+  "telemetryLog_pathCopied": "Path copied: {path}",
+  "@telemetryLog_pathCopied": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "telemetryLog_savedTo": "Saved to {filename}",
+  "@telemetryLog_savedTo": {
+    "placeholders": {
+      "filename": { "type": "String" }
+    }
+  },
+  "telemetryLog_savedLogs": "Saved logs ({count})",
+  "@telemetryLog_savedLogs": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "telemetryLog_delete": "Delete",
+  "telemetryLog_deleteTitle": "Delete log file?",
+  "telemetryLog_deleteConfirm": "Permanently delete {filename}?",
+  "@telemetryLog_deleteConfirm": {
+    "placeholders": {
+      "filename": { "type": "String" }
+    }
+  },
   "repeater_cli": "CLI",
   "repeater_cliSubtitle": "Send commands to the repeater",
   "repeater_neighbors": "Neighbors",
@@ -2278,6 +2382,9 @@
   "contacts_contactAdvertCopied": "Advert copied to Clipboard.",
   "contacts_contactAdvertCopyFailed": "Copying advert to Clipboard failed.",
   "notification_activityTitle": "MeshCore Activity",
+  "notification_telemetryLogSavedTitle": "Telemetry log saved",
+  "notification_telemetryLogEmptyTitle": "No telemetry log to fetch",
+  "notification_telemetryLogFailedTitle": "Telemetry log fetch failed",
   "notification_messagesCount": "{count} {count, plural, =1{message} other{messages}}",
   "@notification_messagesCount": {
     "placeholders": {

@@ -3993,6 +3993,264 @@ abstract class AppLocalizations {
   /// **'View telemetry of sensors and system stats'**
   String get repeater_telemetrySubtitle;
 
+  /// No description provided for @telemetryLog_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry Log'**
+  String get telemetryLog_title;
+
+  /// No description provided for @telemetryLog_subtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch the repeater\'s recorded sensor history'**
+  String get telemetryLog_subtitle;
+
+  /// No description provided for @telemetryLog_refresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get telemetryLog_refresh;
+
+  /// No description provided for @telemetryLog_restart.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-fetch from start'**
+  String get telemetryLog_restart;
+
+  /// No description provided for @telemetryLog_fetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch telemetry log'**
+  String get telemetryLog_fetch;
+
+  /// No description provided for @telemetryLog_chunkSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Chunk size (bytes)'**
+  String get telemetryLog_chunkSize;
+
+  /// No description provided for @telemetryLog_backgroundHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can leave this screen — the fetch continues and you\'ll be notified when it finishes.'**
+  String get telemetryLog_backgroundHint;
+
+  /// No description provided for @telemetryLog_busyElsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'A telemetry log fetch is already running for {repeater}.'**
+  String telemetryLog_busyElsewhere(String repeater);
+
+  /// No description provided for @telemetryLog_idleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull this repeater\'s recorded sensor history over the mesh.'**
+  String get telemetryLog_idleHint;
+
+  /// No description provided for @telemetryLog_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get telemetryLog_retry;
+
+  /// No description provided for @telemetryLog_fetching.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetching telemetry log…'**
+  String get telemetryLog_fetching;
+
+  /// No description provided for @telemetryLog_bytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{fetched} / {total} bytes'**
+  String telemetryLog_bytes(int fetched, int total);
+
+  /// No description provided for @telemetryLog_unauthorized.
+  ///
+  /// In en, this message translates to:
+  /// **'Admin login required to read the telemetry log.'**
+  String get telemetryLog_unauthorized;
+
+  /// No description provided for @telemetryLog_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Fetch failed: {error}'**
+  String telemetryLog_error(String error);
+
+  /// No description provided for @telemetryLog_noResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'No response from the repeater. It may be offline or out of range, or its firmware may not support telemetry logging.'**
+  String get telemetryLog_noResponse;
+
+  /// No description provided for @telemetryLog_noLog.
+  ///
+  /// In en, this message translates to:
+  /// **'This repeater has no telemetry log.'**
+  String get telemetryLog_noLog;
+
+  /// No description provided for @telemetryLog_noSamples.
+  ///
+  /// In en, this message translates to:
+  /// **'The log has no samples yet.'**
+  String get telemetryLog_noSamples;
+
+  /// No description provided for @telemetryLog_samples.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} samples'**
+  String telemetryLog_samples(int count);
+
+  /// No description provided for @telemetryLog_loggingActive.
+  ///
+  /// In en, this message translates to:
+  /// **'Logging active'**
+  String get telemetryLog_loggingActive;
+
+  /// No description provided for @telemetryLog_interval.
+  ///
+  /// In en, this message translates to:
+  /// **'Interval: {seconds}s'**
+  String telemetryLog_interval(int seconds);
+
+  /// No description provided for @telemetryLog_resumed.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumed from the previously fetched bytes.'**
+  String get telemetryLog_resumed;
+
+  /// No description provided for @telemetryLog_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel {number}'**
+  String telemetryLog_channel(int number);
+
+  /// No description provided for @telemetryLog_time.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get telemetryLog_time;
+
+  /// No description provided for @telemetryLog_recentSamples.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent samples'**
+  String get telemetryLog_recentSamples;
+
+  /// No description provided for @telemetryLog_share.
+  ///
+  /// In en, this message translates to:
+  /// **'Share log file'**
+  String get telemetryLog_share;
+
+  /// No description provided for @telemetryLog_reveal.
+  ///
+  /// In en, this message translates to:
+  /// **'Show file location'**
+  String get telemetryLog_reveal;
+
+  /// No description provided for @telemetryLog_export.
+  ///
+  /// In en, this message translates to:
+  /// **'Export to folder…'**
+  String get telemetryLog_export;
+
+  /// No description provided for @telemetryLog_exportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export telemetry log'**
+  String get telemetryLog_exportTitle;
+
+  /// No description provided for @telemetryLog_exported.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported to {location}'**
+  String telemetryLog_exported(String location);
+
+  /// No description provided for @telemetryLog_exportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get telemetryLog_exportFailed;
+
+  /// No description provided for @telemetryLog_exportFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Export folder'**
+  String get telemetryLog_exportFolder;
+
+  /// No description provided for @telemetryLog_storageFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage folder'**
+  String get telemetryLog_storageFolder;
+
+  /// No description provided for @telemetryLog_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get telemetryLog_open;
+
+  /// No description provided for @telemetryLog_exportFolderNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get telemetryLog_exportFolderNotSet;
+
+  /// No description provided for @telemetryLog_choose.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose…'**
+  String get telemetryLog_choose;
+
+  /// No description provided for @telemetryLog_change.
+  ///
+  /// In en, this message translates to:
+  /// **'Change…'**
+  String get telemetryLog_change;
+
+  /// No description provided for @telemetryLog_exportFolderSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Export folder set to {folder}'**
+  String telemetryLog_exportFolderSet(String folder);
+
+  /// No description provided for @telemetryLog_pathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Path copied: {path}'**
+  String telemetryLog_pathCopied(String path);
+
+  /// No description provided for @telemetryLog_savedTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved to {filename}'**
+  String telemetryLog_savedTo(String filename);
+
+  /// No description provided for @telemetryLog_savedLogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved logs ({count})'**
+  String telemetryLog_savedLogs(int count);
+
+  /// No description provided for @telemetryLog_delete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get telemetryLog_delete;
+
+  /// No description provided for @telemetryLog_deleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete log file?'**
+  String get telemetryLog_deleteTitle;
+
+  /// No description provided for @telemetryLog_deleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete {filename}?'**
+  String telemetryLog_deleteConfirm(String filename);
+
   /// No description provided for @repeater_cli.
   ///
   /// In en, this message translates to:
@@ -7071,6 +7329,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'MeshCore Activity'**
   String get notification_activityTitle;
+
+  /// No description provided for @notification_telemetryLogSavedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry log saved'**
+  String get notification_telemetryLogSavedTitle;
+
+  /// No description provided for @notification_telemetryLogEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No telemetry log to fetch'**
+  String get notification_telemetryLogEmptyTitle;
+
+  /// No description provided for @notification_telemetryLogFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry log fetch failed'**
+  String get notification_telemetryLogFailedTitle;
 
   /// No description provided for @notification_messagesCount.
   ///

@@ -64,6 +64,9 @@ dependencies:
   gpx: ^2.3.0
   path_provider: ^2.1.5
   share_plus: ^13.1.0
+  file_picker: ^11.0.2   # desktop "Export to folder" destination picker
+  saf_util: ^3.1.0       # Android SAF: persisted directory pick (remember synced folder)
+  saf_stream: ^3.0.0     # Android SAF: write loose files into the picked directory
   build_pipe: ^0.3.1
   material_symbols_icons: ^4.2928.1
   web: ^1.1.1

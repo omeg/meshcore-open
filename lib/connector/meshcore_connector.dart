@@ -4023,6 +4023,11 @@ class MeshCoreConnector extends ChangeNotifier {
       case pushCodeLoginFail:
       case pushCodeStatusResponse:
         break;
+      // Binary/telemetry responses are consumed by `receivedFrames` listeners
+      // (e.g. the telemetry and telemetry-log screens), not the central switch.
+      case pushCodeTelemetryResponse:
+      case pushCodeBinaryResponse:
+        break;
       case pushCodeLogRxData:
         _lastRadioRxTime = DateTime.now();
         _handleRxData(frame);

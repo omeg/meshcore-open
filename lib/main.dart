@@ -20,6 +20,7 @@ import 'services/app_debug_log_service.dart';
 import 'services/background_service.dart';
 import 'services/map_tile_cache_service.dart';
 import 'services/chat_text_scale_service.dart';
+import 'services/telemetry_log_fetch_service.dart';
 import 'services/translation_service.dart';
 import 'services/ui_view_state_service.dart';
 import 'services/timeout_prediction_service.dart';
@@ -185,6 +186,11 @@ class MeshCoreApp extends StatelessWidget {
         Provider.value(value: storage),
         Provider.value(value: mapTileCacheService),
         ChangeNotifierProvider.value(value: timeoutPredictionService),
+        // App-scoped so a telemetry-log fetch keeps running when the user leaves
+        // the screen, notifying on completion.
+        ChangeNotifierProvider(
+          create: (_) => TelemetryLogFetchService(connector),
+        ),
       ],
       child: Consumer<AppSettingsService>(
         builder: (context, settingsService, child) {

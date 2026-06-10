@@ -12,6 +12,7 @@ import 'repeater_status_screen.dart';
 import 'repeater_cli_screen.dart';
 import 'repeater_settings_screen.dart';
 import 'telemetry_screen.dart';
+import 'telemetry_log_screen.dart';
 import 'neighbors_screen.dart';
 
 class RepeaterHubScreen extends StatelessWidget {
@@ -208,7 +209,6 @@ class RepeaterHubScreen extends StatelessWidget {
                 );
               },
             ),
-
             _HubActionTile(
               index: 2,
               icon: Icons.group,
@@ -230,6 +230,23 @@ class RepeaterHubScreen extends StatelessWidget {
             if (isAdmin) ...[
               _HubActionTile(
                 index: 3,
+                icon: Icons.history,
+                title: l10n.telemetryLog_title,
+                subtitle: l10n.telemetryLog_subtitle,
+                accentColor: MeshPalette.blue,
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          TelemetryLogScreen(repeater: repeater),
+                    ),
+                  );
+                },
+              ),
+              _HubActionTile(
+                index: 4,
                 icon: Icons.terminal,
                 title: l10n.repeater_cli,
                 subtitle: l10n.repeater_cliSubtitle,
@@ -248,7 +265,7 @@ class RepeaterHubScreen extends StatelessWidget {
                 },
               ),
               _HubActionTile(
-                index: 4,
+                index: 5,
                 icon: Icons.settings,
                 title: l10n.repeater_settings,
                 subtitle: l10n.repeater_settingsSubtitle,

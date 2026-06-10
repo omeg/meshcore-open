@@ -223,11 +223,52 @@ const int reqTypeKeepAlive = 0x02;
 const int reqTypeGetTelemetry = 0x03;
 const int reqTypeGetAccessList = 0x05;
 const int reqTypeGetNeighbors = 0x06;
+const int reqTypeGetTelemetryLog = 0x08;
 
 Uint8List buildTelemetryBinaryPayload() {
   // Room servers/repeaters read byte 1 as an inverse telemetry permission mask.
   // Zero means "request every telemetry field allowed for this contact".
   return Uint8List.fromList([reqTypeGetTelemetry, 0x00, 0x00, 0x00, 0x00]);
+}
+
+// --- Telemetry log fetch (REQ_TYPE_GET_TELEMETRY_LOG over CMD_SEND_BINARY_REQ) ---
+// See firmware docs/telemetry.md "Mesh request/response".
+const int telemLogReqVersion = 0x01;
+const int telemLogRespVersion = 0x01;
+
+// Response status codes (low 7 bits of the status byte).
+const int respTelemLogOk = 0x00;
+const int respTelemLogNoFile = 0x01;
+const int respTelemLogBadReq = 0x02;
+const int respTelemLogReadFail = 0x03;
+const int respTelemLogUnauth = 0x04;
+
+// High bit of the status byte: telemetry logging is currently active on the
+// responder (it is still sampling), so more bytes may appear on a later pull.
+const int telemLogActiveFlag = 0x80;
+
+// Client-side per-chunk byte ceiling. The firmware caps chunk_len at 144, but
+// the companion's BLE notification framing makes anything above 136 unreliable
+// in practice (matches the reference telem_fetch.py tool).
+const int telemLogMaxChunkLen = 136;
+
+/// Build the request body for `REQ_TYPE_GET_TELEMETRY_LOG` (0x08). The result is
+/// the application-defined payload passed to [buildSendBinaryReq].
+///
+/// Body (12 bytes): `[reqType][version][chunkLen][reserved=0][offset LE32][nonce LE32]`
+Uint8List buildTelemetryLogReqPayload({
+  required int chunkLen,
+  required int offset,
+  required int nonce,
+}) {
+  final writer = BufferWriter();
+  writer.writeByte(reqTypeGetTelemetryLog);
+  writer.writeByte(telemLogReqVersion);
+  writer.writeByte(chunkLen & 0xFF);
+  writer.writeByte(0); // reserved
+  writer.writeUInt32LE(offset);
+  writer.writeUInt32LE(nonce);
+  return writer.toBytes();
 }
 
 // Repeater response codes

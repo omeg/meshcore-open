@@ -373,6 +373,56 @@ class NotificationService {
     }
   }
 
+  /// One-off result notification for a background telemetry-log fetch. Not rate
+  /// limited — it's a deliberate, low-frequency event.
+  Future<void> showTelemetryLogNotification({
+    required String repeaterName,
+    required bool success,
+    required bool hasData,
+  }) async {
+    if (!await _ensureInitialized()) return;
+
+    final String title;
+    if (!success) {
+      title = _l10n.notification_telemetryLogFailedTitle;
+    } else if (!hasData) {
+      title = _l10n.notification_telemetryLogEmptyTitle;
+    } else {
+      title = _l10n.notification_telemetryLogSavedTitle;
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'telemetry_log',
+      'Telemetry Log',
+      channelDescription: 'Telemetry log fetch results',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    try {
+      await _notifications.show(
+        id: 'telemetry_log'.hashCode,
+        title: title,
+        body: repeaterName,
+        notificationDetails: details,
+        payload: 'telemetry_log',
+      );
+    } catch (e) {
+      debugPrint('Failed to show telemetry log notification: $e');
+    }
+  }
+
   Future<void> cancelAll() async {
     await _notifications.cancelAll();
   }
