@@ -56,6 +56,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
       state: this,
       focusNode: _commandFocusNode,
     )..attach();
+    _commandFocusNode.onKeyEvent = _handleCommandKeyEvent;
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
     _commandService = RepeaterCommandService(connector);
     _setupMessageListener();
@@ -193,6 +194,21 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   void _useQuickCommand(String command) {
     _commandController.text = command;
     _sendCommand();
+  }
+
+  KeyEventResult _handleCommandKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return KeyEventResult.ignored;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _navigateHistory(true);
+      return KeyEventResult.handled;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _navigateHistory(false);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
   }
 
   void _navigateHistory(bool up) {
