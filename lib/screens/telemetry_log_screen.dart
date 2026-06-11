@@ -33,8 +33,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   final TelemetrySafExport _saf = TelemetrySafExport();
 
   /// Whether the global service's current/last fetch is for this repeater.
-  bool get _isMyFetch =>
-      _service.targetKey == widget.repeater.publicKeyHex;
+  bool get _isMyFetch => _service.targetKey == widget.repeater.publicKeyHex;
 
   // Cached decode of the current log so we don't re-iterate on every rebuild.
   TelemetryLog? _cachedLog;
@@ -60,9 +59,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     // Pick up state from a fetch that's already running/finished for this
     // repeater (e.g. the user left and came back).
     if (_isMyFetch) _cacheLogFromService();
-    _chunkSize = (PrefsManager.instance.getInt(_chunkPrefsKey) ??
-            telemLogMaxChunkLen)
-        .clamp(1, telemLogMaxChunkLen);
+    _chunkSize =
+        (PrefsManager.instance.getInt(_chunkPrefsKey) ?? telemLogMaxChunkLen)
+            .clamp(1, telemLogMaxChunkLen);
     _chunkController.text = _chunkSize.toString();
     // Don't auto-pull: a fetch is a deliberate, admin-only mesh operation, so
     // wait for the user to tap Fetch. Just surface any already-saved logs.
@@ -200,7 +199,11 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
         await _revealOnDesktop(telemetryPath);
         return;
       }
-      final written = await _store.exportSessionTo(dir, telemetryPath, repeaterHex);
+      final written = await _store.exportSessionTo(
+        dir,
+        telemetryPath,
+        repeaterHex,
+      );
       if (!mounted) return;
       _snack(
         written.isEmpty
@@ -242,7 +245,11 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     final picked = await _saf.pickDirectory();
     if (!mounted || picked == null) return;
     setState(() {});
-    _snack(context.l10n.telemetryLog_exportFolderSet(_saf.rememberedFolderPath ?? ''));
+    _snack(
+      context.l10n.telemetryLog_exportFolderSet(
+        _saf.rememberedFolderPath ?? '',
+      ),
+    );
   }
 
   Widget _exportFolderCard(BuildContext context) {
@@ -256,7 +263,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
         trailing: TextButton(
           onPressed: _changeExportFolder,
           child: Text(
-            folder == null ? l10n.telemetryLog_choose : l10n.telemetryLog_change,
+            folder == null
+                ? l10n.telemetryLog_choose
+                : l10n.telemetryLog_change,
           ),
         ),
       ),
@@ -291,7 +300,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   }
 
   void _snack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _revealOnDesktop(String path) async {
@@ -349,7 +360,10 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             Text(l10n.telemetryLog_title),
             Text(
               widget.repeater.name,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.normal),
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.normal,
+              ),
             ),
           ],
         ),
@@ -436,14 +450,14 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
           children: [
             Text(l10n.telemetryLog_fetching),
             const SizedBox(height: 8),
-            LinearProgressIndicator(
-              value: s.totalSize > 0 ? s.progress : null,
-            ),
+            LinearProgressIndicator(value: s.totalSize > 0 ? s.progress : null),
             const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
-                  child: Text(l10n.telemetryLog_bytes(s.bytesFetched, s.totalSize)),
+                  child: Text(
+                    l10n.telemetryLog_bytes(s.bytesFetched, s.totalSize),
+                  ),
                 ),
                 TextButton.icon(
                   onPressed: () => _service.cancel(),
@@ -454,7 +468,10 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             ),
             Text(
               l10n.telemetryLog_backgroundHint,
-              style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).hintColor,
+              ),
             ),
           ],
         );
@@ -473,8 +490,10 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
           children: [
             Row(
               children: [
-                Icon(Icons.error_outline,
-                    color: Theme.of(context).colorScheme.error),
+                Icon(
+                  Icons.error_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
                 const SizedBox(width: 8),
                 Expanded(child: Text(message)),
               ],
@@ -494,13 +513,39 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
         );
         break;
       case TelemetryLogFetchStatus.done:
+        final Widget statusContent;
         if (s.totalSize == 0) {
-          child = Text(l10n.telemetryLog_noLog);
+          statusContent = Text(l10n.telemetryLog_noLog);
         } else if (_ticks.isEmpty) {
-          child = Text(l10n.telemetryLog_noSamples);
+          statusContent = Text(l10n.telemetryLog_noSamples);
         } else {
-          child = _summary(context);
+          statusContent = _summary(context);
         }
+        child = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            statusContent,
+            const SizedBox(height: 12),
+            _chunkSizeField(context),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: () => _startFetch(),
+                  icon: const Icon(Icons.refresh),
+                  label: Text(l10n.telemetryLog_refresh),
+                ),
+                OutlinedButton.icon(
+                  onPressed: () => _startFetch(forceRestart: true),
+                  icon: const Icon(Icons.restart_alt),
+                  label: Text(l10n.telemetryLog_restart),
+                ),
+              ],
+            ),
+          ],
+        );
         break;
       case TelemetryLogFetchStatus.idle:
         child = Column(
@@ -546,8 +591,11 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             if (_service.loggingActive)
               Chip(
                 visualDensity: VisualDensity.compact,
-                avatar: const Icon(Icons.fiber_manual_record,
-                    size: 12, color: Colors.green),
+                avatar: const Icon(
+                  Icons.fiber_manual_record,
+                  size: 12,
+                  color: Colors.green,
+                ),
                 label: Text(l10n.telemetryLog_loggingActive),
               ),
           ],
@@ -604,7 +652,11 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
 
     // Latest non-null reading per type, scanning from the most recent tick back.
     final latest = <_TypeReading, String>{};
-    for (var i = _ticks.length - 1; i >= 0 && latest.length < _allTypes.length; i--) {
+    for (
+      var i = _ticks.length - 1;
+      i >= 0 && latest.length < _allTypes.length;
+      i--
+    ) {
       final sample = _ticks[i][channelIndex];
       for (final type in _allTypes) {
         if (latest.containsKey(type)) continue;
@@ -653,7 +705,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   Widget _samplesTable(BuildContext context) {
     final l10n = context.l10n;
     // Build columns: Time + one per (channel, enabled type).
-    final columns = <DataColumn>[DataColumn(label: Text(l10n.telemetryLog_time))];
+    final columns = <DataColumn>[
+      DataColumn(label: Text(l10n.telemetryLog_time)),
+    ];
     final accessors = <String Function(List<TelemetrySample>)>[];
     final channels = _cachedLog!.channels;
     for (var ci = 0; ci < channels.length; ci++) {
@@ -786,12 +840,36 @@ String? _fmt(double? v, String unit, {int decimals = 1}) =>
     v == null ? null : '${v.toStringAsFixed(decimals)}$unit';
 
 final List<_TypeReading> _allTypes = [
-  _TypeReading(telemLogVoltage, 'Voltage', (s) => _fmt(s.voltageV, ' V', decimals: 2)),
-  _TypeReading(telemLogNoise, 'Noise', (s) => _fmt(s.noiseDbm, ' dBm', decimals: 0)),
+  _TypeReading(
+    telemLogVoltage,
+    'Voltage',
+    (s) => _fmt(s.voltageV, ' V', decimals: 2),
+  ),
+  _TypeReading(
+    telemLogNoise,
+    'Noise',
+    (s) => _fmt(s.noiseDbm, ' dBm', decimals: 0),
+  ),
   _TypeReading(telemLogTemperature, 'Temp', (s) => _fmt(s.temperatureC, ' °C')),
-  _TypeReading(telemLogPressure, 'Pressure', (s) => _fmt(s.pressureHpa, ' hPa')),
+  _TypeReading(
+    telemLogPressure,
+    'Pressure',
+    (s) => _fmt(s.pressureHpa, ' hPa'),
+  ),
   _TypeReading(telemLogHumidity, 'Humidity', (s) => _fmt(s.humidityPct, ' %')),
-  _TypeReading(telemLogCurrent, 'Current', (s) => _fmt(s.currentA, ' A', decimals: 3)),
-  _TypeReading(telemLogLuminosity, 'Lux', (s) => _fmt(s.luminosityLux, ' lx', decimals: 0)),
-  _TypeReading(telemLogRain, 'Rain', (s) => s.rain == null ? null : (s.rain == 1 ? 'yes' : 'no')),
+  _TypeReading(
+    telemLogCurrent,
+    'Current',
+    (s) => _fmt(s.currentA, ' A', decimals: 3),
+  ),
+  _TypeReading(
+    telemLogLuminosity,
+    'Lux',
+    (s) => _fmt(s.luminosityLux, ' lx', decimals: 0),
+  ),
+  _TypeReading(
+    telemLogRain,
+    'Rain',
+    (s) => s.rain == null ? null : (s.rain == 1 ? 'yes' : 'no'),
+  ),
 ];

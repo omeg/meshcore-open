@@ -133,7 +133,12 @@ class TelemetryLogFetchService extends ChangeNotifier {
 
     try {
       final selection = await _connector.preparePathForContactSend(repeater);
-      final buffer = await _runFetch(repeater, selection, forceRestart, chunkSize);
+      final buffer = await _runFetch(
+        repeater,
+        selection,
+        forceRestart,
+        chunkSize,
+      );
       if (_cancelled) {
         _status = TelemetryLogFetchStatus.idle;
         _safeNotify();
@@ -218,7 +223,8 @@ class TelemetryLogFetchService extends ChangeNotifier {
       );
     }
     final channelCount = accumulated.toBytes()[5];
-    final needed = telemetryHeaderSize(channelCount) + 4; // header + first anchor
+    final needed =
+        telemetryHeaderSize(channelCount) + 4; // header + first anchor
     while (accumulated.length < needed &&
         accumulated.length < first.totalSize &&
         !_cancelled) {
@@ -328,7 +334,24 @@ class TelemetryLogFetchService extends ChangeNotifier {
     Future<void> persist({bool force = false}) async {
       final bytes = buffer.toBytes();
       final aligned = recordAlignedLength(bytes.length);
-      if (aligned <= lastPersistedLen) return; // no new whole record
+      // When a refresh finds no new whole sample, still rewrite the tiny state
+      // file on the final flush so updated_at/last_total_size reflect the
+      // latest probe. This makes a completed session a real refresh target
+      // instead of a stale "done forever" marker.
+      if (aligned <= lastPersistedLen && !force) return;
+      if (aligned <= lastPersistedLen && force) {
+        final existingPath = await _store.currentFilePath(
+          repeater.publicKeyHex,
+        );
+        if (existingPath != null && lastPersistedLen > 0) {
+          _savedFilePath = await _store.saveSession(
+            repeater.publicKeyHex,
+            sessionFor(lastPersistedLen),
+            Uint8List.sublistView(bytes, 0, lastPersistedLen),
+          );
+        }
+        return;
+      }
       if (!force &&
           DateTime.now().difference(lastPersistAt) <
               const Duration(seconds: 2)) {
@@ -478,7 +501,9 @@ class TelemetryLogFetchService extends ChangeNotifier {
         }
       }
     }
-    throw TimeoutException('no response for telemetry chunk @$offset: $lastError');
+    throw TimeoutException(
+      'no response for telemetry chunk @$offset: $lastError',
+    );
   }
 
   Future<TelemetryLogChunk> _requestChunk(
