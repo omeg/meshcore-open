@@ -40,6 +40,26 @@ void main() {
       expect(connector.requestedOffsets, contains(firstSavedLength));
     },
   );
+
+  test('cancel interrupts an in-flight telemetry chunk wait', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()..respondToRequests = false;
+    final store = _MemoryTelemetryLogStore();
+    final service = TelemetryLogFetchService(connector, store: store);
+    service.addListener(() {});
+
+    final fetchFuture = service.fetch(repeater, chunkSize: 35);
+    for (var i = 0; i < 20 && connector.requestedOffsets.isEmpty; i++) {
+      await Future<void>.delayed(Duration.zero);
+    }
+    expect(connector.requestedOffsets, isNotEmpty);
+
+    service.cancel();
+
+    await fetchFuture.timeout(const Duration(milliseconds: 500));
+    expect(service.status, TelemetryLogFetchStatus.idle);
+    expect(service.errorMessage, isNull);
+  });
 }
 
 Contact _repeater() {
@@ -80,6 +100,7 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
       StreamController<Uint8List>.broadcast();
   final List<int> requestedOffsets = [];
   Uint8List logBytes = Uint8List(0);
+  bool respondToRequests = true;
   int _tag = 0xAABB0000;
 
   @override
@@ -112,7 +133,9 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
 
     final tag = _tag++;
     _frames.add(_sentFrame(tag));
-    _frames.add(_telemetryResponse(tag, offset, requestedLen));
+    if (respondToRequests) {
+      _frames.add(_telemetryResponse(tag, offset, requestedLen));
+    }
   }
 
   Uint8List _sentFrame(int tag) {

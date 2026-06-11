@@ -90,9 +90,16 @@ class TelemetryLogFetchService extends ChangeNotifier {
       _totalSize == 0 ? 0 : (_bytesFetched / _totalSize).clamp(0.0, 1.0);
 
   bool _cancelled = false;
+  Completer<void>? _cancelSignal;
   bool _disposed = false;
 
-  void cancel() => _cancelled = true;
+  void cancel() {
+    _cancelled = true;
+    final signal = _cancelSignal;
+    if (signal != null && !signal.isCompleted) {
+      signal.complete();
+    }
+  }
 
   @override
   void dispose() {
@@ -118,6 +125,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
   }) async {
     if (_status == TelemetryLogFetchStatus.fetching) return;
     _cancelled = false;
+    _cancelSignal = Completer<void>();
     _target = repeater;
     _status = TelemetryLogFetchStatus.fetching;
     _errorMessage = null;
@@ -132,7 +140,9 @@ class TelemetryLogFetchService extends ChangeNotifier {
     _safeNotify();
 
     try {
-      final selection = await _connector.preparePathForContactSend(repeater);
+      final selection = await _cancelable(
+        _connector.preparePathForContactSend(repeater),
+      );
       final buffer = await _runFetch(
         repeater,
         selection,
@@ -154,13 +164,29 @@ class TelemetryLogFetchService extends ChangeNotifier {
       }
       _status = TelemetryLogFetchStatus.done;
       _notifyResult(success: true, repeater: repeater);
+    } on _TelemetryLogFetchCancelled {
+      _status = TelemetryLogFetchStatus.idle;
     } catch (e) {
       _errorMessage = e.toString();
       _status = TelemetryLogFetchStatus.error;
       appLogger.warn('Telemetry log fetch failed: $e', tag: 'TelemLog');
       _notifyResult(success: false, repeater: repeater);
+    } finally {
+      _cancelSignal = null;
     }
     _safeNotify();
+  }
+
+  Future<T> _cancelable<T>(Future<T> operation) {
+    if (_cancelled) {
+      throw const _TelemetryLogFetchCancelled();
+    }
+    final signal = _cancelSignal;
+    if (signal == null) return operation;
+    return Future.any<T>([
+      operation,
+      signal.future.then<T>((_) => throw const _TelemetryLogFetchCancelled()),
+    ]);
   }
 
   /// Post a system notification with the outcome, but only when no screen is
@@ -486,7 +512,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
     Object? lastError;
     for (var attempt = 1; attempt <= _chunkAttempts; attempt++) {
       if (_cancelled) {
-        throw TelemetryLogProtocolError('cancelled');
+        throw const _TelemetryLogFetchCancelled();
       }
       try {
         return await _requestChunk(repeater, selection, offset, chunkSize);
@@ -497,7 +523,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
             'telemetry chunk @$offset attempt $attempt timed out; retrying',
             tag: 'TelemLog',
           );
-          await Future.delayed(_retryDelay);
+          await _cancelable(Future<void>.delayed(_retryDelay));
         }
       }
     }
@@ -547,8 +573,8 @@ class TelemetryLogFetchService extends ChangeNotifier {
     });
 
     try {
-      await _connector.sendFrame(frame);
-      return await completer.future.timeout(_requestTimeout);
+      await _cancelable(_connector.sendFrame(frame));
+      return await _cancelable(completer.future.timeout(_requestTimeout));
     } finally {
       await sub.cancel();
     }
@@ -569,6 +595,10 @@ class TelemetryLogFetchService extends ChangeNotifier {
     return '${u.year.toString().padLeft(4, '0')}-${two(u.month)}-${two(u.day)}T'
         '${two(u.hour)}:${two(u.minute)}:${two(u.second)}Z';
   }
+}
+
+class _TelemetryLogFetchCancelled implements Exception {
+  const _TelemetryLogFetchCancelled();
 }
 
 /// A resume seed: the assembled bytes for a session and the record-aligned
