@@ -27,9 +27,11 @@ import 'services/timeout_prediction_service.dart';
 import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
+import 'utils/startup_options.dart';
 
-void main() async {
+void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
+  final startupOptions = StartupOptions.parse(args);
 
   // On desktop, debugPrint is not suppressed in release builds and every
   // call is a synchronous stdout write. The connector logs heavily on hot
@@ -115,6 +117,7 @@ void main() async {
       translationService: translationService,
       uiViewStateService: uiViewStateService,
       timeoutPredictionService: timeoutPredictionService,
+      startupOptions: startupOptions,
     ),
   );
 }
@@ -153,6 +156,7 @@ class MeshCoreApp extends StatelessWidget {
   final TranslationService translationService;
   final UiViewStateService uiViewStateService;
   final TimeoutPredictionService timeoutPredictionService;
+  final StartupOptions startupOptions;
 
   const MeshCoreApp({
     super.key,
@@ -168,6 +172,7 @@ class MeshCoreApp extends StatelessWidget {
     required this.translationService,
     required this.uiViewStateService,
     required this.timeoutPredictionService,
+    this.startupOptions = const StartupOptions(),
   });
 
   @override
@@ -223,7 +228,7 @@ class MeshCoreApp extends StatelessWidget {
             },
             home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)
                 ? const ChromeRequiredScreen()
-                : const ScannerScreen(),
+                : ScannerScreen(initialBleAddress: startupOptions.bleAddress),
           );
         },
       ),

@@ -21,7 +21,9 @@ import 'usb_screen.dart';
 
 /// Screen for scanning and connecting to MeshCore devices
 class ScannerScreen extends StatefulWidget {
-  const ScannerScreen({super.key});
+  final String? initialBleAddress;
+
+  const ScannerScreen({super.key, this.initialBleAddress});
 
   @override
   State<ScannerScreen> createState() => _ScannerScreenState();
@@ -30,6 +32,7 @@ class ScannerScreen extends StatefulWidget {
 class _ScannerScreenState extends State<ScannerScreen> {
   bool _changedNavigation = false;
   String? _connectingDeviceId;
+  bool _initialBleConnectStarted = false;
   late final MeshCoreConnector _connector;
   late final VoidCallback _connectionListener;
   BluetoothAdapterState _bluetoothState = BluetoothAdapterState.unknown;
@@ -58,6 +61,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
     };
 
     _connector.addListener(_connectionListener);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_connectInitialBleAddress());
+    });
 
     _bluetoothStateSubscription = FlutterBluePlus.adapterState.listen(
       (state) {
@@ -75,6 +81,58 @@ class _ScannerScreenState extends State<ScannerScreen> {
         appLogger.warn('Adapter state stream error: $e', tag: 'ScannerScreen');
       },
     );
+  }
+
+  Future<void> _connectInitialBleAddress() async {
+    final address = widget.initialBleAddress;
+    if (_initialBleConnectStarted ||
+        !mounted ||
+        address == null ||
+        !PlatformInfo.isLinux) {
+      return;
+    }
+    if (_connector.state != MeshCoreConnectionState.disconnected) {
+      return;
+    }
+
+    _initialBleConnectStarted = true;
+    appLogger.info(
+      'Connecting to BLE address from command line: $address',
+      tag: 'ScannerScreen',
+    );
+
+    try {
+      await _connector.connect(
+        BluetoothDevice.fromId(address),
+        displayName: address,
+        linuxPairingPinProvider: () async {
+          if (!mounted) return null;
+          return _promptLinuxPairingPin(context, address);
+        },
+      );
+    } catch (e) {
+      final errorText = e.toString();
+      final suppressTransientLinuxConnectError =
+          _connector.isAutoReconnectScheduled &&
+          isLinuxBleConnectFailureText(errorText);
+      if (suppressTransientLinuxConnectError) {
+        appLogger.info(
+          'Suppressing transient Linux direct-connect error while auto-reconnect is active: $e',
+          tag: 'ScannerScreen',
+        );
+        return;
+      }
+      appLogger.warn(
+        'BLE address command-line connect failed: $e',
+        tag: 'ScannerScreen',
+      );
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.scanner_connectionFailed(errorText)),
+        backgroundColor: Colors.red,
+      );
+    }
   }
 
   @override
