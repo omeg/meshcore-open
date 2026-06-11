@@ -89,7 +89,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     )..attach();
     _textFieldFocusNode.addListener(_onTextFieldFocusChange);
     _scrollController.onScrollNearTop = _loadOlderMessages;
-    _scrollController.showJumpToBottom.addListener(_clearDividerAtBottom);
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final connector = context.read<MeshCoreConnector>();
@@ -153,13 +152,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     return oldest;
   }
 
-  void _clearDividerAtBottom() {
-    if (!_scrollController.showJumpToBottom.value &&
-        _unreadDividerMessageId != null) {
-      setState(() => _unreadDividerMessageId = null);
-    }
-  }
-
   void _onTextFieldFocusChange() {
     if (_textFieldFocusNode.hasFocus && mounted) {
       _scrollController.handleKeyboardOpen();
@@ -182,7 +174,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   void dispose() {
     _connector?.setActiveChannel(null);
     _desktopTextInputFocus.dispose();
-    _scrollController.showJumpToBottom.removeListener(_clearDividerAtBottom);
     _textFieldFocusNode.removeListener(_onTextFieldFocusChange);
     _textFieldFocusNode.dispose();
     _textController.dispose();
