@@ -231,6 +231,7 @@ class MeshCoreConnector extends ChangeNotifier {
   bool _pendingInitialChannelSync = false;
   bool _pendingInitialContactsSync = false;
   bool _pendingInitialQueuedMessageSync = false;
+  bool _initialHandshakeComplete = false;
   bool _bleInitialSyncStarted = false;
   bool _webInitialHandshakeRequestSent = false;
   bool _preserveContactsOnRefresh = false;
@@ -282,7 +283,15 @@ class MeshCoreConnector extends ChangeNotifier {
   int _totalChannelsToRequest = 0;
   List<Channel> _previousChannelsCache = [];
   static const int _maxChannelSyncRetries = 3;
-  static const int _channelSyncTimeoutMs = 2000; // 2 second timeout per channel
+  static const int _channelSyncTimeoutMs = 5000;
+  static const Duration _linuxBlePreConnectSettle = Duration(milliseconds: 700);
+  static const Duration _linuxBleLocalAbortSettle = Duration(
+    milliseconds: 2500,
+  );
+  static const Duration _linuxBleWritePace = Duration(milliseconds: 35);
+  static const Duration _linuxBleChannelRequestPace = Duration(
+    milliseconds: 120,
+  );
   static const Duration _batteryPollInterval = Duration(seconds: 120);
 
   // Services
@@ -1688,6 +1697,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
       _appDebugLogService?.info('connectUsb: syncing time…', tag: 'USB');
       await syncTime();
+      _initialHandshakeComplete = true;
+      _maybeStartInitialChannelSync();
       _appDebugLogService?.info('connectUsb: complete', tag: 'USB');
     } catch (error) {
       _appDebugLogService?.error('USB connection error: $error', tag: 'USB');
@@ -1792,6 +1803,8 @@ class MeshCoreConnector extends ChangeNotifier {
       }
 
       await syncTime();
+      _initialHandshakeComplete = true;
+      _maybeStartInitialChannelSync();
     } catch (error) {
       _appDebugLogService?.error('TCP connection error: $error', tag: 'TCP');
       final tcpConnectCancelledBeforeHandshake =
@@ -1873,9 +1886,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _manualDisconnect = false;
     _cancelReconnectTimer();
     _bleInitialSyncStarted = false;
-    if (PlatformInfo.isWeb) {
-      _resetConnectionHandshakeState();
-    }
+    _resetConnectionHandshakeState();
     unawaited(_backgroundService?.start());
     notifyListeners();
 
@@ -1890,8 +1901,17 @@ class MeshCoreConnector extends ChangeNotifier {
       await _notifySubscription?.cancel();
       _notifySubscription = null;
       _connectionSubscription = device.connectionState.listen((state) {
-        if (state == BluetoothConnectionState.disconnected && isConnected) {
-          _handleDisconnection();
+        if (state == BluetoothConnectionState.disconnected) {
+          if (isConnected) {
+            _handleDisconnection();
+          } else {
+            // A disconnected event while not in the connected state (e.g. during
+            // the connect handshake). Logged to spot spurious/transient drops.
+            _appDebugLogService?.info(
+              'Ignoring disconnected event in state ${_state.name}',
+              tag: 'BLE Connect',
+            );
+          }
         }
       });
 
@@ -1907,6 +1927,7 @@ class MeshCoreConnector extends ChangeNotifier {
             _appDebugLogService?.info(message, tag: 'BLE Pair');
           },
         );
+        await Future<void>.delayed(_linuxBlePreConnectSettle);
       }
 
       final connectTimeout = PlatformInfo.isLinux
@@ -1917,21 +1938,37 @@ class MeshCoreConnector extends ChangeNotifier {
         tag: 'BLE Connect',
       );
       if (PlatformInfo.isLinux) {
-        Future<void> attemptConnect() {
-          return device
-              .connect(
-                timeout: connectTimeout,
-                mtu: null,
-                license: License.nonprofit,
-              )
-              .timeout(
-                connectTimeout + const Duration(seconds: 2),
-                onTimeout: () {
-                  throw TimeoutException(
-                    'Linux connect hard-timeout after ${connectTimeout.inSeconds + 2}s',
-                  );
-                },
-              );
+        Future<void> attemptConnect() async {
+          try {
+            await device
+                .connect(
+                  timeout: connectTimeout,
+                  mtu: null,
+                  license: License.nonprofit,
+                )
+                .timeout(
+                  connectTimeout + const Duration(seconds: 2),
+                  onTimeout: () {
+                    throw TimeoutException(
+                      'Linux connect hard-timeout after ${connectTimeout.inSeconds + 2}s',
+                    );
+                  },
+                );
+          } catch (_) {
+            // The hard-timeout backstop (or BlueZ) abandoned device.connect(),
+            // but the underlying BlueZ connect can still be pending. Cancel it
+            // before the caller retries — otherwise the next device.connect()
+            // collides with the dangling one and BlueZ returns
+            // `le-connection-abort-by-local`, cascading into an endless loop.
+            try {
+              await device
+                  .disconnect(queue: false)
+                  .timeout(const Duration(seconds: 3));
+            } catch (_) {
+              // Best effort; rethrow the original connect failure below.
+            }
+            rethrow;
+          }
         }
 
         try {
@@ -1972,7 +2009,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 'Linux immediate retry aborted by local stack; waiting and retrying once more',
                 tag: 'BLE Connect',
               );
-              await Future<void>.delayed(const Duration(milliseconds: 1200));
+              await Future<void>.delayed(_linuxBleLocalAbortSettle);
               try {
                 await attemptConnect();
                 _appDebugLogService?.info(
@@ -2475,6 +2512,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _pendingInitialChannelSync = true;
     _pendingInitialContactsSync = true;
     _pendingInitialQueuedMessageSync = true;
+    _initialHandshakeComplete = false;
 
     await _requestDeviceInfo();
     _startBatteryPolling();
@@ -2489,6 +2527,7 @@ class MeshCoreConnector extends ChangeNotifier {
     }
 
     await syncTime();
+    _initialHandshakeComplete = true;
     _maybeStartInitialChannelSync();
   }
 
@@ -2511,6 +2550,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _pendingInitialChannelSync = false;
     _pendingInitialContactsSync = false;
     _pendingInitialQueuedMessageSync = false;
+    _initialHandshakeComplete = false;
     _contactSyncTotal = null;
     _contactSyncReceived = 0;
     _contactSyncUsesSinceFilter = false;
@@ -2732,6 +2772,9 @@ class MeshCoreConnector extends ChangeNotifier {
           data.toList(),
           withoutResponse: canWriteWithoutResponse,
         );
+        if (PlatformInfo.isLinux) {
+          await Future<void>.delayed(_linuxBleWritePace);
+        }
       }
     } catch (_) {
       if (pendingAck != null) {
@@ -3769,6 +3812,19 @@ class MeshCoreConnector extends ChangeNotifier {
     _channelSyncInFlight = true;
     final channelIndex = _nextChannelIndexToRequest;
 
+    if (PlatformInfo.isLinux &&
+        _activeTransport == MeshCoreTransportType.bluetooth &&
+        _channelSyncRetries == 0 &&
+        channelIndex > 0) {
+      await Future<void>.delayed(_linuxBleChannelRequestPace);
+      if (!isConnected ||
+          !_isSyncingChannels ||
+          !_channelSyncInFlight ||
+          _nextChannelIndexToRequest != channelIndex) {
+        return;
+      }
+    }
+
     // Cancel any existing timeout
     _channelSyncTimeout?.cancel();
 
@@ -4243,6 +4299,9 @@ class MeshCoreConnector extends ChangeNotifier {
 
   void _maybeStartInitialChannelSync() {
     if (!_pendingInitialChannelSync || !isConnected) {
+      return;
+    }
+    if (!_initialHandshakeComplete) {
       return;
     }
     if (_selfPublicKey == null ||
@@ -6253,6 +6312,21 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   void _handleDisconnection() {
+    // Make unexpected drops visible: when the link goes down and why it might
+    // have (idle vs. mid-sync). Without this the only trace is the follow-up
+    // reconnect, which hides the disconnect entirely.
+    final now = DateTime.now();
+    final secSinceRx = now.difference(_lastRxTime).inSeconds;
+    final secSinceRadioRx = _lastRadioRxTime.millisecondsSinceEpoch == 0
+        ? -1
+        : now.difference(_lastRadioRxTime).inSeconds;
+    _appDebugLogService?.warn(
+      'BLE disconnected (manual=$_manualDisconnect): '
+      '${secSinceRx}s since last frame, ${secSinceRadioRx}s since last radio RX, '
+      'loadingContacts=$_isLoadingContacts syncingChannels=$_isSyncingChannels '
+      'channelInFlight=$_channelSyncInFlight awaitingSelfInfo=$_awaitingSelfInfo',
+      tag: 'BLE Connect',
+    );
     _stopBatteryPolling();
     _stopGpsLocationPolling();
     _stopRadioStatsPolling();
