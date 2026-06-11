@@ -11,6 +11,7 @@ import '../widgets/debug_frame_viewer.dart';
 import '../services/repeater_command_service.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../utils/desktop_text_input_focus.dart';
 
 class RepeaterCliScreen extends StatefulWidget {
   final Contact repeater;
@@ -30,6 +31,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   final TextEditingController _commandController = TextEditingController();
   final FocusNode _commandFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  late final DesktopTextInputFocusHelper _desktopTextInputFocus;
   final List<Map<String, String>> _commandHistory = [];
   int _historyIndex = -1;
   StreamSubscription<Uint8List>? _frameSubscription;
@@ -50,6 +52,10 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   @override
   void initState() {
     super.initState();
+    _desktopTextInputFocus = DesktopTextInputFocusHelper(
+      state: this,
+      focusNode: _commandFocusNode,
+    )..attach();
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
     _commandService = RepeaterCommandService(connector);
     _setupMessageListener();
@@ -57,6 +63,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
 
   @override
   void dispose() {
+    _desktopTextInputFocus.dispose();
     _frameSubscription?.cancel();
     _commandService?.dispose();
     _commandController.dispose();
