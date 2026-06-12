@@ -16,7 +16,7 @@
 - Reboot: the UI sends `sendCliCommand('reboot')` (the raw `cmdReboot` code exists but no frame builder is wired in yet).
 - Companion radio format: `cmdSendTxtMsg` expects `[cmd][txt_type][attempt][timestamp x4][pub_key_prefix x6][text...]` (no flags/full pubkey). CLI commands use `txtTypeCliData` in the same format, and the app maps `forceFlood` to attempt `3` when sending.
 - Group text packets (`PAYLOAD_TYPE_GRP_TXT`): payload is `[channel_hash (1)][MAC (2)][encrypted data...]`. Decrypted data layout is `[timestamp x4][txt_type][text...]` where text is `"sender: message"` (see MeshCore `BaseChatMesh::sendGroupMessage`). Sender identity is not in the payload; use `PUSH_CODE_LOG_RX_DATA` raw packet path bytes for origin hash when available.
-- Identity hash: `PATH_HASH_SIZE` is 1 byte; it is the prefix of the public key (see `Identity::copyHashTo`). Flooded packets append this hash to the path as they traverse hops. Self-identification via log data should compare sender name and presence of self pubkey prefix within the path bytes.
+- Identity/path hashes are public-key prefixes. Current app-visible path hash widths are 1, 2, or 3 bytes; there are no 4-byte path hashes. Do not guess width from raw byte count when self-info or packet `path_len` supplies it. See `documentation/ble-protocol.md` for the detailed multibyte path notes.
 
 ## Build, Test, and Development Commands
 - `~/flutter/bin/flutter pub get` installs dependencies (or `flutter pub get` if Flutter is on PATH).

@@ -83,6 +83,78 @@ On unexpected disconnection, auto-reconnect with exponential backoff:
 | App protocol version | 4 | Sent in device query |
 | Contact frame size | 148 bytes | Fixed-size contact record |
 
+## Path Hashes and Multibyte Paths
+
+MeshCore paths are lists of public-key hash prefixes. Firmware can encode each hop with 1, 2, or 3 bytes. There are no 4-byte path hashes in the app-visible path model.
+
+### Current App Model
+
+- `lib/helpers/path_hash.dart` is the shared helper for path hash width, path length, byte-length encoding, alignment, and per-hop reversal.
+- `MeshCoreConnector.pathHashByteWidth` is the active device width. It comes from self-info byte 81 on newer firmware, where the firmware mode is `0`, `1`, or `2` and the byte width is `mode + 1`. Older firmware falls back to 1 byte.
+- The app clamps supported widths to 1-3 bytes. Future code should not infer path width from the raw path byte count when the packet or device has already supplied it.
+- UI code should pass `pathHashByteWidth` along with path bytes. Treat `pathLength` as a hop count, not a byte count.
+
+### Encoded Path Length Byte
+
+Radio packet paths and contact path lengths use an encoded `path_len` byte:
+
+```
+bits 0-5: hop count (0-63)
+bits 6-7: hash-width code, where width = code + 1
+```
+
+The app decodes this with `decodePathHopCount()`, `decodePathHashWidth()`, and `decodePathByteLen()`. When sending a path update, use `encodePathLenForHashWidth()` so firmware receives the hop count and width code together.
+
+Capacity is constrained by the 64-byte path field:
+
+| Width | Max hops |
+|---|---:|
+| 1 byte | 64 |
+| 2 bytes | 32 |
+| 3 bytes | 21 |
+
+`0xFF` still means no/unknown path for contact records. The legacy raw value `64` remains compatible with a 64-hop 1-byte path.
+
+### Byte Order
+
+Path byte order is directional. Raw radio packet log data stores the flooded path in network traversal order. Contact paths are stored reversed for outgoing use. Reverse paths per hop, not per byte, by using `reversePathByHop(pathBytes, width)`.
+
+### Channel Messages and Observed Paths
+
+Group text payloads do not contain sender identity. For channel messages, sender origin and path metadata come from `PUSH_CODE_LOG_RX_DATA` raw packet data when available. The app stores `ChannelMessage.pathHashByteWidth` with each message so historical messages continue to render correctly if the active device width later changes.
+
+When duplicate channel messages arrive, merging should keep the preferred path bytes and carry the matching hash width. The first observed echo that promotes an outgoing pending message to sent should not increment the repeat counter; subsequent repeats should.
+
+### Direct Repeaters, Contacts, and Path UI
+
+Any UI that formats hop IDs or matches repeaters should use the active or message-specific width:
+
+- channel message path details and observed paths
+- path selection and custom path entry
+- nearby/direct repeaters
+- map path overlays and guessed node placement
+- contact path management and path trace launchers
+
+Contact/repeater matching must compare the first `width` public-key bytes, not only the first byte. Formatting should split paths into hop-sized chunks with `PathHelper.splitPathBytes()`/`PathHelper.formatPathHex()`.
+
+### Path Trace Firmware Caveat
+
+Path trace requests are not fully symmetric with raw packet path encoding. The trace request flags currently support 1-byte and 2-byte trace encodings. In the app, a 3-byte source path is down-converted to 2-byte chunks for trace requests because current firmware does not expose a 3-byte trace flag; trace flag value `2` would mean 4 bytes in that firmware path.
+
+Keep this distinction local to `path_trace_map.dart`. Do not let trace encoding rules leak back into normal packet path parsing.
+
+### Debugging Notes
+
+Useful raw diagnostics for suspected byte-order or width problems:
+
+- raw `path_len` byte
+- decoded hash width
+- active device hash width
+- raw path byte count
+- formatted path bytes grouped by decoded width
+
+The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics()` that records cases where decoded packet width and active device width disagree or path bytes do not align cleanly.
+
 ## Command Codes (App → Device)
 
 | Code | Name | Description |
@@ -204,7 +276,7 @@ All data is stored via `SharedPreferences` (JSON-serialized). No SQLite or other
 | Contact Groups | `contact_groups<pubKey10>` | Per device identity |
 | Communities | `communities_v1<pubKey10>` | Per device identity |
 | Unread Counts | `contact_unread_count<pubKey10>` | Per device identity |
-| Discovered Contacts | `discovered_contacts` | Global |
+| Discovered Contacts | `discovered_contacts<pubKey10>` | Per device identity; legacy global `discovered_contacts` migrates on first scoped load |
 | App Settings | `app_settings` | Global |
 | Path History | `path_history_<contactKey>` | Per contact |
 
