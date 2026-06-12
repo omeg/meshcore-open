@@ -23,6 +23,7 @@ import '../utils/dialog_utils.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/emoji_utils.dart';
 import '../utils/route_transitions.dart';
+import '../helpers/path_hash.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
@@ -278,6 +279,14 @@ class _ContactsScreenState extends State<ContactsScreen>
         );
       }
     }
+  }
+
+  Uint8List _contactPathHashPrefix(Contact contact, int hashByteWidth) {
+    final width = normalizePathHashByteWidth(hashByteWidth);
+    if (contact.publicKey.length < width) {
+      return Uint8List.fromList(contact.publicKey);
+    }
+    return Uint8List.fromList(contact.publicKey.sublist(0, width));
   }
 
   Future<void> _contactImport() async {
@@ -1371,7 +1380,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                     MaterialPageRoute(
                       builder: (context) => PathTraceMapScreen(
                         title: context.l10n.contacts_repeaterPing,
-                        path: Uint8List.fromList([contact.publicKey.first]),
+                        path: _contactPathHashPrefix(contact, hw),
                         targetContact: contact,
                         pathHashByteWidth: hw,
                       ),
@@ -1405,7 +1414,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                             : context.l10n.contacts_roomPing,
                         path: contact.pathBytesForDisplay.isNotEmpty
                             ? contact.pathBytesForDisplay
-                            : Uint8List.fromList([contact.publicKey.first]),
+                            : _contactPathHashPrefix(contact, hw),
                         flipPathAround: contact.pathBytesForDisplay.isNotEmpty,
                         targetContact: contact,
                         pathHashByteWidth: hw,

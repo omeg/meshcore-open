@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:meshcore_open/utils/app_logger.dart';
 
 import '../connector/meshcore_protocol.dart';
+import '../helpers/path_hash.dart';
 
 class Contact {
   final Uint8List publicKey;
@@ -119,7 +120,7 @@ class Contact {
   String pathFormattedIdList(int hashByteWidth) {
     final pathBytes = pathBytesForDisplay;
     if (pathBytes.isEmpty) return '';
-    final w = hashByteWidth.clamp(1, 8);
+    final w = normalizePathHashByteWidth(hashByteWidth);
     final parts = <String>[];
     for (int i = 0; i < pathBytes.length; i += w) {
       final end = (i + w) <= pathBytes.length ? (i + w) : pathBytes.length;
@@ -166,10 +167,8 @@ class Contact {
       final type = reader.readByte();
       final flags = reader.readByte();
       final pathLen = reader.readByte();
-      final safePathLen = pathLen > 0
-          ? (pathLen > maxPathSize ? maxPathSize : pathLen)
-          : 0;
-      final pathBytes = reader.readBytes(maxPathSize).sublist(0, safePathLen);
+      final pathByteLen = decodePathByteLen(pathLen);
+      final pathBytes = reader.readBytes(maxPathSize).sublist(0, pathByteLen);
       final name = reader.readCStringGreedy(maxNameSize);
 
       // Guard: reject contacts with non-printable names (corrupt flash data)
@@ -213,7 +212,7 @@ class Contact {
         name: name.isEmpty ? 'Unknown' : name,
         type: type,
         flags: flags,
-        pathLength: (pathLen == 0xFF || pathLen > maxPathSize) ? -1 : pathLen,
+        pathLength: decodePathHopCount(pathLen),
         path: pathBytes,
         latitude: lat,
         longitude: lon,

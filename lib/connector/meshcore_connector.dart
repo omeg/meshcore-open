@@ -15,6 +15,7 @@ import '../models/contact.dart';
 import '../models/message.dart';
 import '../models/path_selection.dart';
 import '../models/translation_support.dart';
+import '../helpers/path_hash.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/smaz.dart';
@@ -49,15 +50,39 @@ import 'meshcore_protocol.dart';
 
 class DirectRepeater {
   static const int maxAgeMinutes = 30; // Max age for direct repeater info
-  final int pubkeyFirstByte;
+  final Uint8List hashPrefix;
   double snr;
   DateTime lastUpdated;
 
   DirectRepeater({
-    required this.pubkeyFirstByte,
+    required List<int> hashPrefix,
     required this.snr,
     DateTime? lastUpdated,
-  }) : lastUpdated = lastUpdated ?? DateTime.now();
+  }) : hashPrefix = Uint8List.fromList(hashPrefix),
+       lastUpdated = lastUpdated ?? DateTime.now();
+
+  int get pubkeyFirstByte => hashPrefix.isNotEmpty ? hashPrefix.first : 0;
+
+  String get hashPrefixHex => hashPrefix
+      .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+      .join();
+
+  bool matchesHashPrefix(List<int> other) {
+    if (hashPrefix.length != other.length) return false;
+    for (var i = 0; i < hashPrefix.length; i++) {
+      if (hashPrefix[i] != other[i]) return false;
+    }
+    return true;
+  }
+
+  bool matchesFirstHop(List<int> pathBytes, int hashByteWidth) {
+    final width = normalizePathHashByteWidth(hashByteWidth);
+    if (pathBytes.length < width || hashPrefix.length != width) return false;
+    for (var i = 0; i < width; i++) {
+      if (hashPrefix[i] != pathBytes[i]) return false;
+    }
+    return true;
+  }
 
   void update(double newSNR) {
     snr = newSNR;
@@ -3103,12 +3128,23 @@ class MeshCoreConnector extends ChangeNotifier {
     await prev;
     try {
       if (!isConnected) return;
+      if (!pathBytesAlignToWidth(customPath, _pathHashByteWidth)) return;
+      final hopCount = pathHopCountForBytes(
+        customPath.length,
+        _pathHashByteWidth,
+      );
+      if (hopCount != pathLen) return;
+      final encodedPathLen = encodePathLenForHashWidth(
+        pathLen,
+        _pathHashByteWidth,
+      );
+      if (encodedPathLen == null) return;
 
       await sendFrame(
         buildUpdateContactPathFrame(
           contact.publicKey,
           customPath,
-          pathLen,
+          encodedPathLen,
           type: contact.type,
           flags: contact.flags,
           name: contact.name,
@@ -3124,7 +3160,7 @@ class MeshCoreConnector extends ChangeNotifier {
       );
       if (idx != -1) {
         _contacts[idx] = _contacts[idx].copyWith(
-          pathLength: customPath.length,
+          pathLength: pathLen,
           path: customPath,
         );
         notifyListeners();
@@ -3164,12 +3200,19 @@ class MeshCoreConnector extends ChangeNotifier {
               ? (updatedFlags | contactFlagTeleEnv)
               : (updatedFlags & ~contactFlagTeleEnv))
         : updatedFlags;
+    final encodedPathLen = latestContact.pathLength < 0
+        ? 0xFF
+        : encodePathLenForHashWidth(
+            latestContact.pathLength,
+            _pathHashByteWidth,
+          );
+    if (encodedPathLen == null) return;
 
     await sendFrame(
       buildUpdateContactPathFrame(
         latestContact.publicKey,
         latestContact.path,
-        latestContact.pathLength,
+        encodedPathLen,
         type: latestContact.type,
         flags: updatedFlags,
         name: latestContact.name,
@@ -3356,7 +3399,10 @@ class MeshCoreConnector extends ChangeNotifier {
   }) async {
     if (!isConnected) return false;
 
-    final expectedLength = expectedPath.length;
+    final expectedLength = pathHopCountForBytes(
+      expectedPath.length,
+      _pathHashByteWidth,
+    );
     final completer = Completer<bool>();
 
     void finish(bool result) {
@@ -3508,6 +3554,11 @@ class MeshCoreConnector extends ChangeNotifier {
 
   Future<bool> importDiscoveredContact(Contact contact) async {
     if (!isConnected) return false;
+    final encodedPathLen = encodePathLenForHashWidth(
+      contact.path.isEmpty ? 0 : contact.pathLength,
+      _pathHashByteWidth,
+    );
+    if (encodedPathLen == null) return false;
 
     // Manual saves must bypass the firmware's auto-add discovery policy.
     // CMD_IMPORT_CONTACT replays an advert and may remain discovery-only.
@@ -3515,7 +3566,7 @@ class MeshCoreConnector extends ChangeNotifier {
       buildUpdateContactPathFrame(
         contact.publicKey,
         contact.path,
-        contact.pathLength,
+        encodedPathLen,
         type: contact.type,
         flags: contact.flags,
         name: contact.name,
@@ -4265,7 +4316,7 @@ class MeshCoreConnector extends ChangeNotifier {
     // Path hash mode v10+ (byte 81): width = mode + 1 byte(s) per hop
     if (frame.length >= 82) {
       final mode = (frame[81] & 0xFF).clamp(0, 2);
-      _pathHashByteWidth = mode + 1;
+      _pathHashByteWidth = normalizePathHashByteWidth(mode + 1);
     } else {
       _pathHashByteWidth = 1;
     }
@@ -4990,7 +5041,8 @@ class MeshCoreConnector extends ChangeNotifier {
       }
 
       final senderPrefix = reader.readBytes(6);
-      final pathLength = reader.readByte();
+      final pathLengthRaw = reader.readByte();
+      final pathLength = decodePathHopCount(pathLengthRaw);
       final txtType = reader.readByte();
       final timestampRaw = reader.readUInt32LE();
       final timestamp = DateTime.fromMillisecondsSinceEpoch(
@@ -5049,7 +5101,7 @@ class MeshCoreConnector extends ChangeNotifier {
         isOutgoing: false,
         isCli: isCli,
         status: MessageStatus.delivered,
-        pathLength: pathLength == 0xFF ? 0 : pathLength,
+        pathLength: pathLength,
         pathBytes: Uint8List(0),
         fourByteRoomContactKey: roomAuthorPrefix,
       );
@@ -5351,6 +5403,11 @@ class MeshCoreConnector extends ChangeNotifier {
             packet.payload,
           );
 
+          final observedHopCount = pathHopCountForBytes(
+            packet.pathBytes.length,
+            packet.pathHashWidth,
+          );
+
           final message = ChannelMessage(
             senderKey: null,
             senderName: parsed.senderName,
@@ -5358,7 +5415,10 @@ class MeshCoreConnector extends ChangeNotifier {
             timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
             isOutgoing: false,
             status: ChannelMessageStatus.sent,
-            pathLength: packet.isFlood ? packet.hopCount : 0,
+            pathLength: packet.pathBytes.isNotEmpty
+                ? observedHopCount
+                : (packet.isFlood ? packet.hopCount : 0),
+            pathHashByteWidth: packet.pathHashWidth,
             pathBytes: packet.pathBytes,
             channelIndex: channel.index,
             packetHash: pktHash,
@@ -5953,8 +6013,15 @@ class MeshCoreConnector extends ChangeNotifier {
         reader.skipBytes(4);
       }
       final pathLenRaw = reader.readByte();
-      final pathByteLen = _decodePathByteLen(pathLenRaw);
+      final pathByteLen = decodePathByteLen(pathLenRaw);
+      final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = reader.readBytes(pathByteLen);
+      _logRawPathDiagnostics(
+        source: 'raw-packet',
+        pathLenRaw: pathLenRaw,
+        pathHashWidth: pathHashWidth,
+        pathBytes: pathBytes,
+      );
       final payload = reader.readBytes(reader.remaining);
 
       return _RawPacket(
@@ -5963,6 +6030,7 @@ class MeshCoreConnector extends ChangeNotifier {
         payloadType: (header >> _phTypeShift) & _phTypeMask,
         payloadVer: (header >> _phVerShift) & _phVerMask,
         pathLenRaw: pathLenRaw,
+        pathHashWidth: pathHashWidth,
         pathBytes: pathBytes,
         payload: payload,
       );
@@ -6111,6 +6179,7 @@ class MeshCoreConnector extends ChangeNotifier {
           repeats: message.repeats,
           repeatCount: message.repeatCount,
           pathLength: message.pathLength,
+          pathHashByteWidth: message.pathHashByteWidth,
           pathBytes: message.pathBytes,
           pathVariants: message.pathVariants,
           channelIndex: message.channelIndex,
@@ -6131,22 +6200,45 @@ class MeshCoreConnector extends ChangeNotifier {
         existing.pathBytes,
         processedMessage.pathBytes,
       );
+      final useIncomingPathBytes = _prefersIncomingPathBytes(
+        existing.pathBytes,
+        processedMessage.pathBytes,
+      );
+      final mergedPathHashWidth = _selectPreferredPathHashWidth(
+        existing,
+        processedMessage,
+        useIncomingPathBytes,
+      );
       final mergedPathVariants = _mergePathVariants(
         existing.pathVariants,
         processedMessage.pathVariants,
       );
-      final mergedPathLength = _mergePathLength(
-        existing.pathLength,
-        processedMessage.pathLength,
-        mergedPathBytes.length,
-      );
-      final newRepeatCount = existing.repeatCount + 1;
+      final preferredPathLength = useIncomingPathBytes
+          ? processedMessage.pathLength
+          : existing.pathLength;
+      final mergedPathLength = mergedPathBytes.isNotEmpty
+          ? normalizePathLengthWithBytes(
+                  preferredPathLength,
+                  mergedPathBytes.length,
+                  mergedPathHashWidth,
+                ) ??
+                pathHopCountForBytesCeil(
+                  mergedPathBytes.length,
+                  mergedPathHashWidth,
+                )
+          : _mergePathLength(
+              existing.pathLength,
+              processedMessage.pathLength,
+              0,
+            );
       final promotedFromPending =
-          newRepeatCount == 1 &&
           existing.status == ChannelMessageStatus.pending;
+      final newRepeatCount =
+          existing.repeatCount + (promotedFromPending ? 0 : 1);
       messages[existingIndex] = existing.copyWith(
         repeatCount: newRepeatCount,
         pathLength: mergedPathLength,
+        pathHashByteWidth: mergedPathHashWidth,
         pathBytes: mergedPathBytes,
         pathVariants: mergedPathVariants,
         packetHash: existing.packetHash ?? processedMessage.packetHash,
@@ -6270,7 +6362,64 @@ class MeshCoreConnector extends ChangeNotifier {
     return existing;
   }
 
+  bool _prefersIncomingPathBytes(Uint8List existing, Uint8List incoming) {
+    if (incoming.isEmpty) return false;
+    if (existing.isEmpty) return true;
+    return incoming.length > existing.length;
+  }
+
+  int _selectPreferredPathHashWidth(
+    ChannelMessage existing,
+    ChannelMessage incoming,
+    bool useIncomingPathBytes,
+  ) {
+    if (useIncomingPathBytes &&
+        incoming.pathBytes.isNotEmpty &&
+        incoming.pathHashByteWidth != null) {
+      return incoming.pathHashByteWidth!;
+    }
+    if (existing.pathBytes.isNotEmpty && existing.pathHashByteWidth != null) {
+      return existing.pathHashByteWidth!;
+    }
+    if (incoming.pathBytes.isNotEmpty && incoming.pathHashByteWidth != null) {
+      return incoming.pathHashByteWidth!;
+    }
+    return incoming.pathHashByteWidth ??
+        existing.pathHashByteWidth ??
+        _pathHashByteWidth;
+  }
+
+  void _logRawPathDiagnostics({
+    required String source,
+    required int pathLenRaw,
+    required int pathHashWidth,
+    required Uint8List pathBytes,
+  }) {
+    if (!appLogger.isEnabled) return;
+    final activeWidth = normalizePathHashByteWidth(_pathHashByteWidth);
+    final decodedWidth = normalizePathHashByteWidth(pathHashWidth);
+    final activeAligned = pathBytesAlignToWidth(pathBytes, activeWidth);
+    final decodedAligned = pathBytesAlignToWidth(pathBytes, decodedWidth);
+    if (activeWidth == decodedWidth && activeAligned && decodedAligned) return;
+    appLogger.info(
+      '$source path diagnostics: rawLen=0x${pathLenRaw.toRadixString(16).padLeft(2, '0')} '
+      'decodedWidth=$decodedWidth activeWidth=$activeWidth '
+      'bytes=${pathBytes.length} activeAligned=$activeAligned '
+      'decodedAligned=$decodedAligned path=${_formatDebugPathBytes(pathBytes)}',
+      tag: 'PathDebug',
+    );
+  }
+
+  String _formatDebugPathBytes(Uint8List bytes) {
+    return bytes
+        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
+        .join(',');
+  }
+
   int? _mergePathLength(int? existing, int? incoming, int observedLength) {
+    if (observedLength > 0) {
+      return observedLength;
+    }
     if (existing == null) {
       if (incoming == null) return observedLength > 0 ? observedLength : null;
       return incoming >= observedLength ? incoming : observedLength;
@@ -6532,7 +6681,8 @@ class MeshCoreConnector extends ChangeNotifier {
       }
       //final payloadVer = (header >> 6) & 0x03;
       final pathLenRaw = packet.readByte();
-      final pathByteLen = _decodePathByteLen(pathLenRaw);
+      final pathByteLen = decodePathByteLen(pathLenRaw);
+      final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = packet.readBytes(pathByteLen);
       final payload = packet.readBytes(packet.remaining);
 
@@ -6543,6 +6693,7 @@ class MeshCoreConnector extends ChangeNotifier {
             rawPacket,
             payload,
             pathBytes,
+            pathHashWidth,
             routeType,
             snr,
           );
@@ -6553,6 +6704,84 @@ class MeshCoreConnector extends ChangeNotifier {
       appLogger.warn('Malformed RX frame: $e', tag: 'Connector');
       return;
     }
+  }
+
+  void importContact(Uint8List frame) {
+    final packet = BufferReader(frame);
+    int payloadType = 0;
+    Uint8List pathBytes = Uint8List(0);
+    var pathHashWidth = 1;
+    try {
+      packet.skipBytes(1); // Skip frame type byte
+      packet.skipBytes(1); // Skip SNR byte
+      packet.skipBytes(1); // Skip RSSI byte
+      final header = packet.readByte();
+      final routeType = header & 0x03;
+      payloadType = (header >> 2) & 0x0F;
+      if (routeType == _routeTransportFlood ||
+          routeType == _routeTransportDirect) {
+        packet.skipBytes(4); // Skip transport-specific bytes
+      }
+      //final payloadVer = (header >> 6) & 0x03;
+      final pathLenRaw = packet.readByte();
+      final pathByteLen = decodePathByteLen(pathLenRaw);
+      pathHashWidth = decodePathHashWidth(pathLenRaw);
+      pathBytes = packet.readBytes(pathByteLen);
+    } catch (e) {
+      appLogger.warn('Malformed RX frame: $e', tag: 'Connector');
+      return;
+    }
+    double? latitude;
+    double? longitude;
+    String name = '';
+    Uint8List publicKey = Uint8List(0);
+    int type = 0;
+    int timestamp = 0;
+    bool hasLocation = false;
+    bool hasName = false;
+    if (payloadType != payloadTypeADVERT) {
+      appLogger.warn('Unexpected payload type: $payloadType', tag: 'Connector');
+      return;
+    }
+    try {
+      publicKey = packet.readBytes(32);
+      timestamp = packet.readInt32LE();
+      //TODO add signature verification
+      packet.skipBytes(64); // Skip signature for now
+      final flags = packet.readByte();
+      type = flags & 0x0F;
+      hasLocation = (flags & 0x10) != 0;
+      // For future use:
+      //final hasFeature1 = (flags & 0x20) != 0;
+      //final hasFeature2 = (flags & 0x40) != 0;
+      hasName = (flags & 0x80) != 0;
+      if (hasLocation && packet.remaining >= 8) {
+        latitude = packet.readInt32LE() / 1e6;
+        longitude = packet.readInt32LE() / 1e6;
+      }
+      if (hasName && packet.remaining > 0) {
+        name = packet.readCString();
+      }
+    } catch (e) {
+      appLogger.warn('Malformed advert frame: $e', tag: 'Connector');
+      return;
+    }
+
+    importDiscoveredContact(
+      Contact(
+        rawPacket: frame,
+        publicKey: publicKey,
+        name: name,
+        type: type,
+        pathLength: pathBytes.isEmpty
+            ? -1
+            : pathHopCountForBytes(pathBytes.length, pathHashWidth),
+        path: reversePathByHop(pathBytes, pathHashWidth),
+        latitude: latitude,
+        longitude: longitude,
+        lastSeen: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
+      ),
+    );
   }
 
   bool hasValidLocation(double? latitude, double? longitude) {
@@ -6570,6 +6799,7 @@ class MeshCoreConnector extends ChangeNotifier {
     Uint8List rawPacket,
     Uint8List payload,
     Uint8List path,
+    int pathHashWidth,
     int routeType,
     double snr,
   ) {
@@ -6621,6 +6851,10 @@ class MeshCoreConnector extends ChangeNotifier {
 
     // Check if this is a new contact
     final isNewContact = !_knownContactKeys.contains(contactKeyHex);
+    final pathHopCount = path.isEmpty
+        ? -1
+        : pathHopCountForBytes(path.length, pathHashWidth);
+    final reversedPath = reversePathByHop(path, pathHashWidth);
 
     if (isNewContact) {
       final newContact = Contact(
@@ -6628,10 +6862,8 @@ class MeshCoreConnector extends ChangeNotifier {
         publicKey: publicKey,
         name: name,
         type: type,
-        pathLength: path.length,
-        path: Uint8List.fromList(
-          path.reversed.toList(),
-        ), // Store path in reverse for easier use in outgoing messages
+        pathLength: pathHopCount,
+        path: reversedPath,
         latitude: latitude,
         longitude: longitude,
         lastSeen: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
@@ -6674,8 +6906,8 @@ class MeshCoreConnector extends ChangeNotifier {
         latitude: hasLocation ? latitude : existing.latitude,
         longitude: hasLocation ? longitude : existing.longitude,
         name: hasName ? name : existing.name,
-        path: Uint8List.fromList(path.reversed.toList()),
-        pathLength: path.length,
+        path: reversedPath,
+        pathLength: pathHopCount,
         lastMessageAt: mergedLastMessageAt,
         lastSeen: DateTime.fromMillisecondsSinceEpoch(timestamp * 1000),
         pathOverride: existing.pathOverride, // Preserve user's path choice
@@ -6698,9 +6930,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   void _updateDirectRepeater(Contact contact, double snr, Uint8List path) {
-    final pubkeyFirstByte = path.isNotEmpty
-        ? path.last
-        : contact.publicKey.first;
+    final width = normalizePathHashByteWidth(_pathHashByteWidth);
 
     _directRepeaters.removeWhere((r) => r.isStale());
 
@@ -6711,8 +6941,20 @@ class MeshCoreConnector extends ChangeNotifier {
       return;
     }
 
+    final alignedPath = trimPathBytesToWidth(path, width);
+    final hashPrefix = alignedPath.length >= width
+        ? alignedPath.sublist(alignedPath.length - width)
+        : contact.publicKey.sublist(
+            0,
+            math.min(width, contact.publicKey.length),
+          );
+    if (hashPrefix.length != width) {
+      notifyListeners();
+      return;
+    }
+
     final isTracked = _directRepeaters.where(
-      (r) => r.pubkeyFirstByte == pubkeyFirstByte,
+      (r) => r.matchesHashPrefix(hashPrefix),
     );
 
     final sortedRepeaters = List<DirectRepeater>.from(_directRepeaters)
@@ -6731,9 +6973,7 @@ class MeshCoreConnector extends ChangeNotifier {
       final repeater = isTracked.first;
       repeater.update(snr);
     } else if (_directRepeaters.length < 5) {
-      _directRepeaters.add(
-        DirectRepeater(pubkeyFirstByte: pubkeyFirstByte, snr: snr),
-      );
+      _directRepeaters.add(DirectRepeater(hashPrefix: hashPrefix, snr: snr));
     }
     notifyListeners();
   }
@@ -6859,20 +7099,13 @@ const int _routeTransportDirect = 0x03;
 const int _payloadTypeGroupText = 0x05;
 const int _cipherMacSize = 2;
 
-/// Decodes the firmware's encoded path_len byte into actual byte length.
-/// Bits 0-5: hash count (0-63), Bits 6-7: hash size code (0=1byte, 1=2bytes, 2=3bytes).
-int _decodePathByteLen(int pathLenRaw) {
-  final hashCount = pathLenRaw & 63;
-  final hashSize = ((pathLenRaw >> 6) & 0x03) + 1;
-  return hashCount * hashSize;
-}
-
 class _RawPacket {
   final int header;
   final int routeType;
   final int payloadType;
   final int payloadVer;
   final int pathLenRaw;
+  final int pathHashWidth;
   final Uint8List pathBytes;
   final Uint8List payload;
 
@@ -6882,6 +7115,7 @@ class _RawPacket {
     required this.payloadType,
     required this.payloadVer,
     required this.pathLenRaw,
+    required this.pathHashWidth,
     required this.pathBytes,
     required this.payload,
   });
@@ -6889,7 +7123,7 @@ class _RawPacket {
   bool get isFlood =>
       routeType == _routeFlood || routeType == _routeTransportFlood;
 
-  int get hopCount => pathLenRaw & 63;
+  int get hopCount => decodePathHopCount(pathLenRaw);
 }
 
 class _ParsedText {

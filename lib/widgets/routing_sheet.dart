@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/path_hash.dart';
 import '../helpers/path_helper.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
@@ -106,11 +107,12 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
       context,
       availableContacts: available,
       initialPath: initial,
+      pathHashByteWidth: connector.pathHashByteWidth,
     );
     if (result == null || !mounted) return;
     await connector.setPathOverride(
       contact,
-      pathLen: result.length,
+      pathLen: pathHopCountForBytes(result.length, connector.pathHashByteWidth),
       pathBytes: result,
     );
     await _verifyPath(connector, contact, result);
@@ -124,7 +126,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     final bytes = Uint8List.fromList(record.pathBytes);
     await connector.setPathOverride(
       contact,
-      pathLen: bytes.length,
+      pathLen: pathHopCountForBytes(bytes.length, connector.pathHashByteWidth),
       pathBytes: bytes,
     );
     await _verifyPath(connector, contact, bytes);
@@ -156,11 +158,20 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     setState(() => _syncStatus = context.l10n.chat_pathCleared);
   }
 
-  _PathQuality _qualityOf(PathRecord record, List<DirectRepeater> ranked) {
+  _PathQuality _qualityOf(
+    PathRecord record,
+    List<DirectRepeater> ranked,
+    int pathHashByteWidth,
+  ) {
     if (record.pathBytes.isNotEmpty) {
-      final first = record.pathBytes.first;
+      final firstHops = PathHelper.splitPathBytes(
+        record.pathBytes,
+        pathHashByteWidth,
+      );
+      if (firstHops.isEmpty) return _PathQuality.proven;
+      final firstHop = firstHops.first;
       for (var i = 0; i < ranked.length && i < 3; i++) {
-        if (ranked[i].pubkeyFirstByte == first) {
+        if (ranked[i].matchesHashPrefix(firstHop)) {
           return switch (i) {
             0 => _PathQuality.strong,
             1 => _PathQuality.good,
@@ -228,14 +239,22 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
       case _RoutingMode.manual:
         final bytes = contact.pathOverrideBytes ?? Uint8List(0);
         if (bytes.isEmpty) return l10n.routing_directNoHops;
-        return PathHelper.resolvePathNames(bytes, connector.allContacts);
+        return PathHelper.resolvePathNames(
+          bytes,
+          connector.allContacts,
+          connector.pathHashByteWidth,
+        );
       case _RoutingMode.auto:
         if (contact.pathLength < 0) return l10n.routing_noPathYet;
         if (contact.pathLength == 0) return l10n.routing_directNoHops;
         if (contact.path.isEmpty) {
           return l10n.chat_hopsCount(contact.pathLength);
         }
-        return PathHelper.resolvePathNames(contact.path, connector.allContacts);
+        return PathHelper.resolvePathNames(
+          contact.path,
+          connector.allContacts,
+          connector.pathHashByteWidth,
+        );
     }
   }
 
@@ -274,10 +293,14 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     List<int> pathBytes,
   ) {
     final l10n = context.l10n;
-    final formattedPath = PathHelper.formatPathHex(pathBytes);
+    final formattedPath = PathHelper.formatPathHex(
+      pathBytes,
+      connector.pathHashByteWidth,
+    );
     final resolvedNames = PathHelper.resolvePathNames(
       pathBytes,
       connector.allContacts,
+      connector.pathHashByteWidth,
     );
 
     showDialog(
@@ -520,7 +543,11 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
                 listEquals(record.pathBytes, contact.path)));
 
     final title = hasBytes
-        ? PathHelper.resolvePathNames(record.pathBytes, connector.allContacts)
+        ? PathHelper.resolvePathNames(
+            record.pathBytes,
+            connector.allContacts,
+            connector.pathHashByteWidth,
+          )
         : l10n.chat_hopsCount(record.hopCount);
 
     final line1 =
@@ -609,7 +636,14 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
             pathService
                 .getRecentPaths(contact.publicKeyHex)
                 .map(
-                  (r) => (quality: _qualityOf(r, rankedRepeaters), record: r),
+                  (r) => (
+                    quality: _qualityOf(
+                      r,
+                      rankedRepeaters,
+                      connector.pathHashByteWidth,
+                    ),
+                    record: r,
+                  ),
                 )
                 .toList()
               ..sort((a, b) {

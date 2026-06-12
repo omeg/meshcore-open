@@ -119,6 +119,7 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
     Uint8List data, {
     String? channelSendQueueId,
     bool expectsGenericAck = false,
+    bool waitForGenericAck = false,
   }) async {
     final reader = BufferReader(data);
     expect(reader.readByte(), cmdSendBinaryReq);

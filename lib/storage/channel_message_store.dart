@@ -110,6 +110,7 @@ class ChannelMessageStore {
       'channelIndex': msg.channelIndex,
       'repeatCount': msg.repeatCount,
       'pathLength': msg.pathLength,
+      'pathHashByteWidth': msg.pathHashByteWidth,
       'pathBytes': base64Encode(msg.pathBytes),
       'pathVariants': msg.pathVariants.map(base64Encode).toList(),
       'repeats': msg.repeats.map(_repeatToJson).toList(),
@@ -144,6 +145,7 @@ class ChannelMessageStore {
       status: ChannelMessageStatus.values[json['status'] as int],
       repeatCount: (json['repeatCount'] as int?) ?? 0,
       pathLength: json['pathLength'] as int?,
+      pathHashByteWidth: json['pathHashByteWidth'] as int?,
       pathBytes: json['pathBytes'] != null
           ? Uint8List.fromList(base64Decode(json['pathBytes'] as String))
           : Uint8List(0),

@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/path_hash.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/smaz.dart';
 import 'translation_support.dart';
@@ -41,6 +42,7 @@ class ChannelMessage {
   final List<Repeat> repeats;
   final int repeatCount;
   final int? pathLength;
+  final int? pathHashByteWidth;
   final Uint8List pathBytes;
   final List<Uint8List> pathVariants;
   final int? channelIndex;
@@ -66,6 +68,7 @@ class ChannelMessage {
     this.repeats = const [],
     this.repeatCount = 0,
     this.pathLength,
+    int? pathHashByteWidth,
     Uint8List? pathBytes,
     List<Uint8List>? pathVariants,
     this.channelIndex,
@@ -79,6 +82,9 @@ class ChannelMessage {
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
        reactions = reactions ?? {},
+       pathHashByteWidth = pathHashByteWidth == null
+           ? null
+           : normalizePathHashByteWidth(pathHashByteWidth),
        pathBytes = pathBytes ?? Uint8List(0),
        pathVariants = _mergePathVariants(
          pathBytes ?? Uint8List(0),
@@ -93,6 +99,7 @@ class ChannelMessage {
     List<Repeat>? repeats,
     int? repeatCount,
     int? pathLength,
+    int? pathHashByteWidth,
     Uint8List? pathBytes,
     List<Uint8List>? pathVariants,
     String? packetHash,
@@ -129,6 +136,7 @@ class ChannelMessage {
       repeats: repeats ?? this.repeats,
       repeatCount: repeatCount ?? this.repeatCount,
       pathLength: pathLength ?? this.pathLength,
+      pathHashByteWidth: pathHashByteWidth ?? this.pathHashByteWidth,
       pathBytes: pathBytes ?? this.pathBytes,
       pathVariants: pathVariants ?? this.pathVariants,
       channelIndex: channelIndex,
@@ -153,7 +161,8 @@ class ChannelMessage {
         return null;
       }
 
-      int pathLen;
+      int? pathLen;
+      int? pathHashWidth;
       int txtType;
       Uint8List pathBytes = Uint8List(0);
       int channelIdx;
@@ -163,15 +172,19 @@ class ChannelMessage {
         final hasPath = (flags & 0x01) != 0;
         reader.skipBytes(1); // Skip reserved byte
         channelIdx = reader.readByte();
-        pathLen = reader.readInt8();
-        txtType = reader.readByte();
-        if (hasPath && pathLen > 0) {
-          reader.rewind(); // Rewind to read path length again for pathBytes
-          pathBytes = reader.readBytes(pathLen);
+        final pathLenRaw = reader.readByte();
+        pathLen = decodePathHopCount(pathLenRaw);
+        pathHashWidth = decodePathHashWidth(pathLenRaw);
+        final pathByteLen = decodePathByteLen(pathLenRaw);
+        if (hasPath && pathByteLen > 0) {
+          pathBytes = reader.readBytes(pathByteLen);
         }
+        txtType = reader.readByte();
       } else {
         channelIdx = reader.readByte();
-        pathLen = reader.readInt8();
+        final pathLenRaw = reader.readByte();
+        pathLen = pathLenRaw == 0xFF ? -1 : pathLenRaw;
+        pathHashWidth = 1;
         txtType = reader.readByte();
       }
       final timestampRaw = reader.readUInt32LE();
@@ -209,6 +222,7 @@ class ChannelMessage {
         isOutgoing: false,
         status: ChannelMessageStatus.sent,
         pathLength: pathLen,
+        pathHashByteWidth: pathHashWidth,
         pathBytes: pathBytes,
         channelIndex: channelIdx,
       );
@@ -238,6 +252,7 @@ class ChannelMessage {
       isOutgoing: true,
       status: ChannelMessageStatus.pending,
       pathLength: null,
+      pathHashByteWidth: null,
       pathBytes: Uint8List(0),
       pathVariants: const [],
       channelIndex: channelIndex,

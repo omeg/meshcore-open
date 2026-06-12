@@ -605,8 +605,9 @@ class _RepeaterStatusScreenState extends State<RepeaterStatusScreen> {
     final batteryMv =
         connector.getRepeaterBatteryMillivolts(widget.repeater.publicKeyHex) ??
         _batteryMv;
-    if (batteryMv == null)
+    if (batteryMv == null) {
       return Theme.of(context).colorScheme.onSurfaceVariant;
+    }
     final percent = estimateBatteryPercentFromMillivolts(
       batteryMv,
       _batteryChemistry(),

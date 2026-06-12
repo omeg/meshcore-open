@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:latlong2/latlong.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/path_hash.dart';
+import '../helpers/path_helper.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
@@ -11,15 +14,16 @@ import 'signal_ui.dart';
 
 Contact? _getRepeaterPrefixMatchNearLocation(
   List<Contact> contacts,
-  int pubkeyFirstByte, {
+  List<int> hashPrefix, {
   LatLng? searchPoint,
   bool preferFavorites = false,
 }) {
+  if (hashPrefix.isEmpty) return null;
   final candidates = contacts
       .where(
         (c) =>
-            c.publicKey.isNotEmpty &&
-            c.publicKey.first == pubkeyFirstByte &&
+            c.publicKey.length >= hashPrefix.length &&
+            listEquals(c.publicKey.sublist(0, hashPrefix.length), hashPrefix) &&
             (c.type == advTypeRepeater || c.type == advTypeRoom),
       )
       .toList();
@@ -134,6 +138,9 @@ class _SNRIndicatorState extends State<SNRIndicator> {
   @override
   Widget build(BuildContext context) {
     final directRepeaters = widget.connector.directRepeaters;
+    final pathHashWidth = normalizePathHashByteWidth(
+      widget.connector.pathHashByteWidth,
+    );
     final directBestRepeaters = List.of(directRepeaters)
       ..sort((a, b) => (b.ranking).compareTo(a.ranking));
     final directRepeater = directBestRepeaters.isEmpty
@@ -164,7 +171,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
               ),
               if (directRepeater != null)
                 Text(
-                  '${directRepeaters.length}: ${directRepeater.pubkeyFirstByte.toRadixString(16).padLeft(2, '0')}: ${_formatLastUpdated(directRepeater.lastUpdated)}',
+                  '${directRepeaters.length}: ${directRepeater.hashPrefixHex}: ${pathHashWidth}B: ${_formatLastUpdated(directRepeater.lastUpdated)}',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -234,15 +241,13 @@ class _SNRIndicatorState extends State<SNRIndicator> {
 
                 final contact = _getRepeaterPrefixMatchNearLocation(
                   allContacts,
-                  repeater.pubkeyFirstByte,
+                  repeater.hashPrefix,
                   searchPoint: selfPoint,
                   preferFavorites: true,
                 );
 
                 final name = contact?.name;
-                final hex = repeater.pubkeyFirstByte
-                    .toRadixString(16)
-                    .padLeft(2, '0');
+                final prefixHex = PathHelper.formatHopHex(repeater.hashPrefix);
                 final snrColor = MeshTheme.snrColor(
                   repeater.snr,
                   blocked: false,
@@ -256,7 +261,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                   child: Row(
                     children: [
                       AvatarCircle(
-                        name: name ?? hex,
+                        name: name ?? prefixHex,
                         size: 36,
                         color: snrColor,
                       ),
@@ -266,11 +271,11 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              name ?? hex,
+                              name ?? prefixHex,
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             Text(
-                              '${repeater.snr.toStringAsFixed(1)} dB • ${_formatLastUpdated(repeater.lastUpdated)}',
+                              '$prefixHex • ${repeater.snr.toStringAsFixed(1)} dB • ${_formatLastUpdated(repeater.lastUpdated)}',
                               style: MeshTheme.mono(
                                 fontSize: 11,
                                 color: snrColor,

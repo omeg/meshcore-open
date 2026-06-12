@@ -16,6 +16,8 @@ import '../helpers/chat_scroll_controller.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/path_hash.dart';
+import '../helpers/path_helper.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
@@ -26,7 +28,6 @@ import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/translation_service.dart';
 import '../utils/desktop_text_input_focus.dart';
-import '../utils/emoji_utils.dart';
 import '../widgets/byte_count_input.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/chat_zoom_wrapper.dart';
@@ -492,6 +493,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   Widget _buildMessageBubble(ChannelMessage message, double textScale) {
     final settingsService = context.watch<AppSettingsService>();
+    final connector = context.watch<MeshCoreConnector>();
     final enableTracing = settingsService.settings.enableMessageTracing;
     final isOutgoing = message.isOutgoing;
     final scheme = Theme.of(context).colorScheme;
@@ -510,6 +512,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         : (message.pathVariants.isNotEmpty
               ? message.pathVariants.first
               : Uint8List(0));
+    final displayPathHashWidth =
+        message.pathHashByteWidth ?? connector.pathHashByteWidth;
+    final displayHopCount = _displayHopCount(
+      message,
+      displayPath,
+      displayPathHashWidth,
+    );
+    final directRepeatCount = isOutgoing
+        ? _directRepeaterRepeatCount(message, displayPathHashWidth)
+        : null;
 
     // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk.
     final bubbleColor = isOutgoing
@@ -659,15 +671,16 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 RouteChip(
-                                  isDirect: (message.pathLength ?? -1) >= 0,
-                                  hops: (message.pathLength ?? -1) >= 0
-                                      ? message.pathLength
-                                      : null,
+                                  isDirect: displayHopCount != null,
+                                  hops: displayHopCount,
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   context.l10n.channels_via(
-                                    _formatPathPrefixes(displayPath),
+                                    _formatPathPrefixes(
+                                      displayPath,
+                                      displayPathHashWidth,
+                                    ),
                                   ),
                                   style: MeshTheme.mono(
                                     fontSize: 9.5 * textScale,
@@ -697,7 +710,74 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                   color: metaColor,
                                 ),
                               ),
-                              if (enableTracing && message.repeatCount > 0) ...[
+                              if (isOutgoing &&
+                                  directRepeatCount != null &&
+                                  directRepeatCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.repeat,
+                                  size: 12,
+                                  color: Colors.grey[600],
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '$directRepeatCount',
+                                  style: MeshTheme.mono(
+                                    fontSize: 10 * textScale,
+                                    color: metaColor,
+                                  ),
+                                ),
+                                if (message.repeatCount >
+                                    directRepeatCount) ...[
+                                  const SizedBox(width: 6),
+                                  Icon(
+                                    Icons.radar,
+                                    size: 11 * textScale,
+                                    color: metaColor,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${message.repeatCount}',
+                                    style: MeshTheme.mono(
+                                      fontSize: 10 * textScale,
+                                      color: metaColor,
+                                    ),
+                                  ),
+                                ],
+                              ] else if (isOutgoing &&
+                                  message.repeatCount > 0) ...[
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.radar,
+                                  size: 11 * textScale,
+                                  color: metaColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${message.repeatCount}',
+                                  style: MeshTheme.mono(
+                                    fontSize: 10 * textScale,
+                                    color: metaColor,
+                                  ),
+                                ),
+                              ] else if (!isOutgoing &&
+                                  displayHopCount != null) ...[
+                                const SizedBox(width: 6),
+                                Icon(
+                                  Icons.route,
+                                  size: 11 * textScale,
+                                  color: metaColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '$displayHopCount',
+                                  style: MeshTheme.mono(
+                                    fontSize: 10 * textScale,
+                                    color: metaColor,
+                                  ),
+                                ),
+                              ] else if (enableTracing &&
+                                  message.repeatCount > 0) ...[
                                 const SizedBox(width: 6),
                                 Icon(
                                   Icons.repeat,
@@ -1549,10 +1629,51 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  String _formatPathPrefixes(Uint8List pathBytes) {
-    return pathBytes
-        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
-        .join(',');
+  String _formatPathPrefixes(Uint8List pathBytes, int pathHashByteWidth) {
+    return PathHelper.formatPathHex(
+      trimPathBytesToWidth(pathBytes, pathHashByteWidth),
+      pathHashByteWidth,
+    );
+  }
+
+  int? _displayHopCount(
+    ChannelMessage message,
+    Uint8List displayPath,
+    int pathHashByteWidth,
+  ) {
+    final alignedByteCount = alignedPathByteCount(
+      displayPath.length,
+      pathHashByteWidth,
+    );
+    final normalizedPathLength = normalizePathLengthWithBytes(
+      message.pathLength,
+      alignedByteCount,
+      pathHashByteWidth,
+    );
+    if (normalizedPathLength != null && normalizedPathLength > 0) {
+      return normalizedPathLength;
+    }
+    if (alignedByteCount > 0) {
+      return pathHopCountForBytes(alignedByteCount, pathHashByteWidth);
+    }
+    return null;
+  }
+
+  int _directRepeaterRepeatCount(
+    ChannelMessage message,
+    int pathHashByteWidth,
+  ) {
+    final uniqueDirectPaths = <String>{};
+    for (final path in message.pathVariants) {
+      final alignedPath = trimPathBytesToWidth(path, pathHashByteWidth);
+      if (pathHopCountForBytes(alignedPath.length, pathHashByteWidth) != 1) {
+        continue;
+      }
+      uniqueDirectPaths.add(
+        _formatPathPrefixes(alignedPath, pathHashByteWidth),
+      );
+    }
+    return uniqueDirectPaths.length;
   }
 
   /// Deterministic name-to-hue mapping consistent with [AvatarCircle].

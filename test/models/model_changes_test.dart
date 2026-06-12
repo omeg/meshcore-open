@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/models/contact.dart';
+import 'package:meshcore_open/models/channel_message.dart';
 import 'package:meshcore_open/models/path_history.dart';
 import 'package:meshcore_open/models/app_settings.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
@@ -10,6 +11,7 @@ import 'package:meshcore_open/connector/meshcore_protocol.dart';
 // Frame layout: [respCode(1)][pubKey(32)][type(1)][flags(1)][pathLen(1)][path(64)][name(32)][timestamp(4)][lat(4)][lon(4)]
 Uint8List _buildContactFrame({
   int pathLen = 0,
+  Uint8List? path,
   Uint8List? pubKey,
   String name = 'TestNode',
 }) {
@@ -21,7 +23,11 @@ Uint8List _buildContactFrame({
   writer.addByte(1); // type
   writer.addByte(0); // flags
   writer.addByte(pathLen);
-  writer.add(Uint8List(64)); // path bytes (zeros)
+  final pathBytes = Uint8List(64);
+  if (path != null) {
+    pathBytes.setRange(0, path.length, path);
+  }
+  writer.add(pathBytes);
   // name (32 bytes, null-padded)
   final nameBytes = Uint8List(32);
   final encoded = name.codeUnits;
@@ -67,11 +73,51 @@ void main() {
       expect(contact!.pathLength, equals(-1));
     });
 
-    test('pathLen == 65 (over maxPathSize) → pathLength == -1 (flood)', () {
+    test('encoded 2-byte pathLen decodes hop and byte counts', () {
+      final frame = _buildContactFrame(
+        pathLen: 0x40 | 2,
+        path: Uint8List.fromList([0xA6, 0xE7, 0xD1, 0x1E]),
+      );
+      final contact = Contact.fromFrame(frame);
+      expect(contact, isNotNull);
+      expect(contact!.pathLength, equals(2));
+      expect(contact.path, equals([0xA6, 0xE7, 0xD1, 0x1E]));
+    });
+
+    test('pathLen == 65 (encoded 2-byte one-hop) → pathLength == 1', () {
       final frame = _buildContactFrame(pathLen: 65);
       final contact = Contact.fromFrame(frame);
       expect(contact, isNotNull);
-      expect(contact!.pathLength, equals(-1));
+      expect(contact!.pathLength, equals(1));
+      expect(contact.path.length, equals(2));
+    });
+  });
+
+  group('ChannelMessage.fromFrame — encoded V3 pathLen', () {
+    test('decodes 2-byte path hashes as hop count plus path bytes', () {
+      final writer = BytesBuilder();
+      writer.addByte(respCodeChannelMsgRecvV3);
+      writer.addByte(0); // SNR
+      writer.addByte(0x01); // flags: has path
+      writer.addByte(0); // reserved
+      writer.addByte(0); // channel index
+      writer.addByte(0x40 | 2); // 2 hops, 2 bytes per hop
+      writer.add([0xA6, 0xE7, 0xD1, 0x1E]);
+      writer.addByte(txtTypePlain);
+      writer.add([1, 0, 0, 0]); // timestamp
+      writer.add('Node: hello'.codeUnits);
+      writer.addByte(0);
+
+      final message = ChannelMessage.fromFrame(
+        Uint8List.fromList(writer.toBytes()),
+      );
+
+      expect(message, isNotNull);
+      expect(message!.pathLength, equals(2));
+      expect(message.pathHashByteWidth, equals(2));
+      expect(message.pathBytes, equals([0xA6, 0xE7, 0xD1, 0x1E]));
+      expect(message.senderName, equals('Node'));
+      expect(message.text, equals('hello'));
     });
   });
 
