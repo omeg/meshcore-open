@@ -2,14 +2,38 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../models/contact.dart';
+import '../utils/app_logger.dart';
 import 'prefs_manager.dart';
 
 class ContactDiscoveryStore {
   static const String _keyPrefix = 'discovered_contacts';
 
+  String publicKeyHex = '';
+  set setPublicKeyHex(String value) =>
+      publicKeyHex = value.length > 10 ? value.substring(0, 10) : '';
+
+  String get keyFor => '$_keyPrefix$publicKeyHex';
+
   Future<List<Contact>> loadContacts() async {
+    if (publicKeyHex.isEmpty) {
+      appLogger.warn(
+        'Public key hex is not set. Cannot load discovered contacts.',
+      );
+      return [];
+    }
     final prefs = PrefsManager.instance;
-    final jsonStr = prefs.getString(_keyPrefix);
+    var jsonStr = prefs.getString(keyFor);
+    if (jsonStr == null || jsonStr.isEmpty) {
+      final legacyJsonStr = prefs.getString(_keyPrefix);
+      prefs.remove(_keyPrefix);
+      if (legacyJsonStr != null && legacyJsonStr.isNotEmpty) {
+        appLogger.info(
+          'Migrating discovered contacts from legacy key $_keyPrefix to scoped key $keyFor',
+        );
+        await prefs.setString(keyFor, legacyJsonStr);
+        jsonStr = legacyJsonStr;
+      }
+    }
     if (jsonStr == null) return [];
 
     try {
@@ -23,9 +47,15 @@ class ContactDiscoveryStore {
   }
 
   Future<void> saveContacts(List<Contact> contacts) async {
+    if (publicKeyHex.isEmpty) {
+      appLogger.warn(
+        'Public key hex is not set. Cannot save discovered contacts.',
+      );
+      return;
+    }
     final prefs = PrefsManager.instance;
     final jsonList = contacts.map(_toJson).toList();
-    await prefs.setString(_keyPrefix, jsonEncode(jsonList));
+    await prefs.setString(keyFor, jsonEncode(jsonList));
   }
 
   Map<String, dynamic> _toJson(Contact contact) {

@@ -1019,6 +1019,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _discoveredContacts
       ..clear()
       ..addAll(cached);
+    notifyListeners();
   }
 
   Future<void> loadChannelSettings({int? maxChannels}) async {
@@ -4226,6 +4227,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _channelSettingsStore.setPublicKeyHex = selfPublicKeyHex;
     _contactSettingsStore.setPublicKeyHex = selfPublicKeyHex;
     _contactStore.setPublicKeyHex = selfPublicKeyHex;
+    _discoveryContactStore.setPublicKeyHex = selfPublicKeyHex;
     _channelStore.setPublicKeyHex = selfPublicKeyHex;
     _unreadStore.setPublicKeyHex = selfPublicKeyHex;
 
