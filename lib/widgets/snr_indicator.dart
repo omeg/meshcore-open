@@ -6,7 +6,6 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/path_helper.dart';
 import '../l10n/app_localizations.dart';
-import '../l10n/contact_localization.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
@@ -249,8 +248,10 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                   repeater.averageSnr,
                   blocked: false,
                 );
-                final routeLabel =
-                    contact?.pathLabel(l10n) ?? l10n.channelPath_unknownPath;
+                // Nearby repeaters are inferred from the RF previous hop, so
+                // their route from this device is direct even if the stored
+                // contact route is stale or still reports a legacy max path.
+                final routeLabel = l10n.chat_direct;
                 final observedPathLabel = _formatHopLabel(
                   l10n,
                   repeater.observedPathHops,
