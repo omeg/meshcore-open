@@ -51,6 +51,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         : contact.lastSeen;
   }
 
+  int _hopSortValue(Contact contact) {
+    final hops = contact.pathOverride ?? contact.pathLength;
+    return hops < 0 ? 1 << 30 : hops;
+  }
+
+  int _compareByName(Contact a, Contact b) {
+    return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+  }
+
   /// Node-type avatar color per design language.
   Color _avatarColor(int type) {
     switch (type) {
@@ -538,11 +547,21 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         filtered.sort((a, b) => b.lastSeen.compareTo(a.lastSeen));
         break;
       case ContactSortOption.name:
-        filtered.sort(
-          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-        );
+        filtered.sort(_compareByName);
         break;
-      default:
+      case ContactSortOption.hops:
+        filtered.sort((a, b) {
+          final hops = _hopSortValue(a).compareTo(_hopSortValue(b));
+          if (hops != 0) return hops;
+          final lastSeen = _resolveLastSeen(b).compareTo(_resolveLastSeen(a));
+          if (lastSeen != 0) return lastSeen;
+          return _compareByName(a, b);
+        });
+        break;
+      case ContactSortOption.recentMessages:
+        filtered.sort(
+          (a, b) => _resolveLastSeen(b).compareTo(_resolveLastSeen(a)),
+        );
         break;
     }
 

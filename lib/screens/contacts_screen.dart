@@ -532,6 +532,11 @@ class _ContactsScreenState extends State<ContactsScreen>
     return null;
   }
 
+  int _hopSortValue(Contact contact) {
+    final hops = contact.pathOverride ?? contact.pathLength;
+    return hops < 0 ? 1 << 30 : hops;
+  }
+
   void _ensureValidSelectedGroup() {
     final viewState = context.read<UiViewStateService>();
     if (viewState.contactsSelectedGroupName == contactsAllGroupsValue) return;
@@ -1005,6 +1010,15 @@ class _ContactsScreenState extends State<ContactsScreen>
         filtered.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
         );
+        break;
+      case ContactSortOption.hops:
+        filtered.sort((a, b) {
+          final hops = _hopSortValue(a).compareTo(_hopSortValue(b));
+          if (hops != 0) return hops;
+          final lastSeen = _resolveLastSeen(b).compareTo(_resolveLastSeen(a));
+          if (lastSeen != 0) return lastSeen;
+          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+        });
         break;
     }
 

@@ -147,6 +147,11 @@ class ContactsFilterMenu extends StatelessWidget {
               label: l10n.listFilter_az,
               checked: sortOption == ContactSortOption.name,
             ),
+            SortFilterMenuOption(
+              value: _SortAction(ContactSortOption.hops),
+              label: 'Hops',
+              checked: sortOption == ContactSortOption.hops,
+            ),
           ],
         ),
         SortFilterMenuSection(
@@ -245,6 +250,11 @@ class DiscoveryContactsFilterMenu extends StatelessWidget {
               value: _DiscoverySortAction(ContactSortOption.name),
               label: l10n.listFilter_az,
               checked: sortOption == ContactSortOption.name,
+            ),
+            SortFilterMenuOption(
+              value: _DiscoverySortAction(ContactSortOption.hops),
+              label: 'Hops',
+              checked: sortOption == ContactSortOption.hops,
             ),
           ],
         ),
