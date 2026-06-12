@@ -4,8 +4,9 @@ import 'package:latlong2/latlong.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
-import '../helpers/path_hash.dart';
 import '../helpers/path_helper.dart';
+import '../l10n/app_localizations.dart';
+import '../l10n/contact_localization.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
@@ -138,17 +139,14 @@ class _SNRIndicatorState extends State<SNRIndicator> {
   @override
   Widget build(BuildContext context) {
     final directRepeaters = widget.connector.directRepeaters;
-    final pathHashWidth = normalizePathHashByteWidth(
-      widget.connector.pathHashByteWidth,
-    );
     final directBestRepeaters = List.of(directRepeaters)
-      ..sort((a, b) => (b.ranking).compareTo(a.ranking));
+      ..sort(DirectRepeater.compareByAverageSnr);
     final directRepeater = directBestRepeaters.isEmpty
         ? null
         : directBestRepeaters.first;
 
     final snrUi = snrUiFromSNR(
-      directBestRepeaters.isNotEmpty ? directRepeater!.snr : null,
+      directBestRepeaters.isNotEmpty ? directRepeater!.averageSnr : null,
       widget.connector.currentSf,
     );
 
@@ -171,7 +169,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
               ),
               if (directRepeater != null)
                 Text(
-                  '${directRepeaters.length}: ${directRepeater.hashPrefixHex}: ${pathHashWidth}B: ${_formatLastUpdated(directRepeater.lastUpdated)}',
+                  '${directRepeaters.length}: ${directRepeater.hashPrefixHex}: ${_formatLastUpdated(directRepeater.lastUpdated)}',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -228,7 +226,6 @@ class _SNRIndicatorState extends State<SNRIndicator> {
               itemBuilder: (context, index) {
                 final repeater = directBestRepeaters[index];
                 final allContacts = widget.connector.allContacts;
-
                 final selfLat = widget.connector.selfLatitude;
                 final selfLon = widget.connector.selfLongitude;
 
@@ -249,9 +246,19 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                 final name = contact?.name;
                 final prefixHex = PathHelper.formatHopHex(repeater.hashPrefix);
                 final snrColor = MeshTheme.snrColor(
-                  repeater.snr,
+                  repeater.averageSnr,
                   blocked: false,
                 );
+                final routeLabel =
+                    contact?.pathLabel(l10n) ?? l10n.channelPath_unknownPath;
+                final observedPathLabel = _formatHopLabel(
+                  l10n,
+                  repeater.observedPathHops,
+                );
+                final pathLine =
+                    '$prefixHex • route: $routeLabel • path: $observedPathLabel';
+                final signalLine =
+                    'Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB (${repeater.snrSampleCount}) • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
 
                 return Padding(
                   padding: const EdgeInsets.symmetric(
@@ -275,11 +282,24 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             Text(
-                              '$prefixHex • ${repeater.snr.toStringAsFixed(1)} dB • ${_formatLastUpdated(repeater.lastUpdated)}',
+                              pathLine,
+                              style: MeshTheme.mono(
+                                fontSize: 11,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              signalLine,
                               style: MeshTheme.mono(
                                 fontSize: 11,
                                 color: snrColor,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -299,5 +319,10 @@ class _SNRIndicatorState extends State<SNRIndicator> {
         ],
       ),
     );
+  }
+
+  String _formatHopLabel(AppLocalizations l10n, int hops) {
+    if (hops <= 0) return l10n.chat_direct;
+    return l10n.chat_hopsCount(hops);
   }
 }

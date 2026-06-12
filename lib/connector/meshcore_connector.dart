@@ -50,15 +50,23 @@ import 'meshcore_protocol.dart';
 
 class DirectRepeater {
   static const int maxAgeMinutes = 30; // Max age for direct repeater info
-  final Uint8List hashPrefix;
+  static const int maxTrackedCount = 10;
+  Uint8List hashPrefix;
   double snr;
+  double _snrTotal;
+  int snrSampleCount;
   DateTime lastUpdated;
+  int observedPathHops;
 
   DirectRepeater({
     required List<int> hashPrefix,
     required this.snr,
+    int snrSampleCount = 1,
+    this.observedPathHops = 0,
     DateTime? lastUpdated,
   }) : hashPrefix = Uint8List.fromList(hashPrefix),
+       _snrTotal = snr * math.max(1, snrSampleCount),
+       snrSampleCount = math.max(1, snrSampleCount),
        lastUpdated = lastUpdated ?? DateTime.now();
 
   int get pubkeyFirstByte => hashPrefix.isNotEmpty ? hashPrefix.first : 0;
@@ -67,9 +75,20 @@ class DirectRepeater {
       .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
       .join();
 
+  double get averageSnr => _snrTotal / snrSampleCount;
+
   bool matchesHashPrefix(List<int> other) {
     if (hashPrefix.length != other.length) return false;
     for (var i = 0; i < hashPrefix.length; i++) {
+      if (hashPrefix[i] != other[i]) return false;
+    }
+    return true;
+  }
+
+  bool matchesHashPrefixVariant(List<int> other) {
+    if (hashPrefix.isEmpty || other.isEmpty) return false;
+    final compareLength = math.min(hashPrefix.length, other.length);
+    for (var i = 0; i < compareLength; i++) {
       if (hashPrefix[i] != other[i]) return false;
     }
     return true;
@@ -84,22 +103,49 @@ class DirectRepeater {
     return true;
   }
 
-  void update(double newSNR) {
+  void update(
+    double newSNR, {
+    required int observedPathHops,
+    List<int>? hashPrefix,
+  }) {
+    if (hashPrefix != null && hashPrefix.length > this.hashPrefix.length) {
+      this.hashPrefix = Uint8List.fromList(hashPrefix);
+    }
     snr = newSNR;
+    _snrTotal += newSNR;
+    snrSampleCount += 1;
+    this.observedPathHops = observedPathHops;
     lastUpdated = DateTime.now();
+  }
+
+  void absorb(DirectRepeater other) {
+    if (other.hashPrefix.length > hashPrefix.length) {
+      hashPrefix = Uint8List.fromList(other.hashPrefix);
+    }
+    _snrTotal += other._snrTotal;
+    snrSampleCount += other.snrSampleCount;
+    if (other.lastUpdated.isAfter(lastUpdated)) {
+      snr = other.snr;
+      observedPathHops = other.observedPathHops;
+      lastUpdated = other.lastUpdated;
+    }
+  }
+
+  static int compareByAverageSnr(DirectRepeater a, DirectRepeater b) {
+    final staleCompare = (a.isStale() ? 1 : 0).compareTo(b.isStale() ? 1 : 0);
+    if (staleCompare != 0) return staleCompare;
+    final snrCompare = b.averageSnr.compareTo(a.averageSnr);
+    if (snrCompare != 0) return snrCompare;
+    final updatedCompare = b.lastUpdated.compareTo(a.lastUpdated);
+    if (updatedCompare != 0) return updatedCompare;
+    return b.hashPrefix.length.compareTo(a.hashPrefix.length);
   }
 
   int get ranking {
     if (isStale()) {
-      return -1; // Stale repeaters get lowest rank
+      return -1 << 30; // Stale repeaters get lowest rank
     }
-    // Higher SNR gets higher rank and recency within maxAgeMinutes breaks ties.
-    final ageMs =
-        DateTime.now().millisecondsSinceEpoch -
-        lastUpdated.millisecondsSinceEpoch;
-    final maxAgeMs = maxAgeMinutes * 60 * 1000;
-    final recencyScore = (maxAgeMs - ageMs).clamp(0, maxAgeMs);
-    return ((snr - 31.75) * 1000).round() + recencyScore;
+    return (averageSnr * 1000).round();
   }
 
   bool isStale() {
@@ -6685,6 +6731,7 @@ class MeshCoreConnector extends ChangeNotifier {
       final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = packet.readBytes(pathByteLen);
       final payload = packet.readBytes(packet.remaining);
+      _updateDirectRepeaterFromPacketPath(pathBytes, pathHashWidth, snr);
 
       final rawPacket = frame.sublist(3);
       switch (payloadType) {
@@ -6928,48 +6975,100 @@ class MeshCoreConnector extends ChangeNotifier {
   void _updateDirectRepeater(Contact contact, double snr, Uint8List path) {
     final width = normalizePathHashByteWidth(_pathHashByteWidth);
 
+    // Direct repeater/room adverts have no route path. Routed adverts are
+    // handled by _updateDirectRepeaterFromPacketPath(), which uses the last
+    // RF hop from normal packet traffic.
+    final isRepeaterLike =
+        contact.type == advTypeRepeater || contact.type == advTypeRoom;
+    if (!isRepeaterLike || path.isNotEmpty) {
+      return;
+    }
+
+    final hashPrefix = contact.publicKey.sublist(
+      0,
+      math.min(width, contact.publicKey.length),
+    );
+    if (hashPrefix.length != width) {
+      return;
+    }
+
+    _upsertDirectRepeater(
+      hashPrefix: hashPrefix,
+      snr: snr,
+      observedPathHops: 0,
+    );
+  }
+
+  void _updateDirectRepeaterFromPacketPath(
+    Uint8List path,
+    int pathHashWidth,
+    double snr,
+  ) {
+    final width = normalizePathHashByteWidth(pathHashWidth);
+    final alignedPath = trimPathBytesToWidth(path, width);
+    if (alignedPath.length < width) return;
+
+    _upsertDirectRepeater(
+      hashPrefix: alignedPath.sublist(alignedPath.length - width),
+      snr: snr,
+      observedPathHops: pathHopCountForBytes(alignedPath.length, width),
+    );
+  }
+
+  void _upsertDirectRepeater({
+    required List<int> hashPrefix,
+    required double snr,
+    required int observedPathHops,
+  }) {
     _directRepeaters.removeWhere((r) => r.isStale());
 
-    //We can use adverts from chat and sensor nodes, but only if the advert has a path to get the last hop.
-    if ((contact.type == advTypeChat || contact.type == advTypeSensor) &&
-        path.isEmpty) {
-      notifyListeners();
-      return;
+    final tracked = _directRepeaters
+        .where((r) => r.matchesHashPrefixVariant(hashPrefix))
+        .toList();
+    DirectRepeater? trackedRepeater;
+    for (final repeater in tracked) {
+      if (trackedRepeater == null ||
+          repeater.hashPrefix.length > trackedRepeater.hashPrefix.length) {
+        trackedRepeater = repeater;
+      }
     }
-
-    final alignedPath = trimPathBytesToWidth(path, width);
-    final hashPrefix = alignedPath.length >= width
-        ? alignedPath.sublist(alignedPath.length - width)
-        : contact.publicKey.sublist(
-            0,
-            math.min(width, contact.publicKey.length),
-          );
-    if (hashPrefix.length != width) {
-      notifyListeners();
-      return;
+    if (trackedRepeater != null && tracked.length > 1) {
+      for (final repeater in tracked) {
+        if (repeater != trackedRepeater) {
+          trackedRepeater.absorb(repeater);
+        }
+      }
+      _directRepeaters.removeWhere(
+        (r) => r != trackedRepeater && tracked.contains(r),
+      );
     }
-
-    final isTracked = _directRepeaters.where(
-      (r) => r.matchesHashPrefix(hashPrefix),
-    );
 
     final sortedRepeaters = List<DirectRepeater>.from(_directRepeaters)
-      ..sort((a, b) => b.snr.compareTo(a.snr));
+      ..sort(DirectRepeater.compareByAverageSnr);
     final weakestRepeater = sortedRepeaters.isNotEmpty
         ? sortedRepeaters.last
         : null;
 
-    if (_directRepeaters.length >= 5 &&
+    if (_directRepeaters.length >= DirectRepeater.maxTrackedCount &&
         weakestRepeater != null &&
-        isTracked.isEmpty) {
+        trackedRepeater == null) {
       _directRepeaters.remove(weakestRepeater);
     }
 
-    if (isTracked.isNotEmpty) {
-      final repeater = isTracked.first;
-      repeater.update(snr);
-    } else if (_directRepeaters.length < 5) {
-      _directRepeaters.add(DirectRepeater(hashPrefix: hashPrefix, snr: snr));
+    if (trackedRepeater != null) {
+      trackedRepeater.update(
+        snr,
+        observedPathHops: observedPathHops,
+        hashPrefix: hashPrefix,
+      );
+    } else if (_directRepeaters.length < DirectRepeater.maxTrackedCount) {
+      _directRepeaters.add(
+        DirectRepeater(
+          hashPrefix: hashPrefix,
+          snr: snr,
+          observedPathHops: observedPathHops,
+        ),
+      );
     }
     notifyListeners();
   }
