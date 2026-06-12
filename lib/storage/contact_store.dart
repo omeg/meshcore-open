@@ -88,15 +88,21 @@ class ContactStore {
     final lastSeenMs = json['lastSeen'] as int? ?? 0;
     final lastMessageMs = json['lastMessageAt'] as int?;
     final lastModifiedMs = json['lastModified'] as int?;
+    var pathLength = json['pathLength'] as int? ?? -1;
+    var path = json['path'] != null
+        ? Uint8List.fromList(base64Decode(json['path'] as String))
+        : Uint8List(0);
+    if (Contact.looksLikeEncodedDirectPath(pathLength, path)) {
+      pathLength = 0;
+      path = Uint8List(0);
+    }
     return Contact(
       publicKey: Uint8List.fromList(base64Decode(json['publicKey'] as String)),
       name: json['name'] as String? ?? 'Unknown',
       type: json['type'] as int? ?? 0,
       flags: json['flags'] as int? ?? 0,
-      pathLength: json['pathLength'] as int? ?? -1,
-      path: json['path'] != null
-          ? Uint8List.fromList(base64Decode(json['path'] as String))
-          : Uint8List(0),
+      pathLength: pathLength,
+      path: path,
       pathOverride: json['pathOverride'] as int?,
       pathOverrideBytes: json['pathOverrideBytes'] != null
           ? Uint8List.fromList(

@@ -66,6 +66,12 @@ void main() {
     },
   );
 
+  test('encodes zero-hop paths without hash-width bits', () {
+    expect(encodePathLenForHashWidth(0, 1), equals(0));
+    expect(encodePathLenForHashWidth(0, 2), equals(0));
+    expect(encodePathLenForHashWidth(0, 3), equals(0));
+  });
+
   test('trims dangling partial multibyte path chunks', () {
     expect(trimPathBytesToWidth([0x04, 0xF9, 0x84], 2), equals([0x04, 0xF9]));
     expect(trimPathBytesToWidth([0x04], 2), isEmpty);

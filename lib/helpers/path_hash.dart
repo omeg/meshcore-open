@@ -66,6 +66,7 @@ int? normalizePathLengthWithBytes(
 int? encodePathLenForHashWidth(int hopCount, int hashByteWidth) {
   final w = normalizePathHashByteWidth(hashByteWidth);
   if (hopCount < 0 || hopCount > maxPathHopCountForWidth(w)) return null;
+  if (hopCount == 0) return 0;
   if (w == 1 && hopCount == maxPathSize) return maxPathSize;
   return ((w - 1) << 6) | hopCount;
 }

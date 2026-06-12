@@ -59,11 +59,23 @@ void main() {
       expect(contact!.pathLength, equals(1));
     });
 
-    test('pathLen == 64 (maxPathSize) → pathLength == 64', () {
+    test('pathLen == 64 with zero path → pathLength == 0 direct', () {
       final frame = _buildContactFrame(pathLen: maxPathSize);
       final contact = Contact.fromFrame(frame);
       expect(contact, isNotNull);
+      expect(contact!.pathLength, equals(0));
+      expect(contact.path, isEmpty);
+    });
+
+    test('pathLen == 64 with path bytes preserves legacy max path', () {
+      final frame = _buildContactFrame(
+        pathLen: maxPathSize,
+        path: Uint8List.fromList(List.generate(maxPathSize, (i) => i + 1)),
+      );
+      final contact = Contact.fromFrame(frame);
+      expect(contact, isNotNull);
       expect(contact!.pathLength, equals(maxPathSize));
+      expect(contact.path.length, equals(maxPathSize));
     });
 
     test('pathLen == 0xFF → pathLength == -1 (flood)', () {

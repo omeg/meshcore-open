@@ -149,6 +149,12 @@ class Contact {
     return path;
   }
 
+  static bool looksLikeEncodedDirectPath(int pathLength, Uint8List path) {
+    return pathLength == maxPathSize &&
+        path.length == maxPathSize &&
+        path.every((b) => b == 0);
+  }
+
   static Contact? fromFrame(Uint8List data) {
     if (data.isEmpty) return null;
     final reader = BufferReader(data);
@@ -167,8 +173,15 @@ class Contact {
       final type = reader.readByte();
       final flags = reader.readByte();
       final pathLen = reader.readByte();
+      final decodedPathLength = decodePathHopCount(pathLen);
       final pathByteLen = decodePathByteLen(pathLen);
-      final pathBytes = reader.readBytes(maxPathSize).sublist(0, pathByteLen);
+      final pathField = reader.readBytes(maxPathSize);
+      var pathBytes = pathField.sublist(0, pathByteLen);
+      var pathLength = decodedPathLength;
+      if (looksLikeEncodedDirectPath(pathLength, pathBytes)) {
+        pathLength = 0;
+        pathBytes = Uint8List(0);
+      }
       final name = reader.readCStringGreedy(maxNameSize);
 
       // Guard: reject contacts with non-printable names (corrupt flash data)
@@ -212,7 +225,7 @@ class Contact {
         name: name.isEmpty ? 'Unknown' : name,
         type: type,
         flags: flags,
-        pathLength: decodePathHopCount(pathLen),
+        pathLength: pathLength,
         path: pathBytes,
         latitude: lat,
         longitude: lon,

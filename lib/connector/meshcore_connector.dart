@@ -6773,9 +6773,7 @@ class MeshCoreConnector extends ChangeNotifier {
         publicKey: publicKey,
         name: name,
         type: type,
-        pathLength: pathBytes.isEmpty
-            ? -1
-            : pathHopCountForBytes(pathBytes.length, pathHashWidth),
+        pathLength: pathHopCountForBytes(pathBytes.length, pathHashWidth),
         path: reversePathByHop(pathBytes, pathHashWidth),
         latitude: latitude,
         longitude: longitude,
@@ -6851,9 +6849,7 @@ class MeshCoreConnector extends ChangeNotifier {
 
     // Check if this is a new contact
     final isNewContact = !_knownContactKeys.contains(contactKeyHex);
-    final pathHopCount = path.isEmpty
-        ? -1
-        : pathHopCountForBytes(path.length, pathHashWidth);
+    final pathHopCount = pathHopCountForBytes(path.length, pathHashWidth);
     final reversedPath = reversePathByHop(path, pathHashWidth);
 
     if (isNewContact) {
