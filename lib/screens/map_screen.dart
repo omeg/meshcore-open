@@ -30,6 +30,7 @@ import '../icons/los_icon.dart';
 import 'channels_screen.dart';
 import 'chat_screen.dart';
 import 'contacts_screen.dart';
+import 'discovery_screen.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/repeater_login_dialog.dart';
@@ -639,6 +640,21 @@ class _MapScreenState extends State<MapScreen> {
                         ],
                       ),
                       onTap: () => _disconnect(context, connector),
+                    ),
+                    PopupMenuItem(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person_add_rounded),
+                          const SizedBox(width: 8),
+                          Text(context.l10n.discoveredContacts_Title),
+                        ],
+                      ),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const DiscoveryScreen(),
+                        ),
+                      ),
                     ),
                     PopupMenuItem(
                       child: Row(

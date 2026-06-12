@@ -31,6 +31,7 @@ import '../helpers/snack_bar_builder.dart';
 import 'channel_chat_screen.dart';
 import 'community_qr_scanner_screen.dart';
 import 'contacts_screen.dart';
+import 'discovery_screen.dart';
 import 'map_screen.dart';
 import 'settings_screen.dart';
 
@@ -137,13 +138,29 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 PopupMenuItem(
                   child: Row(
                     children: [
-                      const Icon(Icons.groups),
+                      const Icon(Icons.person_add_rounded),
                       const SizedBox(width: 8),
-                      Text(menuContext.l10n.community_manageCommunities),
+                      Text(menuContext.l10n.discoveredContacts_Title),
                     ],
                   ),
-                  onTap: () => _showManageCommunitiesDialog(context),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const DiscoveryScreen(),
+                    ),
+                  ),
                 ),
+                if (_communities.isNotEmpty)
+                  PopupMenuItem(
+                    child: Row(
+                      children: [
+                        const Icon(Icons.groups),
+                        const SizedBox(width: 8),
+                        Text(menuContext.l10n.community_manageCommunities),
+                      ],
+                    ),
+                    onTap: () => _showManageCommunitiesDialog(context),
+                  ),
                 PopupMenuItem(
                   child: Row(
                     children: [
