@@ -4461,6 +4461,24 @@ class AppLocalizationsPl extends AppLocalizations {
       'Przy otwieraniu czatu z nieodczytanymi wiadomościami, przewijaj, aby przejść do pierwszej nieodczytanej wiadomości, zamiast do najnowszej.';
 
   @override
+  String get appSettings_discoveredContactTapAction => 'Discovered contact tap';
+
+  @override
+  String get appSettings_discoveredContactTapActionImport => 'Add contact';
+
+  @override
+  String get appSettings_discoveredContactTapActionImportSubtitle =>
+      'Add the contact and remove it from the discovered list.';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActions =>
+      'Show actions menu';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActionsSubtitle =>
+      'Open the add, copy, and delete actions instead.';
+
+  @override
   String get appSettings_languageHu => 'Węgierski';
 
   @override

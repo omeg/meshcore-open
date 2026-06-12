@@ -8,7 +8,9 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
 import '../l10n/contact_localization.dart';
+import '../models/app_settings.dart';
 import '../models/contact.dart';
+import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/contact_search.dart';
 import '../utils/platform_info.dart';
@@ -81,6 +83,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final connector = context.watch<MeshCoreConnector>();
+    final settings = context.watch<AppSettingsService>().settings;
 
     final discoveredContacts = connector.discoveredContacts;
     final filteredAndSorted = _filterAndSortContacts(
@@ -145,6 +148,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           context,
                           contact,
                           connector,
+                          settings.discoveredContactTapAction,
                           index,
                         );
                         if (PlatformInfo.isDesktop) {
@@ -168,6 +172,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     BuildContext context,
     Contact contact,
     MeshCoreConnector connector,
+    DiscoveredContactTapAction tapAction,
     int index,
   ) {
     final scheme = Theme.of(context).colorScheme;
@@ -176,33 +181,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     return ListEntrance(
       index: index,
       child: MeshCard(
-        onTap: () async {
-          try {
-            final imported = await connector.importDiscoveredContact(contact);
-            if (!context.mounted) return;
-            if (!imported) {
-              showDismissibleSnackBar(
-                context,
-                content: Text(context.l10n.contacts_contactImportFailed),
-              );
-              return;
-            }
-            showDismissibleSnackBar(
-              context,
-              content: Text(context.l10n.discoveredContacts_contactAdded),
-              action: SnackBarAction(
-                label: context.l10n.common_undo,
-                onPressed: () => connector.removeContact(contact),
-              ),
-            );
-          } catch (_) {
-            if (!context.mounted) return;
-            showDismissibleSnackBar(
-              context,
-              content: Text(context.l10n.contacts_contactImportFailed),
-            );
-          }
-        },
+        onTap: () => _handleContactTap(contact, connector, tapAction),
         onLongPress: () => _showContactContextMenu(contact, connector),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -304,6 +283,50 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _handleContactTap(
+    Contact contact,
+    MeshCoreConnector connector,
+    DiscoveredContactTapAction tapAction,
+  ) async {
+    switch (tapAction) {
+      case DiscoveredContactTapAction.showActions:
+        await _showContactContextMenu(contact, connector);
+      case DiscoveredContactTapAction.importContact:
+        await _importContact(contact, connector);
+    }
+  }
+
+  Future<void> _importContact(
+    Contact contact,
+    MeshCoreConnector connector,
+  ) async {
+    try {
+      final imported = await connector.importDiscoveredContact(contact);
+      if (!mounted) return;
+      if (!imported) {
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.contacts_contactImportFailed),
+        );
+        return;
+      }
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.discoveredContacts_contactAdded),
+        action: SnackBarAction(
+          label: context.l10n.common_undo,
+          onPressed: () => connector.removeContact(contact),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.contacts_contactImportFailed),
+      );
+    }
   }
 
   Future<void> _showContactContextMenu(

@@ -7630,6 +7630,36 @@ abstract class AppLocalizations {
   /// **'When opening a chat with unread messages, scroll to the first unread instead of the latest.'**
   String get appSettings_jumpToOldestUnreadSubtitle;
 
+  /// No description provided for @appSettings_discoveredContactTapAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered contact tap'**
+  String get appSettings_discoveredContactTapAction;
+
+  /// No description provided for @appSettings_discoveredContactTapActionImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get appSettings_discoveredContactTapActionImport;
+
+  /// No description provided for @appSettings_discoveredContactTapActionImportSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add the contact and remove it from the discovered list.'**
+  String get appSettings_discoveredContactTapActionImportSubtitle;
+
+  /// No description provided for @appSettings_discoveredContactTapActionShowActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Show actions menu'**
+  String get appSettings_discoveredContactTapActionShowActions;
+
+  /// No description provided for @appSettings_discoveredContactTapActionShowActionsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the add, copy, and delete actions instead.'**
+  String get appSettings_discoveredContactTapActionShowActionsSubtitle;
+
   /// No description provided for @appSettings_languageHu.
   ///
   /// In en, this message translates to:

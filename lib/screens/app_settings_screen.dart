@@ -597,6 +597,50 @@ class AppSettingsScreen extends StatelessWidget {
             settingsService.setEnableMessageTracing(value);
           },
         ),
+        const Divider(height: 1, indent: 16),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: const Icon(Icons.person_add_alt_1_outlined, size: 20),
+          title: Text(context.l10n.appSettings_discoveredContactTapAction),
+          subtitle: Text(
+            settingsService.settings.discoveredContactTapAction ==
+                    DiscoveredContactTapAction.importContact
+                ? context
+                      .l10n
+                      .appSettings_discoveredContactTapActionImportSubtitle
+                : context
+                      .l10n
+                      .appSettings_discoveredContactTapActionShowActionsSubtitle,
+          ),
+          trailing: DropdownButton<DiscoveredContactTapAction>(
+            value: settingsService.settings.discoveredContactTapAction,
+            underline: const SizedBox.shrink(),
+            onChanged: (value) {
+              if (value != null) {
+                settingsService.setDiscoveredContactTapAction(value);
+              }
+            },
+            items: [
+              DropdownMenuItem(
+                value: DiscoveredContactTapAction.importContact,
+                child: Text(
+                  context.l10n.appSettings_discoveredContactTapActionImport,
+                ),
+              ),
+              DropdownMenuItem(
+                value: DiscoveredContactTapAction.showActions,
+                child: Text(
+                  context
+                      .l10n
+                      .appSettings_discoveredContactTapActionShowActions,
+                ),
+              ),
+            ],
+          ),
+        ),
       ],
     );
   }

@@ -4226,6 +4226,24 @@ class AppLocalizationsJa extends AppLocalizations {
       '未読メッセージがあるチャットを開く際、「最新のメッセージ」ではなく、最初に未読のメッセージまでスクロールしてください。';
 
   @override
+  String get appSettings_discoveredContactTapAction => 'Discovered contact tap';
+
+  @override
+  String get appSettings_discoveredContactTapActionImport => 'Add contact';
+
+  @override
+  String get appSettings_discoveredContactTapActionImportSubtitle =>
+      'Add the contact and remove it from the discovered list.';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActions =>
+      'Show actions menu';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActionsSubtitle =>
+      'Open the add, copy, and delete actions instead.';
+
+  @override
   String get appSettings_languageHu => 'ハンガリー語';
 
   @override

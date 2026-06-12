@@ -4458,6 +4458,24 @@ class AppLocalizationsHu extends AppLocalizations {
       'Amikor egy új csevet indítunk, amelyben vannak olvashatatlan üzenetek, görgessük a listát, hogy a legelső, olvashatatlan üzenet megjelenjen, nem pedig az utolsó.';
 
   @override
+  String get appSettings_discoveredContactTapAction => 'Discovered contact tap';
+
+  @override
+  String get appSettings_discoveredContactTapActionImport => 'Add contact';
+
+  @override
+  String get appSettings_discoveredContactTapActionImportSubtitle =>
+      'Add the contact and remove it from the discovered list.';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActions =>
+      'Show actions menu';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActionsSubtitle =>
+      'Open the add, copy, and delete actions instead.';
+
+  @override
   String get appSettings_languageHu => 'Magyar';
 
   @override

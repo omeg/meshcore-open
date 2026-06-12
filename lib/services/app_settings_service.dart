@@ -231,6 +231,12 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(jumpToOldestUnread: value));
   }
 
+  Future<void> setDiscoveredContactTapAction(
+    DiscoveredContactTapAction value,
+  ) async {
+    await updateSettings(_settings.copyWith(discoveredContactTapAction: value));
+  }
+
   Future<void> setTranslationEnabled(bool value) async {
     await updateSettings(_settings.copyWith(translationEnabled: value));
   }

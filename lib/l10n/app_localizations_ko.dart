@@ -4224,6 +4224,24 @@ class AppLocalizationsKo extends AppLocalizations {
       '새로운 메시지가 없는 채팅을 열 때, 최신 메시지가 아닌 첫 번째 읽지 않은 메시지로 스크롤하세요.';
 
   @override
+  String get appSettings_discoveredContactTapAction => 'Discovered contact tap';
+
+  @override
+  String get appSettings_discoveredContactTapActionImport => 'Add contact';
+
+  @override
+  String get appSettings_discoveredContactTapActionImportSubtitle =>
+      'Add the contact and remove it from the discovered list.';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActions =>
+      'Show actions menu';
+
+  @override
+  String get appSettings_discoveredContactTapActionShowActionsSubtitle =>
+      'Open the add, copy, and delete actions instead.';
+
+  @override
   String get appSettings_languageHu => '헝가리';
 
   @override

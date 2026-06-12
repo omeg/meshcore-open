@@ -314,6 +314,10 @@ void main() {
       expect(settings.routeWeightSuccessIncrement, equals(0.5));
       expect(settings.routeWeightFailureDecrement, equals(0.2));
       expect(settings.maxMessageRetries, equals(5));
+      expect(
+        settings.discoveredContactTapAction,
+        equals(DiscoveredContactTapAction.importContact),
+      );
     });
 
     test('toJson includes all new fields', () {
@@ -324,11 +328,13 @@ void main() {
       expect(json.containsKey('route_weight_success_increment'), isTrue);
       expect(json.containsKey('route_weight_failure_decrement'), isTrue);
       expect(json.containsKey('max_message_retries'), isTrue);
+      expect(json.containsKey('discovered_contact_tap_action'), isTrue);
       expect(json['max_route_weight'], equals(5.0));
       expect(json['initial_route_weight'], equals(3.0));
       expect(json['route_weight_success_increment'], equals(0.5));
       expect(json['route_weight_failure_decrement'], equals(0.2));
       expect(json['max_message_retries'], equals(5));
+      expect(json['discovered_contact_tap_action'], equals('import_contact'));
     });
 
     test('fromJson reads all new fields', () {
@@ -338,6 +344,7 @@ void main() {
         'route_weight_success_increment': 1.0,
         'route_weight_failure_decrement': 1.5,
         'max_message_retries': 8,
+        'discovered_contact_tap_action': 'show_actions',
       };
       final settings = AppSettings.fromJson(json);
       expect(settings.maxRouteWeight, equals(10.0));
@@ -345,6 +352,10 @@ void main() {
       expect(settings.routeWeightSuccessIncrement, equals(1.0));
       expect(settings.routeWeightFailureDecrement, equals(1.5));
       expect(settings.maxMessageRetries, equals(8));
+      expect(
+        settings.discoveredContactTapAction,
+        equals(DiscoveredContactTapAction.showActions),
+      );
     });
 
     test(
@@ -358,6 +369,10 @@ void main() {
         expect(settings.routeWeightSuccessIncrement, equals(0.5));
         expect(settings.routeWeightFailureDecrement, equals(0.2));
         expect(settings.maxMessageRetries, equals(5));
+        expect(
+          settings.discoveredContactTapAction,
+          equals(DiscoveredContactTapAction.importContact),
+        );
       },
     );
 
@@ -401,6 +416,18 @@ void main() {
       final settings = AppSettings();
       final updated = settings.copyWith(maxMessageRetries: 10);
       expect(updated.maxMessageRetries, equals(10));
+      expect(updated.maxRouteWeight, equals(settings.maxRouteWeight));
+    });
+
+    test('copyWith works for discoveredContactTapAction', () {
+      final settings = AppSettings();
+      final updated = settings.copyWith(
+        discoveredContactTapAction: DiscoveredContactTapAction.showActions,
+      );
+      expect(
+        updated.discoveredContactTapAction,
+        equals(DiscoveredContactTapAction.showActions),
+      );
       expect(updated.maxRouteWeight, equals(settings.maxRouteWeight));
     });
   });

@@ -84,7 +84,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "de": [
@@ -172,7 +177,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "es": [
@@ -260,7 +270,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "fr": [
@@ -348,7 +363,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "hu": [
@@ -436,7 +456,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "it": [
@@ -524,7 +549,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "ja": [
@@ -612,7 +642,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "ko": [
@@ -700,7 +735,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "nl": [
@@ -788,7 +828,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "pl": [
@@ -876,7 +921,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "pt": [
@@ -964,7 +1014,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "ru": [
@@ -1052,7 +1107,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "sk": [
@@ -1140,7 +1200,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "sl": [
@@ -1228,7 +1293,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "sv": [
@@ -1316,7 +1386,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "uk": [
@@ -1404,7 +1479,12 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ],
 
   "zh": [
@@ -1492,6 +1572,11 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket"
+    "pathMap_unfollowPacket",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle"
   ]
 }

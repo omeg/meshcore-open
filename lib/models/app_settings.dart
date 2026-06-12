@@ -13,6 +13,19 @@ extension UnitSystemValue on UnitSystem {
   }
 }
 
+enum DiscoveredContactTapAction { importContact, showActions }
+
+extension DiscoveredContactTapActionValue on DiscoveredContactTapAction {
+  String get value {
+    switch (this) {
+      case DiscoveredContactTapAction.showActions:
+        return 'show_actions';
+      case DiscoveredContactTapAction.importContact:
+        return 'import_contact';
+    }
+  }
+}
+
 const Map<String, String> defaultCyr2LatCharMap = {
   'А': 'A',
   'В': 'B',
@@ -121,6 +134,7 @@ class AppSettings {
   final List<TranslationModelRecord> translationDownloadedModels;
   final List<Cyr2LatProfile> cyr2latProfiles;
   final String selectedCyr2latProfileId;
+  final DiscoveredContactTapAction discoveredContactTapAction;
 
   Map<String, String> get cyr2latCharMap {
     final profile = cyr2latProfiles.firstWhere(
@@ -175,6 +189,7 @@ class AppSettings {
     List<TranslationModelRecord>? translationDownloadedModels,
     List<Cyr2LatProfile>? cyr2latProfiles,
     String? selectedCyr2latProfileId,
+    this.discoveredContactTapAction = DiscoveredContactTapAction.importContact,
   }) : batteryChemistryByDeviceId = batteryChemistryByDeviceId ?? {},
        batteryChemistryByRepeaterId = batteryChemistryByRepeaterId ?? {},
        mutedChannels = mutedChannels ?? {},
@@ -240,6 +255,7 @@ class AppSettings {
           .map((profile) => profile.toJson())
           .toList(),
       'selected_cyr2lat_profile_id': selectedCyr2latProfileId,
+      'discovered_contact_tap_action': discoveredContactTapAction.value,
     };
   }
 
@@ -249,6 +265,13 @@ class AppSettings {
         return UnitSystem.imperial;
       }
       return UnitSystem.metric;
+    }
+
+    DiscoveredContactTapAction parseDiscoveredContactTapAction(dynamic value) {
+      if (value is String && value == 'show_actions') {
+        return DiscoveredContactTapAction.showActions;
+      }
+      return DiscoveredContactTapAction.importContact;
     }
 
     return AppSettings(
@@ -361,6 +384,9 @@ class AppSettings {
       selectedCyr2latProfileId:
           json['selected_cyr2lat_profile_id'] as String? ??
           (json['cyr2lat_char_map'] != null ? 'migrated' : 'default'),
+      discoveredContactTapAction: parseDiscoveredContactTapAction(
+        json['discovered_contact_tap_action'],
+      ),
     );
   }
 
@@ -409,6 +435,7 @@ class AppSettings {
     List<TranslationModelRecord>? translationDownloadedModels,
     List<Cyr2LatProfile>? cyr2latProfiles,
     String? selectedCyr2latProfileId,
+    DiscoveredContactTapAction? discoveredContactTapAction,
   }) {
     return AppSettings(
       clearPathOnMaxRetry: clearPathOnMaxRetry ?? this.clearPathOnMaxRetry,
@@ -477,6 +504,8 @@ class AppSettings {
       cyr2latProfiles: cyr2latProfiles ?? this.cyr2latProfiles,
       selectedCyr2latProfileId:
           selectedCyr2latProfileId ?? this.selectedCyr2latProfileId,
+      discoveredContactTapAction:
+          discoveredContactTapAction ?? this.discoveredContactTapAction,
     );
   }
 }
