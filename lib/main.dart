@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter/foundation.dart';
@@ -143,6 +146,78 @@ https://creativecommons.org/licenses/by/4.0/
   });
 }
 
+class DesktopBleExitObserver extends StatefulWidget {
+  final MeshCoreConnector connector;
+  final Widget child;
+
+  const DesktopBleExitObserver({
+    super.key,
+    required this.connector,
+    required this.child,
+  });
+
+  @override
+  State<DesktopBleExitObserver> createState() => _DesktopBleExitObserverState();
+}
+
+class _DesktopBleExitObserverState extends State<DesktopBleExitObserver>
+    with WidgetsBindingObserver {
+  bool _disconnectInProgress = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    await _disconnectBleForDesktopExit();
+    return AppExitResponse.exit;
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached) {
+      unawaited(_disconnectBleForDesktopExit());
+    }
+  }
+
+  Future<void> _disconnectBleForDesktopExit() async {
+    if (!PlatformInfo.isDesktop || _disconnectInProgress) return;
+    final connectorState = widget.connector.state;
+    final hasActiveBleSession =
+        connectorState == MeshCoreConnectionState.connecting ||
+        connectorState == MeshCoreConnectionState.connected ||
+        connectorState == MeshCoreConnectionState.disconnecting;
+    if (widget.connector.activeTransport != MeshCoreTransportType.bluetooth ||
+        !hasActiveBleSession) {
+      return;
+    }
+
+    _disconnectInProgress = true;
+    try {
+      await widget.connector.disconnect(manual: true);
+    } catch (e) {
+      appLogger.warn(
+        'BLE disconnect during desktop app exit failed: $e',
+        tag: 'AppExit',
+      );
+    } finally {
+      _disconnectInProgress = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
 class MeshCoreApp extends StatelessWidget {
   final MeshCoreConnector connector;
   final MessageRetryService retryService;
@@ -177,60 +252,63 @@ class MeshCoreApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: connector),
-        ChangeNotifierProvider.value(value: retryService),
-        ChangeNotifierProvider.value(value: pathHistoryService),
-        ChangeNotifierProvider.value(value: appSettingsService),
-        ChangeNotifierProvider.value(value: bleDebugLogService),
-        ChangeNotifierProvider.value(value: appDebugLogService),
-        ChangeNotifierProvider.value(value: chatTextScaleService),
-        ChangeNotifierProvider.value(value: translationService),
-        ChangeNotifierProvider.value(value: uiViewStateService),
-        Provider.value(value: storage),
-        Provider.value(value: mapTileCacheService),
-        ChangeNotifierProvider.value(value: timeoutPredictionService),
-        // App-scoped so a telemetry-log fetch keeps running when the user leaves
-        // the screen, notifying on completion.
-        ChangeNotifierProvider(
-          create: (_) => TelemetryLogFetchService(connector),
+    return DesktopBleExitObserver(
+      connector: connector,
+      child: MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: connector),
+          ChangeNotifierProvider.value(value: retryService),
+          ChangeNotifierProvider.value(value: pathHistoryService),
+          ChangeNotifierProvider.value(value: appSettingsService),
+          ChangeNotifierProvider.value(value: bleDebugLogService),
+          ChangeNotifierProvider.value(value: appDebugLogService),
+          ChangeNotifierProvider.value(value: chatTextScaleService),
+          ChangeNotifierProvider.value(value: translationService),
+          ChangeNotifierProvider.value(value: uiViewStateService),
+          Provider.value(value: storage),
+          Provider.value(value: mapTileCacheService),
+          ChangeNotifierProvider.value(value: timeoutPredictionService),
+          // App-scoped so a telemetry-log fetch keeps running when the user leaves
+          // the screen, notifying on completion.
+          ChangeNotifierProvider(
+            create: (_) => TelemetryLogFetchService(connector),
+          ),
+        ],
+        child: Consumer<AppSettingsService>(
+          builder: (context, settingsService, child) {
+            return MaterialApp(
+              title: 'MeshCore Open',
+              debugShowCheckedModeBanner: false,
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              locale: _localeFromSetting(
+                settingsService.settings.languageOverride,
+              ),
+              theme: MeshTheme.light(),
+              darkTheme: MeshTheme.dark(),
+              themeMode: _themeModeFromSetting(
+                settingsService.settings.themeMode,
+              ),
+              builder: (context, child) {
+                // Update notification service with resolved locale
+                final locale = Localizations.localeOf(context);
+                NotificationService().setLocale(locale);
+                return AnnotatedRegion<SystemUiOverlayStyle>(
+                  value: _systemUiOverlayStyle(context),
+                  child: child ?? const SizedBox.shrink(),
+                );
+              },
+              home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)
+                  ? const ChromeRequiredScreen()
+                  : ScannerScreen(initialBleAddress: startupOptions.bleAddress),
+            );
+          },
         ),
-      ],
-      child: Consumer<AppSettingsService>(
-        builder: (context, settingsService, child) {
-          return MaterialApp(
-            title: 'MeshCore Open',
-            debugShowCheckedModeBanner: false,
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: _localeFromSetting(
-              settingsService.settings.languageOverride,
-            ),
-            theme: MeshTheme.light(),
-            darkTheme: MeshTheme.dark(),
-            themeMode: _themeModeFromSetting(
-              settingsService.settings.themeMode,
-            ),
-            builder: (context, child) {
-              // Update notification service with resolved locale
-              final locale = Localizations.localeOf(context);
-              NotificationService().setLocale(locale);
-              return AnnotatedRegion<SystemUiOverlayStyle>(
-                value: _systemUiOverlayStyle(context),
-                child: child ?? const SizedBox.shrink(),
-              );
-            },
-            home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)
-                ? const ChromeRequiredScreen()
-                : ScannerScreen(initialBleAddress: startupOptions.bleAddress),
-          );
-        },
       ),
     );
   }
