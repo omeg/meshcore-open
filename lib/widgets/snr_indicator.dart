@@ -8,8 +8,6 @@ import '../helpers/path_helper.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
-import '../theme/mesh_theme.dart';
-import 'mesh_ui.dart';
 import 'signal_ui.dart';
 
 Contact? _getRepeaterPrefixMatchNearLocation(
@@ -153,7 +151,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       child: InkWell(
         onTap: directRepeater != null
-            ? () => _showFullPathDialog(context, directBestRepeaters)
+            ? () => _showFullPathDialog(context)
             : null,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
@@ -204,112 +202,44 @@ class _SNRIndicatorState extends State<SNRIndicator> {
     return "${days}d";
   }
 
-  void _showFullPathDialog(
-    BuildContext context,
-    List<DirectRepeater> directBestRepeaters,
-  ) {
+  void _showFullPathDialog(BuildContext context) {
     final l10n = context.l10n;
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
+
+    if (isCompact) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (context) => Scaffold(
+            appBar: AppBar(
+              title: Text(l10n.snrIndicator_nearByRepeaters),
+              leading: IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ),
+            body: SafeArea(
+              child: AnimatedBuilder(
+                animation: widget.connector,
+                builder: (context, _) =>
+                    _buildNearbyRepeatersList(context, shrinkWrap: false),
+              ),
+            ),
+          ),
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(l10n.snrIndicator_nearByRepeaters),
         content: SizedBox(
-          width: double.maxFinite,
-          child: Scrollbar(
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: directBestRepeaters.length,
-              separatorBuilder: (_, _) => const Divider(height: 1),
-              itemBuilder: (context, index) {
-                final repeater = directBestRepeaters[index];
-                final allContacts = widget.connector.allContacts;
-                final selfLat = widget.connector.selfLatitude;
-                final selfLon = widget.connector.selfLongitude;
-
-                LatLng? selfPoint;
-                if (selfLat != null &&
-                    selfLon != null &&
-                    _isValidSelfLocation(selfLat, selfLon)) {
-                  selfPoint = LatLng(selfLat, selfLon);
-                }
-
-                final contact = _getRepeaterPrefixMatchNearLocation(
-                  allContacts,
-                  repeater.hashPrefix,
-                  searchPoint: selfPoint,
-                  preferFavorites: true,
-                );
-
-                final name = contact?.name;
-                final prefixHex = PathHelper.formatHopHex(repeater.hashPrefix);
-                final snrColor = MeshTheme.snrColor(
-                  repeater.averageSnr,
-                  blocked: false,
-                );
-                // Nearby repeaters are inferred from the RF previous hop, so
-                // their route from this device is direct even if the stored
-                // contact route is stale or still reports a legacy max path.
-                final routeLabel = l10n.chat_direct;
-                final observedPathLabel = _formatHopLabel(
-                  l10n,
-                  repeater.observedPathHops,
-                );
-                final pathLine =
-                    '$prefixHex • route: $routeLabel • path: $observedPathLabel';
-                final signalLine =
-                    'Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB (${repeater.snrSampleCount}) • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
-
-                return Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  child: Row(
-                    children: [
-                      AvatarCircle(
-                        name: name ?? prefixHex,
-                        size: 36,
-                        color: snrColor,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name ?? prefixHex,
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                            Text(
-                              pathLine,
-                              style: MeshTheme.mono(
-                                fontSize: 11,
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              signalLine,
-                              style: MeshTheme.mono(
-                                fontSize: 11,
-                                color: snrColor,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          width: 560,
+          child: AnimatedBuilder(
+            animation: widget.connector,
+            builder: (context, _) => _buildNearbyRepeatersList(context),
           ),
         ),
         actions: [
@@ -318,6 +248,111 @@ class _SNRIndicatorState extends State<SNRIndicator> {
             child: Text(l10n.common_close),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNearbyRepeatersList(
+    BuildContext context, {
+    bool shrinkWrap = true,
+  }) {
+    final l10n = context.l10n;
+    final directBestRepeaters = List.of(widget.connector.directRepeaters)
+      ..sort(DirectRepeater.compareByAverageSnr);
+
+    if (directBestRepeaters.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No nearby repeaters yet'),
+        ),
+      );
+    }
+
+    return Scrollbar(
+      child: ListView.separated(
+        shrinkWrap: shrinkWrap,
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        itemCount: directBestRepeaters.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (context, index) {
+          final repeater = directBestRepeaters[index];
+          final snrUi = snrUiFromSNR(
+            repeater.averageSnr,
+            widget.connector.currentSf,
+          );
+          final allContacts = widget.connector.allContacts;
+
+          final selfLat = widget.connector.selfLatitude;
+          final selfLon = widget.connector.selfLongitude;
+
+          LatLng? selfPoint;
+          if (selfLat != null &&
+              selfLon != null &&
+              _isValidSelfLocation(selfLat, selfLon)) {
+            selfPoint = LatLng(selfLat, selfLon);
+          }
+
+          final contact = _getRepeaterPrefixMatchNearLocation(
+            allContacts,
+            repeater.hashPrefix,
+            searchPoint: selfPoint,
+            preferFavorites: true,
+          );
+
+          final name = contact?.name;
+          final prefixHex = PathHelper.formatHopHex(repeater.hashPrefix);
+          // Nearby repeaters are inferred from the RF previous hop, so
+          // their route from this device is direct even if the stored
+          // contact route is stale or still reports a legacy max path.
+          final routeLabel = l10n.chat_direct;
+          final observedPathLabel = _formatHopLabel(
+            l10n,
+            repeater.observedPathHops,
+          );
+          final pathLine =
+              '$prefixHex • route: $routeLabel • path: $observedPathLabel';
+          final signalLine =
+              'Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB (${repeater.snrSampleCount}) • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
+
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 28,
+                  child: Icon(snrUi.icon, color: snrUi.color),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        name ?? prefixHex,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      Text(
+                        pathLine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        signalLine,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
