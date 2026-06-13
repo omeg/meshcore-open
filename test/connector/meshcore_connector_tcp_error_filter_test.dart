@@ -30,17 +30,18 @@ void main() {
       expect(repeater.hashPrefix, equals([0xA6, 0xE7]));
     });
 
-    test('sorts by accumulated average SNR', () {
-      final strong = DirectRepeater(hashPrefix: [0x01], snr: 1.0);
-      strong.update(5.0, observedPathHops: 1);
-      final weak = DirectRepeater(hashPrefix: [0x02], snr: 2.0);
-      weak.update(2.0, observedPathHops: 1);
-      final repeaters = [weak, strong]
-        ..sort(DirectRepeater.compareByAverageSnr);
+    test('sorts by accumulated packet count before average SNR', () {
+      final frequent = DirectRepeater(hashPrefix: [0x01], snr: 1.0);
+      frequent.update(1.0, observedPathHops: 1);
+      frequent.update(1.0, observedPathHops: 1);
+      final strong = DirectRepeater(hashPrefix: [0x02], snr: 9.0);
+      strong.update(9.0, observedPathHops: 1);
+      final repeaters = [strong, frequent]
+        ..sort(DirectRepeater.compareByPacketCount);
 
-      expect(strong.averageSnr, equals(3.0));
-      expect(weak.averageSnr, equals(2.0));
-      expect(repeaters.first, same(strong));
+      expect(frequent.snrSampleCount, equals(3));
+      expect(strong.averageSnr, greaterThan(frequent.averageSnr));
+      expect(repeaters.first, same(frequent));
     });
   });
 

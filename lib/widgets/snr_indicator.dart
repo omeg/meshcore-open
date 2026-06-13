@@ -137,7 +137,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
   Widget build(BuildContext context) {
     final directRepeaters = widget.connector.directRepeaters;
     final directBestRepeaters = List.of(directRepeaters)
-      ..sort(DirectRepeater.compareByAverageSnr);
+      ..sort(DirectRepeater.compareByPacketCount);
     final directRepeater = directBestRepeaters.isEmpty
         ? null
         : directBestRepeaters.first;
@@ -217,6 +217,13 @@ class _SNRIndicatorState extends State<SNRIndicator> {
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.pop(context),
               ),
+              actions: [
+                IconButton(
+                  tooltip: 'Reset',
+                  icon: const Icon(Icons.restart_alt),
+                  onPressed: widget.connector.clearDirectRepeaters,
+                ),
+              ],
             ),
             body: SafeArea(
               child: AnimatedBuilder(
@@ -244,6 +251,10 @@ class _SNRIndicatorState extends State<SNRIndicator> {
         ),
         actions: [
           TextButton(
+            onPressed: widget.connector.clearDirectRepeaters,
+            child: const Text('Reset'),
+          ),
+          TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(l10n.common_close),
           ),
@@ -258,7 +269,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
   }) {
     final l10n = context.l10n;
     final directBestRepeaters = List.of(widget.connector.directRepeaters)
-      ..sort(DirectRepeater.compareByAverageSnr);
+      ..sort(DirectRepeater.compareByPacketCount);
 
     if (directBestRepeaters.isEmpty) {
       return const Center(
@@ -313,7 +324,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
           final pathLine =
               '$prefixHex • route: $routeLabel • path: $observedPathLabel';
           final signalLine =
-              'Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB (${repeater.snrSampleCount}) • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
+              'Packets: ${repeater.snrSampleCount} • Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
 
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

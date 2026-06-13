@@ -50,7 +50,6 @@ import 'meshcore_protocol.dart';
 
 class DirectRepeater {
   static const int maxAgeMinutes = 30; // Max age for direct repeater info
-  static const int maxTrackedCount = 10;
   Uint8List hashPrefix;
   double snr;
   double _snrTotal;
@@ -131,9 +130,11 @@ class DirectRepeater {
     }
   }
 
-  static int compareByAverageSnr(DirectRepeater a, DirectRepeater b) {
+  static int compareByPacketCount(DirectRepeater a, DirectRepeater b) {
     final staleCompare = (a.isStale() ? 1 : 0).compareTo(b.isStale() ? 1 : 0);
     if (staleCompare != 0) return staleCompare;
+    final countCompare = b.snrSampleCount.compareTo(a.snrSampleCount);
+    if (countCompare != 0) return countCompare;
     final snrCompare = b.averageSnr.compareTo(a.averageSnr);
     if (snrCompare != 0) return snrCompare;
     final updatedCompare = b.lastUpdated.compareTo(a.lastUpdated);
@@ -145,7 +146,7 @@ class DirectRepeater {
     if (isStale()) {
       return -1 << 30; // Stale repeaters get lowest rank
     }
-    return (averageSnr * 1000).round();
+    return snrSampleCount;
   }
 
   bool isStale() {
@@ -489,7 +490,8 @@ class MeshCoreConnector extends ChangeNotifier {
   String? get selfName => _selfName;
   double? get selfLatitude => _selfLatitude;
   double? get selfLongitude => _selfLongitude;
-  List<DirectRepeater> get directRepeaters => _directRepeaters;
+  List<DirectRepeater> get directRepeaters =>
+      List.unmodifiable(_directRepeaters);
   int? get currentTxPower => _currentTxPower;
   int? get maxTxPower => _maxTxPower;
 
@@ -503,6 +505,12 @@ class MeshCoreConnector extends ChangeNotifier {
     final sw = _airtimeBumpStopwatch;
     if (sw == null || !sw.isRunning) return false;
     return sw.elapsed < const Duration(seconds: 2);
+  }
+
+  void clearDirectRepeaters() {
+    if (_directRepeaters.isEmpty) return;
+    _directRepeaters.clear();
+    notifyListeners();
   }
 
   int? get currentFreqHz => _currentFreqHz;
@@ -7043,25 +7051,13 @@ class MeshCoreConnector extends ChangeNotifier {
       );
     }
 
-    final sortedRepeaters = List<DirectRepeater>.from(_directRepeaters)
-      ..sort(DirectRepeater.compareByAverageSnr);
-    final weakestRepeater = sortedRepeaters.isNotEmpty
-        ? sortedRepeaters.last
-        : null;
-
-    if (_directRepeaters.length >= DirectRepeater.maxTrackedCount &&
-        weakestRepeater != null &&
-        trackedRepeater == null) {
-      _directRepeaters.remove(weakestRepeater);
-    }
-
     if (trackedRepeater != null) {
       trackedRepeater.update(
         snr,
         observedPathHops: observedPathHops,
         hashPrefix: hashPrefix,
       );
-    } else if (_directRepeaters.length < DirectRepeater.maxTrackedCount) {
+    } else {
       _directRepeaters.add(
         DirectRepeater(
           hashPrefix: hashPrefix,
