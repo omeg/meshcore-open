@@ -113,6 +113,9 @@ class ChannelMessagePathScreen extends StatelessWidget {
                 _buildSummaryCard(
                   context,
                   pathLength: displayPathLength,
+                  repeatCount: message.isOutgoing
+                      ? message.directRepeaterRepeatCount(pathHashByteWidth)
+                      : message.repeatCount,
                   observedLabel: observedLabel,
                 ),
                 if (extraPaths.isNotEmpty) ...[
@@ -142,15 +145,11 @@ class ChannelMessagePathScreen extends StatelessWidget {
   Widget _buildSummaryCard(
     BuildContext context, {
     int? pathLength,
+    required int repeatCount,
     String? observedLabel,
   }) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final routeChip = pathLength == null
-        ? null
-        : pathLength < 0
-        ? const RouteChip(isDirect: false)
-        : RouteChip(isDirect: true, hops: pathLength);
 
     return MeshCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -158,16 +157,9 @@ class ChannelMessagePathScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: SectionHeader(
-                  l10n.channelPath_messageDetails,
-                  padding: EdgeInsets.zero,
-                ),
-              ),
-              ?routeChip,
-            ],
+          SectionHeader(
+            l10n.channelPath_messageDetails,
+            padding: EdgeInsets.zero,
           ),
           const SizedBox(height: 10),
           _buildDetailRow(
@@ -182,11 +174,11 @@ class ChannelMessagePathScreen extends StatelessWidget {
             _formatTime(message.timestamp, l10n),
             scheme: scheme,
           ),
-          if (message.repeatCount > 0)
+          if (repeatCount > 0)
             _buildDetailRow(
               context,
               l10n.channelPath_repeatsLabel,
-              message.repeatCount.toString(),
+              repeatCount.toString(),
               scheme: scheme,
             ),
           _buildDetailRow(

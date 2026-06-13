@@ -99,6 +99,23 @@ class ChannelMessage {
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
 
+  int directRepeaterRepeatCount(int pathHashByteWidth) {
+    final width = normalizePathHashByteWidth(pathHashByteWidth);
+    final uniqueDirectPaths = <String>{};
+    for (final path in pathVariants) {
+      final alignedPath = trimPathBytesToWidth(path, width);
+      if (pathHopCountForBytes(alignedPath.length, width) != 1) {
+        continue;
+      }
+      uniqueDirectPaths.add(_pathKey(alignedPath));
+    }
+    return uniqueDirectPaths.length;
+  }
+
+  static String _pathKey(List<int> bytes) {
+    return bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+  }
+
   static int? _normalizeMessagePathLength(
     int? pathLength,
     int? pathHashByteWidth,

@@ -161,6 +161,52 @@ void main() {
 
       expect(message.pathLength, equals(7));
     });
+
+    test('counts unique one-hop repeaters separately from routed paths', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: true,
+        status: ChannelMessageStatus.sent,
+        repeatCount: 7,
+        pathHashByteWidth: 2,
+        pathBytes: Uint8List.fromList([
+          0xD1,
+          0xE5,
+          0x3B,
+          0xDD,
+          0xB1,
+          0x99,
+          0xBC,
+          0xEC,
+          0x8A,
+          0x88,
+          0x9D,
+          0x50,
+        ]),
+        pathVariants: [
+          Uint8List.fromList([0x02, 0xBB]),
+          Uint8List.fromList([0xD1, 0xE5]),
+          Uint8List.fromList([0xD1, 0xE5]),
+          Uint8List.fromList([0xD1, 0xE5, 0x3B, 0xDD, 0xB1, 0x99, 0xBC, 0xEC]),
+          Uint8List.fromList([
+            0xD1,
+            0xE5,
+            0x3B,
+            0xDD,
+            0xB1,
+            0x99,
+            0xBC,
+            0xEC,
+            0x8A,
+            0x88,
+          ]),
+        ],
+      );
+
+      expect(message.directRepeaterRepeatCount(2), equals(2));
+    });
   });
 
   group('Contact.fromFrame — corrupt contact guards', () {

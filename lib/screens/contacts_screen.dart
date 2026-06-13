@@ -1621,9 +1621,8 @@ class _ContactTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final emoji = firstEmoji(contact.name);
     final isChat = contact.type == advTypeChat;
-    final pathLen = contact.pathBytesForDisplay.length;
-    final isDirect = contact.pathLength >= 0;
-    final hasPath = pathLen > 0 || contact.pathLength == 0;
+    final routeHops = contact.pathOverride ?? contact.pathLength;
+    final isDirect = routeHops >= 0;
 
     return GestureDetector(
       onSecondaryTapUp: PlatformInfo.isDesktop ? (_) => onLongPress() : null,
@@ -1708,11 +1707,11 @@ class _ContactTile extends StatelessWidget {
                           ),
                         ),
                       ),
-                      if (hasPath) ...[
+                      if (PlatformInfo.isDesktop) ...[
                         const SizedBox(width: 6),
                         RouteChip(
                           isDirect: isDirect,
-                          hops: isDirect ? contact.pathLength : null,
+                          hops: isDirect ? routeHops : null,
                         ),
                       ],
                     ],

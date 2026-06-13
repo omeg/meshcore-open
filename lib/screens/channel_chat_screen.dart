@@ -520,7 +520,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       displayPathHashWidth,
     );
     final directRepeatCount = isOutgoing
-        ? _directRepeaterRepeatCount(message, displayPathHashWidth)
+        ? message.directRepeaterRepeatCount(displayPathHashWidth)
         : null;
 
     // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk.
@@ -670,11 +670,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                RouteChip(
-                                  isDirect: displayHopCount != null,
-                                  hops: displayHopCount,
-                                ),
-                                const SizedBox(width: 4),
                                 Text(
                                   context.l10n.channels_via(
                                     _formatPathPrefixes(
@@ -722,39 +717,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                 const SizedBox(width: 2),
                                 Text(
                                   '$directRepeatCount',
-                                  style: MeshTheme.mono(
-                                    fontSize: 10 * textScale,
-                                    color: metaColor,
-                                  ),
-                                ),
-                                if (message.repeatCount >
-                                    directRepeatCount) ...[
-                                  const SizedBox(width: 6),
-                                  Icon(
-                                    Icons.radar,
-                                    size: 11 * textScale,
-                                    color: metaColor,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${message.repeatCount}',
-                                    style: MeshTheme.mono(
-                                      fontSize: 10 * textScale,
-                                      color: metaColor,
-                                    ),
-                                  ),
-                                ],
-                              ] else if (isOutgoing &&
-                                  message.repeatCount > 0) ...[
-                                const SizedBox(width: 6),
-                                Icon(
-                                  Icons.radar,
-                                  size: 11 * textScale,
-                                  color: metaColor,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${message.repeatCount}',
                                   style: MeshTheme.mono(
                                     fontSize: 10 * textScale,
                                     color: metaColor,
@@ -1657,23 +1619,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       return pathHopCountForBytes(alignedByteCount, pathHashByteWidth);
     }
     return null;
-  }
-
-  int _directRepeaterRepeatCount(
-    ChannelMessage message,
-    int pathHashByteWidth,
-  ) {
-    final uniqueDirectPaths = <String>{};
-    for (final path in message.pathVariants) {
-      final alignedPath = trimPathBytesToWidth(path, pathHashByteWidth);
-      if (pathHopCountForBytes(alignedPath.length, pathHashByteWidth) != 1) {
-        continue;
-      }
-      uniqueDirectPaths.add(
-        _formatPathPrefixes(alignedPath, pathHashByteWidth),
-      );
-    }
-    return uniqueDirectPaths.length;
   }
 
   /// Deterministic name-to-hue mapping consistent with [AvatarCircle].

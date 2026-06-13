@@ -186,6 +186,8 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   ) {
     final scheme = Theme.of(context).colorScheme;
     final isChat = contact.type == advTypeChat;
+    final routeHops = contact.pathOverride ?? contact.pathLength;
+    final isDirect = routeHops >= 0;
 
     return ListEntrance(
       index: index,
@@ -243,6 +245,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
+                      ),
+                      const SizedBox(width: 6),
+                      RouteChip(
+                        isDirect: isDirect,
+                        hops: isDirect ? routeHops : null,
                       ),
                       if (contact.hasLocation) ...[
                         const SizedBox(width: 6),
