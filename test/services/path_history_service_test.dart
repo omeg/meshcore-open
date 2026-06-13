@@ -545,7 +545,7 @@ void main() {
       expect(paths.first.routeWeight, closeTo(1.5, 0.001));
     });
 
-    test('failure to 0 removes the path', () async {
+    test('failure to 0 floors the path weight until enough failures', () async {
       final pubKey = _hex('w004');
       await _seed(svc, pubKey, pathBytes: [0x01], hopCount: 1, weight: 0.3);
 
@@ -553,16 +553,41 @@ void main() {
         pubKey,
         const PathSelection(pathBytes: [0x01], hopCount: 1, useFlood: false),
         success: false,
-        failureDecrement: 0.5, // 0.3 - 0.5 = -0.2 → remove
+        failureDecrement: 0.5,
       );
       await _flush();
 
       final paths = svc.getRecentPaths(pubKey);
-      expect(
-        paths.any((p) => p.pathBytes.length == 1 && p.pathBytes[0] == 0x01),
-        isFalse,
-        reason: 'path with weight <= 0 should have been removed',
+      expect(paths.first.routeWeight, closeTo(0.1, 0.001));
+      expect(paths.first.failureCount, equals(1));
+    });
+
+    test('third failure to 0 removes the path', () async {
+      final pubKey = _hex('w004b');
+      await _seed(svc, pubKey, pathBytes: [0x01], hopCount: 1, weight: 0.3);
+
+      for (var i = 0; i < 2; i++) {
+        svc.recordPathResult(
+          pubKey,
+          const PathSelection(pathBytes: [0x01], hopCount: 1, useFlood: false),
+          success: false,
+          failureDecrement: 0.0,
+        );
+        await _flush();
+      }
+
+      expect(svc.getRecentPaths(pubKey).first.failureCount, equals(2));
+
+      svc.recordPathResult(
+        pubKey,
+        const PathSelection(pathBytes: [0x01], hopCount: 1, useFlood: false),
+        success: false,
+        failureDecrement: 0.5,
       );
+      await _flush();
+
+      final paths = svc.getRecentPaths(pubKey);
+      expect(paths, isEmpty);
     });
 
     test(
