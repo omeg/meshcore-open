@@ -25,6 +25,23 @@ Contact _contact({
   );
 }
 
+Contact _contactWithPrefix({
+  required List<int> prefix,
+  required String name,
+  DateTime? lastSeen,
+}) {
+  final key = Uint8List(32);
+  key.setRange(0, prefix.length, prefix);
+  return Contact(
+    publicKey: key,
+    name: name,
+    type: advTypeRepeater,
+    pathLength: 0,
+    path: Uint8List(0),
+    lastSeen: lastSeen ?? DateTime.utc(2026),
+  );
+}
+
 void main() {
   test('received paths resolve hash conflicts from the receiver backward', () {
     final nearReceiver = _contact(
@@ -90,5 +107,32 @@ void main() {
     );
 
     expect(resolved.single?.name, 'Newer');
+  });
+
+  test('matches multibyte path hashes by the full hash prefix', () {
+    final wrongSameFirstByte = _contactWithPrefix(
+      prefix: [0x77, 0x99],
+      name: 'Wrong same first byte',
+      lastSeen: DateTime.utc(2027),
+    );
+    final expected = _contactWithPrefix(
+      prefix: [0x77, 0xD1],
+      name: 'Expected repeater',
+    );
+    final second = _contactWithPrefix(
+      prefix: [0x8A, 0x88],
+      name: 'Second repeater',
+    );
+
+    final resolved = PathHopResolver.resolve(
+      pathBytes: const [0x77, 0xD1, 0x8A, 0x88],
+      contacts: [wrongSameFirstByte, expected, second],
+      pathHashByteWidth: 2,
+    );
+
+    expect(resolved.map((contact) => contact?.name), [
+      'Expected repeater',
+      'Second repeater',
+    ]);
   });
 }

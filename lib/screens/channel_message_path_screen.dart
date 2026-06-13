@@ -8,7 +8,9 @@ import 'package:meshcore_open/screens/path_trace_map.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/path_hash.dart';
 import '../helpers/path_hop_resolver.dart';
+import '../helpers/path_helper.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/app_settings_service.dart';
 import '../l10n/app_localizations.dart';
@@ -38,27 +40,39 @@ class ChannelMessagePathScreen extends StatelessWidget {
     return Consumer<MeshCoreConnector>(
       builder: (context, connector, _) {
         final l10n = context.l10n;
+        final pathHashByteWidth =
+            message.pathHashByteWidth ?? connector.pathHashByteWidth;
         final primaryPathTmp = _selectPrimaryPath(
           message.pathBytes,
           message.pathVariants,
         );
 
         final primaryPath = !channelMessage && !message.isOutgoing
-            ? Uint8List.fromList(primaryPathTmp.reversed.toList())
+            ? reversePathByHop(primaryPathTmp, pathHashByteWidth)
             : primaryPathTmp;
+        final observedHopCount = pathHopCountForBytes(
+          primaryPath.length,
+          pathHashByteWidth,
+        );
+        final displayPathLength = normalizePathLengthWithBytes(
+          message.pathLength,
+          primaryPath.length,
+          pathHashByteWidth,
+        );
         final hops = _buildPathHops(
           primaryPath,
           connector,
           l10n,
           resolveFromEnd: !message.isOutgoing,
+          pathHashByteWidth: pathHashByteWidth,
         );
         final hasHopDetails = primaryPath.isNotEmpty;
         final observedLabel = _formatObservedHops(
-          primaryPath.length,
-          message.pathLength,
+          observedHopCount,
+          displayPathLength,
           l10n,
         );
-        final extraPaths = _otherPaths(primaryPath, message.pathVariants);
+        final extraPaths = _otherPaths(primaryPathTmp, message.pathVariants);
         return Scaffold(
           appBar: AppBar(
             title: AdaptiveAppBarTitle(l10n.channelPath_title),
@@ -75,9 +89,7 @@ class ChannelMessagePathScreen extends StatelessWidget {
                       flipPathAround: true,
                       reversePathAround:
                           !(!channelMessage && !message.isOutgoing),
-                      pathHashByteWidth: context
-                          .read<MeshCoreConnector>()
-                          .pathHashByteWidth,
+                      pathHashByteWidth: pathHashByteWidth,
                     ),
                   ),
                 ),
@@ -98,13 +110,17 @@ class ChannelMessagePathScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(vertical: 8),
               children: [
-                _buildSummaryCard(context, observedLabel: observedLabel),
+                _buildSummaryCard(
+                  context,
+                  pathLength: displayPathLength,
+                  observedLabel: observedLabel,
+                ),
                 if (extraPaths.isNotEmpty) ...[
                   SectionHeader(
                     l10n.channelPath_otherObservedPaths,
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   ),
-                  _buildPathVariants(context, extraPaths),
+                  _buildPathVariants(context, extraPaths, pathHashByteWidth),
                 ],
                 SectionHeader(
                   l10n.channelPath_repeaterHops,
@@ -123,14 +139,18 @@ class ChannelMessagePathScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCard(BuildContext context, {String? observedLabel}) {
+  Widget _buildSummaryCard(
+    BuildContext context, {
+    int? pathLength,
+    String? observedLabel,
+  }) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
-    final routeChip = message.pathLength == null
+    final routeChip = pathLength == null
         ? null
-        : message.pathLength! < 0
+        : pathLength < 0
         ? const RouteChip(isDirect: false)
-        : RouteChip(isDirect: true, hops: message.pathLength);
+        : RouteChip(isDirect: true, hops: pathLength);
 
     return MeshCard(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -172,7 +192,7 @@ class ChannelMessagePathScreen extends StatelessWidget {
           _buildDetailRow(
             context,
             l10n.channelPath_pathLabelTitle,
-            _formatPathLabel(message.pathLength, l10n),
+            _formatPathLabel(pathLength, l10n),
             scheme: scheme,
           ),
           if (observedLabel != null)
@@ -187,7 +207,11 @@ class ChannelMessagePathScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPathVariants(BuildContext context, List<Uint8List> variants) {
+  Widget _buildPathVariants(
+    BuildContext context,
+    List<Uint8List> variants,
+    int pathHashByteWidth,
+  ) {
     final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -210,7 +234,11 @@ class ChannelMessagePathScreen extends StatelessWidget {
                       Text(
                         l10n.channelPath_observedPathTitle(
                           i + 1,
-                          _formatHopCount(variants[i].length, l10n),
+                          _formatHopCount(
+                            variants[i].length,
+                            pathHashByteWidth,
+                            l10n,
+                          ),
                         ),
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
@@ -218,7 +246,7 @@ class ChannelMessagePathScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _formatPathPrefixes(variants[i]),
+                        _formatPathPrefixes(variants[i], pathHashByteWidth),
                         style: MeshTheme.mono(
                           fontSize: 11,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -793,6 +821,8 @@ class _ChannelMessagePathMapScreenState
         final isImperial = settings.unitSystem == UnitSystem.imperial;
         final tileCache = context.read<MapTileCacheService>();
         final mapScheme = Theme.of(context).colorScheme;
+        final pathHashByteWidth =
+            widget.message.pathHashByteWidth ?? connector.pathHashByteWidth;
         final primaryPath = _selectPrimaryPath(
           widget.message.pathBytes,
           widget.message.pathVariants,
@@ -818,6 +848,7 @@ class _ChannelMessagePathMapScreenState
           connector,
           context.l10n,
           resolveFromEnd: !widget.message.isOutgoing,
+          pathHashByteWidth: pathHashByteWidth,
         );
 
         // Renderable paths for the animation and combined view.
@@ -831,6 +862,7 @@ class _ChannelMessagePathMapScreenState
                   connector,
                   context.l10n,
                   resolveFromEnd: !widget.message.isOutgoing,
+                  pathHashByteWidth: pathHashByteWidth,
                 );
           final display = _buildDisplayPath(
             index: i,
@@ -908,7 +940,7 @@ class _ChannelMessagePathMapScreenState
             ? LatLngBounds.fromPoints(points)
             : null;
         final mapKey = ValueKey(
-          '${_formatPathPrefixes(selectedPath)},${context.l10n.pathTrace_you}',
+          '${_formatPathPrefixes(selectedPath, pathHashByteWidth)},${context.l10n.pathTrace_you}',
         );
         _pathDistance = _getPathDistance(points);
 
@@ -1045,6 +1077,7 @@ class _ChannelMessagePathMapScreenState
                     context,
                     observedPaths,
                     selectedIndex,
+                    pathHashByteWidth,
                     (index) {
                       setState(() {
                         _selectedPath = observedPaths[index].pathBytes;
@@ -1086,6 +1119,7 @@ class _ChannelMessagePathMapScreenState
     BuildContext context,
     List<_ObservedPath> paths,
     int selectedIndex,
+    int pathHashByteWidth,
     ValueChanged<int> onSelected, {
     double topOffset = 16,
   }) {
@@ -1120,7 +1154,7 @@ class _ChannelMessagePathMapScreenState
                           value: i,
                           child: Text(
                             '${paths[i].isPrimary ? l10n.channelPath_primaryPath(i + 1) : l10n.channelPath_pathLabel(i + 1)}'
-                            ' • ${_formatHopCount(paths[i].pathBytes.length, l10n)}',
+                            ' • ${_formatHopCount(paths[i].pathBytes.length, pathHashByteWidth, l10n)}',
                           ),
                         ),
                     ],
@@ -1134,7 +1168,10 @@ class _ChannelMessagePathMapScreenState
                 Text(
                   l10n.channelPath_selectedPathLabel(
                     label,
-                    _formatPathPrefixes(selectedPath.pathBytes),
+                    _formatPathPrefixes(
+                      selectedPath.pathBytes,
+                      pathHashByteWidth,
+                    ),
                   ),
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1271,7 +1308,7 @@ class _ChannelMessagePathMapScreenState
       for (final hop in entry.hops) {
         if (!hop.hasLocation) continue;
         final key =
-            '${hop.prefix}|${hop.position!.latitude.toStringAsFixed(5)},'
+            '${_formatPrefix(hop.prefix)}|${hop.position!.latitude.toStringAsFixed(5)},'
             '${hop.position!.longitude.toStringAsFixed(5)}';
         if (!seenInPath.add(key)) continue;
         nodes.putIfAbsent(key, () => _SharedNode(hop)).paths.add(entry.display);
@@ -1382,7 +1419,10 @@ class _ChannelMessagePathMapScreenState
     final reverse =
         (!widget.message.isOutgoing && !widget.channelMessage) ||
         (widget.message.isOutgoing && widget.channelMessage);
-    return reverse ? Uint8List.fromList(bytes.reversed.toList()) : bytes;
+    final pathHashByteWidth =
+        widget.message.pathHashByteWidth ??
+        context.read<MeshCoreConnector>().pathHashByteWidth;
+    return reverse ? reversePathByHop(bytes, pathHashByteWidth) : bytes;
   }
 
   Marker _buildNodeLabelMarker({required LatLng point, required String label}) {
@@ -1443,11 +1483,12 @@ class _ChannelMessagePathMapScreenState
       cardHeight = max(176.0, min(maxHeight, estimatedHeight));
     }
 
-    final hopUseCount = <int, int>{};
+    final hopUseCount = <String, int>{};
     if (combined) {
       for (final entry in entries) {
         if (_hiddenPathIds.contains(entry.display.id)) continue;
-        for (final prefix in entry.hops.map((h) => h.prefix).toSet()) {
+        for (final prefix
+            in entry.hops.map((h) => _formatPrefix(h.prefix)).toSet()) {
           hopUseCount.update(prefix, (v) => v + 1, ifAbsent: () => 1);
         }
       }
@@ -1583,7 +1624,7 @@ class _ChannelMessagePathMapScreenState
   Widget _buildHopListView(
     List<_PathHop> hops,
     DisplayPath? selectedDisplay,
-    Map<int, int> hopUseCount,
+    Map<String, int> hopUseCount,
   ) {
     final l10n = context.l10n;
     if (hops.isEmpty) {
@@ -1608,7 +1649,7 @@ class _ChannelMessagePathMapScreenState
           itemBuilder: (context, index) {
             final hop = hops[index];
             final isFocused = _focusedHopIndex == hop.index;
-            final sharedCount = hopUseCount[hop.prefix] ?? 0;
+            final sharedCount = hopUseCount[_formatPrefix(hop.prefix)] ?? 0;
             return InkWell(
               onTap: hop.hasLocation ? () => _onHopTapped(hop) : null,
               child: Container(
@@ -1712,7 +1753,7 @@ class _SharedNode {
 
 class _PathHop {
   final int index;
-  final int prefix;
+  final Uint8List prefix;
   final Contact? contact;
   final LatLng? position;
   final AppLocalizations l10n;
@@ -1745,27 +1786,33 @@ List<_PathHop> _buildPathHops(
   MeshCoreConnector connector,
   AppLocalizations l10n, {
   bool resolveFromEnd = false,
+  int pathHashByteWidth = 1,
 }) {
   if (pathBytes.isEmpty) return const [];
+  final width = normalizePathHashByteWidth(pathHashByteWidth);
+  final alignedPath = trimPathBytesToWidth(pathBytes, width);
+  if (alignedPath.isEmpty) return const [];
   final endpoint =
       (connector.selfLatitude != null && connector.selfLongitude != null)
       ? LatLng(connector.selfLatitude!, connector.selfLongitude!)
       : null;
   final resolvedContacts = PathHopResolver.resolve(
-    pathBytes: pathBytes,
+    pathBytes: alignedPath,
     contacts: connector.allContacts,
     endpoint: endpoint,
     resolveFromEnd: resolveFromEnd,
+    pathHashByteWidth: width,
   );
 
   final hops = <_PathHop>[];
-  for (var i = 0; i < pathBytes.length; i++) {
+  for (var i = 0; i < resolvedContacts.length; i++) {
     final contact = resolvedContacts[i];
     final resolvedPosition = _resolvePosition(contact);
+    final offset = i * width;
     hops.add(
       _PathHop(
         index: i + 1,
-        prefix: pathBytes[i],
+        prefix: Uint8List.fromList(alignedPath.sublist(offset, offset + width)),
         contact: contact,
         position: resolvedPosition,
         l10n: l10n,
@@ -1784,18 +1831,25 @@ LatLng? _resolvePosition(Contact? contact) {
   return LatLng(latitude, longitude);
 }
 
-String _formatPrefix(int prefix) {
-  return prefix.toRadixString(16).padLeft(2, '0').toUpperCase();
+String _formatPrefix(List<int> prefix) {
+  return PathHelper.formatHopHex(prefix);
 }
 
-String _formatPathPrefixes(Uint8List pathBytes) {
-  return pathBytes
-      .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
-      .join(',');
+String _formatPathPrefixes(Uint8List pathBytes, int pathHashByteWidth) {
+  return PathHelper.formatPathHex(
+    trimPathBytesToWidth(pathBytes, pathHashByteWidth),
+    pathHashByteWidth,
+  );
 }
 
-String _formatHopCount(int count, AppLocalizations l10n) {
-  return l10n.chat_hopsCount(count);
+String _formatHopCount(
+  int byteCount,
+  int pathHashByteWidth,
+  AppLocalizations l10n,
+) {
+  return l10n.chat_hopsCount(
+    pathHopCountForBytes(byteCount, pathHashByteWidth),
+  );
 }
 
 String _resolveName(Contact? contact, AppLocalizations l10n) {

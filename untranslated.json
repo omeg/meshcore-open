@@ -58,6 +58,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -84,12 +89,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "de": [
@@ -151,6 +151,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -177,12 +182,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "es": [
@@ -244,6 +244,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -270,12 +275,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "fr": [
@@ -337,6 +337,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -363,12 +368,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "hu": [
@@ -430,6 +430,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -456,12 +461,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "it": [
@@ -523,6 +523,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -549,12 +554,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "ja": [
@@ -616,6 +616,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -642,12 +647,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "ko": [
@@ -709,6 +709,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -735,12 +740,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "nl": [
@@ -802,6 +802,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -828,12 +833,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "pl": [
@@ -895,6 +895,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -921,12 +926,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "pt": [
@@ -988,6 +988,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1014,12 +1019,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "ru": [
@@ -1081,6 +1081,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1107,12 +1112,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "sk": [
@@ -1174,6 +1174,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1200,12 +1205,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "sl": [
@@ -1267,6 +1267,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1293,12 +1298,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "sv": [
@@ -1360,6 +1360,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1386,12 +1391,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "uk": [
@@ -1453,6 +1453,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1479,12 +1484,7 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ],
 
   "zh": [
@@ -1546,6 +1546,11 @@
     "notification_telemetryLogSavedTitle",
     "notification_telemetryLogEmptyTitle",
     "notification_telemetryLogFailedTitle",
+    "appSettings_discoveredContactTapAction",
+    "appSettings_discoveredContactTapActionImport",
+    "appSettings_discoveredContactTapActionImportSubtitle",
+    "appSettings_discoveredContactTapActionShowActions",
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "pathMap_viewSingle",
     "pathMap_viewCombined",
     "pathMap_play",
@@ -1572,11 +1577,6 @@
     "pathMap_expandPanel",
     "pathMap_noLocation",
     "pathMap_followPacket",
-    "pathMap_unfollowPacket",
-    "appSettings_discoveredContactTapAction",
-    "appSettings_discoveredContactTapActionImport",
-    "appSettings_discoveredContactTapActionImportSubtitle",
-    "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "pathMap_unfollowPacket"
   ]
 }
