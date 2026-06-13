@@ -67,7 +67,7 @@ class ChannelMessage {
     this.status = ChannelMessageStatus.pending,
     this.repeats = const [],
     this.repeatCount = 0,
-    this.pathLength,
+    int? pathLength,
     int? pathHashByteWidth,
     Uint8List? pathBytes,
     List<Uint8List>? pathVariants,
@@ -82,6 +82,11 @@ class ChannelMessage {
            messageId ??
            '${timestamp.millisecondsSinceEpoch}_${senderName.hashCode}_${text.hashCode}',
        reactions = reactions ?? {},
+       pathLength = _normalizeMessagePathLength(
+         pathLength,
+         pathHashByteWidth,
+         pathBytes,
+       ),
        pathHashByteWidth = pathHashByteWidth == null
            ? null
            : normalizePathHashByteWidth(pathHashByteWidth),
@@ -93,6 +98,21 @@ class ChannelMessage {
 
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
+
+  static int? _normalizeMessagePathLength(
+    int? pathLength,
+    int? pathHashByteWidth,
+    Uint8List? pathBytes,
+  ) {
+    if (pathHashByteWidth == null || pathBytes == null || pathBytes.isEmpty) {
+      return pathLength;
+    }
+    return normalizePathLengthWithBytes(
+      pathLength,
+      pathBytes.length,
+      pathHashByteWidth,
+    );
+  }
 
   ChannelMessage copyWith({
     ChannelMessageStatus? status,

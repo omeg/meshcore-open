@@ -131,6 +131,36 @@ void main() {
       expect(message.senderName, equals('Node'));
       expect(message.text, equals('hello'));
     });
+
+    test('normalizes stored raw encoded pathLen when bytes are known', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        status: ChannelMessageStatus.sent,
+        pathLength: 0x45,
+        pathHashByteWidth: 2,
+        pathBytes: Uint8List.fromList([
+          0x83,
+          0x5D,
+          0x6F,
+          0x31,
+          0x88,
+          0xE8,
+          0xBC,
+          0xEC,
+          0xD1,
+          0xE5,
+          0x90,
+          0x50,
+          0x07,
+          0xB5,
+        ]),
+      );
+
+      expect(message.pathLength, equals(7));
+    });
   });
 
   group('Contact.fromFrame — corrupt contact guards', () {

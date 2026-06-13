@@ -60,6 +60,8 @@ void main() {
     () {
       expect(normalizePathLengthWithBytes(14, 14, 2), equals(7));
       expect(normalizePathLengthWithBytes(6, 6, 2), equals(3));
+      expect(normalizePathLengthWithBytes(0x45, 10, 2), equals(5));
+      expect(normalizePathLengthWithBytes(0x45, 14, 2), equals(7));
       expect(normalizePathLengthWithBytes(9, 6, 2), equals(9));
       expect(normalizePathLengthWithBytes(9, 10, 2), equals(9));
       expect(normalizePathLengthWithBytes(-1, 6, 2), equals(-1));

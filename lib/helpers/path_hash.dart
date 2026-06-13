@@ -60,6 +60,18 @@ int? normalizePathLengthWithBytes(
   if (pathLength == pathByteCount || pathLength == observedHopCount * w) {
     return observedHopCount;
   }
+  if (pathLength > maxPathHopCountForWidth(w)) {
+    final encodedWidth = decodePathHashWidth(pathLength);
+    final encodedHopCount = decodePathHopCount(pathLength);
+    final encodedByteLen = decodePathByteLen(pathLength);
+    if (encodedWidth == w &&
+        encodedHopCount > 0 &&
+        encodedByteLen > 0 &&
+        encodedByteLen <= pathByteCount) {
+      return observedHopCount;
+    }
+    return observedHopCount;
+  }
   return pathLength;
 }
 
