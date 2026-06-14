@@ -162,6 +162,25 @@ void main() {
       expect(message.pathLength, equals(7));
     });
 
+    test('orders observed paths shortest first', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        status: ChannelMessageStatus.sent,
+        pathHashByteWidth: 2,
+        pathBytes: Uint8List.fromList([0xD1, 0xE5]),
+        pathVariants: [
+          Uint8List.fromList([0xD1, 0xE5, 0x3B, 0xDD, 0xB1, 0x99]),
+          Uint8List.fromList([0x02, 0xBB, 0x8A, 0x88]),
+        ],
+      );
+
+      expect(message.pathVariants, hasLength(3));
+      expect(message.pathVariants.first, equals([0xD1, 0xE5]));
+    });
+
     test('counts unique one-hop repeaters separately from routed paths', () {
       final message = ChannelMessage(
         senderName: 'Node',
@@ -206,6 +225,25 @@ void main() {
       );
 
       expect(message.directRepeaterRepeatCount(2), equals(2));
+    });
+
+    test('counts primary one-hop path with direct repeater variants', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: true,
+        status: ChannelMessageStatus.sent,
+        pathHashByteWidth: 2,
+        pathBytes: Uint8List.fromList([0x02, 0xBB]),
+        pathVariants: [
+          Uint8List.fromList([0xD1, 0xE5]),
+          Uint8List.fromList([0x2D, 0x71]),
+          Uint8List.fromList([0x02, 0xBB, 0x9D, 0x50]),
+        ],
+      );
+
+      expect(message.directRepeaterRepeatCount(2), equals(3));
     });
   });
 

@@ -26,7 +26,7 @@ import '../widgets/mesh_ui.dart';
 import '../widgets/path_map_ui.dart';
 import '../widgets/themed_map_tile_layer.dart';
 
-class ChannelMessagePathScreen extends StatelessWidget {
+class ChannelMessagePathScreen extends StatefulWidget {
   final ChannelMessage message;
   final bool channelMessage;
   const ChannelMessagePathScreen({
@@ -36,20 +36,49 @@ class ChannelMessagePathScreen extends StatelessWidget {
   });
 
   @override
+  State<ChannelMessagePathScreen> createState() =>
+      _ChannelMessagePathScreenState();
+}
+
+class _ChannelMessagePathScreenState extends State<ChannelMessagePathScreen> {
+  Uint8List? _selectedDetailsPath;
+
+  ChannelMessage get message => widget.message;
+  bool get channelMessage => widget.channelMessage;
+
+  @override
+  void didUpdateWidget(ChannelMessagePathScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.message != widget.message) {
+      _selectedDetailsPath = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<MeshCoreConnector>(
       builder: (context, connector, _) {
         final l10n = context.l10n;
         final pathHashByteWidth =
             message.pathHashByteWidth ?? connector.pathHashByteWidth;
-        final primaryPathTmp = _selectPrimaryPath(
+        final preferredPathTmp = _selectPrimaryPath(
           message.pathBytes,
           message.pathVariants,
         );
+        final observedPaths = _buildObservedPaths(
+          preferredPathTmp,
+          message.pathVariants,
+          primaryIsPrimary: !(channelMessage && message.isOutgoing),
+        );
+        final selectedPathTmp = _resolveSelectedPath(
+          _selectedDetailsPath,
+          observedPaths,
+          preferredPathTmp,
+        );
 
         final primaryPath = !channelMessage && !message.isOutgoing
-            ? reversePathByHop(primaryPathTmp, pathHashByteWidth)
-            : primaryPathTmp;
+            ? reversePathByHop(selectedPathTmp, pathHashByteWidth)
+            : selectedPathTmp;
         final observedHopCount = pathHopCountForBytes(
           primaryPath.length,
           pathHashByteWidth,
@@ -66,13 +95,22 @@ class ChannelMessagePathScreen extends StatelessWidget {
           resolveFromEnd: !message.isOutgoing,
           pathHashByteWidth: pathHashByteWidth,
         );
+        final effectivePathLength =
+            displayPathLength != null && displayPathLength >= 0
+            ? max(displayPathLength, observedHopCount)
+            : displayPathLength;
         final hasHopDetails = primaryPath.isNotEmpty;
         final observedLabel = _formatObservedHops(
           observedHopCount,
-          displayPathLength,
+          effectivePathLength,
           l10n,
         );
-        final extraPaths = _otherPaths(primaryPathTmp, message.pathVariants);
+        final isChannelMessage = channelMessage;
+        final isOutgoingChannelMessage = channelMessage && message.isOutgoing;
+        final extraPaths = _otherPaths(preferredPathTmp, message.pathVariants);
+        final observedPathList = isChannelMessage
+            ? observedPaths.map((path) => path.pathBytes).toList()
+            : extraPaths;
         return Scaffold(
           appBar: AppBar(
             title: AdaptiveAppBarTitle(l10n.channelPath_title),
@@ -112,27 +150,37 @@ class ChannelMessagePathScreen extends StatelessWidget {
               children: [
                 _buildSummaryCard(
                   context,
-                  pathLength: displayPathLength,
+                  pathLength: effectivePathLength,
                   repeatCount: message.isOutgoing
                       ? message.directRepeaterRepeatCount(pathHashByteWidth)
                       : message.repeatCount,
                   observedLabel: observedLabel,
                 ),
-                if (extraPaths.isNotEmpty) ...[
+                if (observedPathList.isNotEmpty) ...[
                   SectionHeader(
-                    l10n.channelPath_otherObservedPaths,
+                    isChannelMessage
+                        ? _observedPathsSectionTitle(l10n)
+                        : l10n.channelPath_otherObservedPaths,
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                   ),
-                  _buildPathVariants(context, extraPaths, pathHashByteWidth),
+                  _buildPathVariants(
+                    context,
+                    observedPathList,
+                    pathHashByteWidth,
+                    selectedPath: selectedPathTmp,
+                    selectPath: !isOutgoingChannelMessage,
+                  ),
                 ],
-                SectionHeader(
-                  l10n.channelPath_repeaterHops,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                ),
-                if (!hasHopDetails)
-                  _buildNoHopCard(context, l10n)
-                else
-                  _buildHopTimeline(context, hops, l10n),
+                if (!isOutgoingChannelMessage) ...[
+                  SectionHeader(
+                    l10n.channelPath_repeaterHops,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  ),
+                  if (!hasHopDetails)
+                    _buildNoHopCard(context, l10n)
+                  else
+                    _buildHopTimeline(context, hops, l10n),
+                ],
                 const SizedBox(height: 16),
               ],
             ),
@@ -202,59 +250,81 @@ class ChannelMessagePathScreen extends StatelessWidget {
   Widget _buildPathVariants(
     BuildContext context,
     List<Uint8List> variants,
-    int pathHashByteWidth,
-  ) {
+    int pathHashByteWidth, {
+    required Uint8List selectedPath,
+    required bool selectPath,
+  }) {
     final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int i = 0; i < variants.length; i++)
-          MeshCard(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            onTap: () => _openPathMap(
-              context,
-              initialPath: variants[i],
-              channelMessage: channelMessage,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.channelPath_observedPathTitle(
-                          i + 1,
-                          _formatHopCount(
-                            variants[i].length,
-                            pathHashByteWidth,
-                            l10n,
+          Builder(
+            builder: (context) {
+              final isSelected =
+                  selectPath && _pathsEqual(variants[i], selectedPath);
+              final scheme = Theme.of(context).colorScheme;
+              return MeshCard(
+                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
+                color: isSelected ? MeshPalette.blueBg : null,
+                borderColor: isSelected ? MeshPalette.blueDim : null,
+                onTap: selectPath
+                    ? () => setState(() {
+                        _selectedDetailsPath = isSelected ? null : variants[i];
+                      })
+                    : () => _openPathMap(
+                        context,
+                        initialPath: variants[i],
+                        channelMessage: channelMessage,
+                      ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l10n.channelPath_observedPathTitle(
+                              i + 1,
+                              _formatHopCount(
+                                variants[i].length,
+                                pathHashByteWidth,
+                                l10n,
+                              ),
+                            ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w600),
                           ),
-                        ),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _formatPathPrefixes(variants[i], pathHashByteWidth),
+                            style: MeshTheme.mono(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _formatPathPrefixes(variants[i], pathHashByteWidth),
-                        style: MeshTheme.mono(
-                          fontSize: 11,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.map_outlined, size: 20),
+                      color: scheme.onSurfaceVariant,
+                      tooltip: l10n.channelPath_viewMap,
+                      onPressed: () => _openPathMap(
+                        context,
+                        initialPath: variants[i],
+                        channelMessage: channelMessage,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Icon(
-                  Icons.map_outlined,
-                  size: 20,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ],
-            ),
+              );
+            },
           ),
       ],
     );
@@ -278,6 +348,10 @@ class ChannelMessagePathScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  String _observedPathsSectionTitle(AppLocalizations l10n) {
+    return l10n.pathMap_observedPaths(0).split(':').first;
   }
 
   Widget _buildHopTimeline(
@@ -594,52 +668,49 @@ class _ChannelMessagePathMapScreenState
     final labels = <String>[];
     final confirmed = <bool>[];
     final rowIdx = <int>[];
-    final gapBefore = <bool>[];
-    var pendingGap = false;
-    var locatedHops = 0;
+    final locatedHops = hops.where((hop) => hop.hasLocation).length;
+    final unresolvedHops = hops.length - locatedHops;
 
-    void addSelf() {
-      if (selfLat == null || selfLon == null) return;
-      points.add(LatLng(selfLat, selfLon));
-      labels.add(l10n.pathTrace_you);
-      confirmed.add(true);
-      rowIdx.add(-1);
-      gapBefore.add(pendingGap);
-      pendingGap = false;
-    }
-
+    final selfPosition = selfLat != null && selfLon != null
+        ? LatLng(selfLat, selfLon)
+        : null;
     final selfFirst = widget.message.isOutgoing;
-    if (selfFirst) addSelf();
-    for (var i = 0; i < hops.length; i++) {
-      final hop = hops[i];
-      if (!hop.hasLocation) {
-        pendingGap = true;
-        continue;
-      }
-      locatedHops++;
-      points.add(hop.position!);
-      labels.add(hop.contact?.name ?? _formatPrefix(hop.prefix));
-      confirmed.add(true);
-      rowIdx.add(i);
-      gapBefore.add(pendingGap);
-      pendingGap = false;
+    final routePoints = _buildRoutePoints(
+      hops: hops,
+      selfPosition: selfPosition,
+      selfFirst: selfFirst,
+      selfLabel: l10n.pathTrace_you,
+    );
+    for (final point in routePoints) {
+      points.add(point.position);
+      labels.add(point.label);
+      confirmed.add(point.confirmed);
+      rowIdx.add(point.rowIndex);
     }
-    if (!selfFirst) addSelf();
 
     if (points.length < 2) return null;
 
     final segmentEstimated = <bool>[];
     final rowForSegment = <int>[];
     for (var i = 0; i < points.length - 1; i++) {
-      segmentEstimated.add(gapBefore[i + 1]);
+      segmentEstimated.add(!confirmed[i] || !confirmed[i + 1]);
+      final source = rowIdx[i];
       final dest = rowIdx[i + 1];
-      rowForSegment.add(dest >= 0 ? dest : (rowIdx[i] >= 0 ? rowIdx[i] : 0));
+      rowForSegment.add(
+        selfFirst
+            ? (dest >= 0 ? dest : (source >= 0 ? source : 0))
+            : (source >= 0 ? source : (dest >= 0 ? dest : 0)),
+      );
     }
 
     return DisplayPath(
       id: 'op-$index',
-      label: isPrimary ? l10n.pathMap_primary : l10n.pathMap_alternate(index),
-      color: isPrimary
+      label: isPrimary
+          ? l10n.pathMap_primary
+          : widget.channelMessage && widget.message.isOutgoing
+          ? l10n.channelPath_pathLabel(index + 1)
+          : l10n.pathMap_alternate(index),
+      color: isPrimary || index == 0
           ? kPrimaryPathColor
           : kAlternatePathColors[(index - 1) % kAlternatePathColors.length],
       isPrimary: isPrimary,
@@ -652,7 +723,7 @@ class _ChannelMessagePathMapScreenState
       totalTransmissions: hops.length,
       hasTargetEndpoint: false,
       gpsConfirmedHops: locatedHops,
-      unresolvedHops: hops.length - locatedHops,
+      unresolvedHops: unresolvedHops,
       distanceMeters: getPathDistanceMeters(points),
       record: null,
     );
@@ -822,6 +893,8 @@ class _ChannelMessagePathMapScreenState
         final observedPaths = _buildObservedPaths(
           primaryPath,
           widget.message.pathVariants,
+          primaryIsPrimary:
+              !(widget.channelMessage && widget.message.isOutgoing),
         );
         final isDesktop = _isDesktopPlatform(defaultTargetPlatform);
         final selectedPathTmp = _resolveSelectedPath(
@@ -893,23 +966,7 @@ class _ChannelMessagePathMapScreenState
         final visibleDisplays = visibleEntries.map((e) => e.display).toList();
         _schedulePlaybackSync(selectedDisplay);
 
-        final points = <LatLng>[];
-
-        if ((widget.message.isOutgoing && !widget.channelMessage) ||
-            (widget.message.isOutgoing && widget.channelMessage)) {
-          points.add(LatLng(connector.selfLatitude!, connector.selfLongitude!));
-        }
-
-        for (final hop in hops) {
-          if (hop.hasLocation) {
-            points.add(hop.position!);
-          }
-        }
-
-        if ((!widget.message.isOutgoing && !widget.channelMessage) ||
-            (!widget.message.isOutgoing && widget.channelMessage)) {
-          points.add(LatLng(connector.selfLatitude!, connector.selfLongitude!));
-        }
+        final points = selectedDisplay?.points ?? const <LatLng>[];
 
         final polylines = points.length > 1
             ? [
@@ -1063,16 +1120,19 @@ class _ChannelMessagePathMapScreenState
                     mode: effectiveMode,
                     onChanged: (mode) => setState(() => _viewMode = mode),
                   ),
-                if (observedPaths.length > 1 &&
-                    effectiveMode == PathViewMode.single)
+                if (entries.length > 1 && effectiveMode == PathViewMode.single)
                   _buildPathSelector(
                     context,
-                    observedPaths,
-                    selectedIndex,
+                    entries,
+                    selectedEntry == null
+                        ? 0
+                        : entries.indexWhere(
+                            (entry) => entry.index == selectedEntry!.index,
+                          ),
                     pathHashByteWidth,
                     (index) {
                       setState(() {
-                        _selectedPath = observedPaths[index].pathBytes;
+                        _selectedPath = entries[index].observedBytes;
                         _focusedHopIndex = null;
                       });
                     },
@@ -1109,17 +1169,18 @@ class _ChannelMessagePathMapScreenState
 
   Widget _buildPathSelector(
     BuildContext context,
-    List<_ObservedPath> paths,
+    List<_ObservedPathEntry> entries,
     int selectedIndex,
     int pathHashByteWidth,
     ValueChanged<int> onSelected, {
     double topOffset = 16,
   }) {
     final l10n = context.l10n;
-    final selectedPath = paths[selectedIndex];
-    final label = selectedPath.isPrimary
-        ? l10n.channelPath_primaryPath(selectedIndex + 1)
-        : l10n.channelPath_pathLabel(selectedIndex + 1);
+    final safeSelectedIndex = selectedIndex < 0 ? 0 : selectedIndex;
+    final selectedEntry = entries[safeSelectedIndex];
+    final label = selectedEntry.display.isPrimary
+        ? l10n.channelPath_primaryPath(selectedEntry.index + 1)
+        : l10n.channelPath_pathLabel(selectedEntry.index + 1);
     return Positioned(
       left: 16,
       right: 16,
@@ -1139,14 +1200,14 @@ class _ChannelMessagePathMapScreenState
                 DropdownButtonHideUnderline(
                   child: DropdownButton<int>(
                     isExpanded: true,
-                    value: selectedIndex,
+                    value: safeSelectedIndex,
                     items: [
-                      for (int i = 0; i < paths.length; i++)
+                      for (int i = 0; i < entries.length; i++)
                         DropdownMenuItem(
                           value: i,
                           child: Text(
-                            '${paths[i].isPrimary ? l10n.channelPath_primaryPath(i + 1) : l10n.channelPath_pathLabel(i + 1)}'
-                            ' • ${_formatHopCount(paths[i].pathBytes.length, pathHashByteWidth, l10n)}',
+                            '${entries[i].display.isPrimary ? l10n.channelPath_primaryPath(entries[i].index + 1) : l10n.channelPath_pathLabel(entries[i].index + 1)}'
+                            ' • ${l10n.chat_hopsCount(entries[i].display.totalTransmissions)}',
                           ),
                         ),
                     ],
@@ -1161,7 +1222,7 @@ class _ChannelMessagePathMapScreenState
                   l10n.channelPath_selectedPathLabel(
                     label,
                     _formatPathPrefixes(
-                      selectedPath.pathBytes,
+                      selectedEntry.observedBytes,
                       pathHashByteWidth,
                     ),
                   ),
@@ -1773,6 +1834,145 @@ class _ObservedPath {
   const _ObservedPath({required this.pathBytes, required this.isPrimary});
 }
 
+class _RoutePoint {
+  final LatLng position;
+  final String label;
+  final bool confirmed;
+  final int rowIndex;
+
+  const _RoutePoint({
+    required this.position,
+    required this.label,
+    required this.confirmed,
+    required this.rowIndex,
+  });
+}
+
+class _RouteNode {
+  final LatLng? position;
+  final String label;
+  final bool confirmed;
+  final int rowIndex;
+
+  const _RouteNode({
+    required this.position,
+    required this.label,
+    required this.confirmed,
+    required this.rowIndex,
+  });
+}
+
+List<_RoutePoint> _buildRoutePoints({
+  required List<_PathHop> hops,
+  required LatLng? selfPosition,
+  required bool selfFirst,
+  required String selfLabel,
+}) {
+  final nodes = <_RouteNode>[];
+
+  void addSelf() {
+    if (selfPosition == null) return;
+    nodes.add(
+      _RouteNode(
+        position: selfPosition,
+        label: selfLabel,
+        confirmed: true,
+        rowIndex: -1,
+      ),
+    );
+  }
+
+  if (selfFirst) addSelf();
+  for (var i = 0; i < hops.length; i++) {
+    final hop = hops[i];
+    nodes.add(
+      _RouteNode(
+        position: hop.position,
+        label: hop.contact?.name ?? _formatPrefix(hop.prefix),
+        confirmed: hop.hasLocation,
+        rowIndex: i,
+      ),
+    );
+  }
+  if (!selfFirst) addSelf();
+
+  if (nodes.length < 2) return const [];
+
+  final positions = nodes.map((node) => node.position).toList();
+  final inferred = List<bool>.filled(nodes.length, false);
+  final knownIndexes = <int>[
+    for (var i = 0; i < positions.length; i++)
+      if (positions[i] != null) i,
+  ];
+
+  if (knownIndexes.length >= 2) {
+    for (var pair = 0; pair < knownIndexes.length - 1; pair++) {
+      final start = knownIndexes[pair];
+      final end = knownIndexes[pair + 1];
+      final startPoint = positions[start]!;
+      final endPoint = positions[end]!;
+      final span = end - start;
+      for (var i = start + 1; i < end; i++) {
+        if (positions[i] != null) continue;
+        final t = (i - start) / span;
+        positions[i] = _lerpLatLng(startPoint, endPoint, t);
+        inferred[i] = true;
+      }
+    }
+
+    final first = knownIndexes.first;
+    if (first > 0) {
+      final second = knownIndexes[1];
+      final firstPoint = positions[first]!;
+      final secondPoint = positions[second]!;
+      final span = second - first;
+      for (var i = first - 1; i >= 0; i--) {
+        final steps = first - i;
+        positions[i] = _projectLatLng(firstPoint, secondPoint, -steps / span);
+        inferred[i] = true;
+      }
+    }
+
+    final last = knownIndexes.last;
+    if (last < positions.length - 1) {
+      final previous = knownIndexes[knownIndexes.length - 2];
+      final previousPoint = positions[previous]!;
+      final lastPoint = positions[last]!;
+      final span = last - previous;
+      for (var i = last + 1; i < positions.length; i++) {
+        final steps = i - last;
+        positions[i] = _projectLatLng(previousPoint, lastPoint, steps / span);
+        inferred[i] = true;
+      }
+    }
+  }
+
+  return [
+    for (var i = 0; i < nodes.length; i++)
+      if (positions[i] != null)
+        _RoutePoint(
+          position: positions[i]!,
+          label: nodes[i].label,
+          confirmed: nodes[i].confirmed && !inferred[i],
+          rowIndex: nodes[i].rowIndex,
+        ),
+  ];
+}
+
+LatLng _lerpLatLng(LatLng a, LatLng b, double t) {
+  return LatLng(
+    a.latitude + (b.latitude - a.latitude) * t,
+    a.longitude + (b.longitude - a.longitude) * t,
+  );
+}
+
+LatLng _projectLatLng(LatLng a, LatLng b, double t) {
+  return LatLng(
+    a.latitude + (b.latitude - a.latitude) * t,
+    a.longitude + (b.longitude - a.longitude) * t,
+  );
+}
+
 List<_PathHop> _buildPathHops(
   Uint8List pathBytes,
   MeshCoreConnector connector,
@@ -1854,13 +2054,11 @@ String _resolveName(Contact? contact, AppLocalizations l10n) {
 }
 
 Uint8List _selectPrimaryPath(Uint8List pathBytes, List<Uint8List> variants) {
-  Uint8List primary = pathBytes;
+  if (pathBytes.isNotEmpty) return pathBytes;
   for (final variant in variants) {
-    if (variant.length > primary.length) {
-      primary = variant;
-    }
+    if (variant.isNotEmpty) return variant;
   }
-  return primary;
+  return pathBytes;
 }
 
 List<Uint8List> _otherPaths(Uint8List primary, List<Uint8List> variants) {
@@ -1876,8 +2074,9 @@ List<Uint8List> _otherPaths(Uint8List primary, List<Uint8List> variants) {
 
 List<_ObservedPath> _buildObservedPaths(
   Uint8List primary,
-  List<Uint8List> variants,
-) {
+  List<Uint8List> variants, {
+  bool primaryIsPrimary = true,
+}) {
   final observed = <_ObservedPath>[];
 
   void addPath(Uint8List pathBytes, bool isPrimary) {
@@ -1888,7 +2087,7 @@ List<_ObservedPath> _buildObservedPaths(
     observed.add(_ObservedPath(pathBytes: pathBytes, isPrimary: isPrimary));
   }
 
-  addPath(primary, true);
+  addPath(primary, primaryIsPrimary);
   for (final variant in variants) {
     addPath(variant, false);
   }

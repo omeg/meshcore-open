@@ -102,7 +102,11 @@ class ChannelMessage {
   int directRepeaterRepeatCount(int pathHashByteWidth) {
     final width = normalizePathHashByteWidth(pathHashByteWidth);
     final uniqueDirectPaths = <String>{};
-    for (final path in pathVariants) {
+    final paths = <Uint8List>[
+      if (pathBytes.isNotEmpty) pathBytes,
+      ...pathVariants,
+    ];
+    for (final path in paths) {
       final alignedPath = trimPathBytesToWidth(path, width);
       if (pathHopCountForBytes(alignedPath.length, width) != 1) {
         continue;
@@ -316,6 +320,7 @@ class ChannelMessage {
       }
     }
     addPath(pathBytes);
+    merged.sort((a, b) => a.length.compareTo(b.length));
     return merged;
   }
 

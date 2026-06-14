@@ -6412,14 +6412,14 @@ class MeshCoreConnector extends ChangeNotifier {
   Uint8List _selectPreferredPathBytes(Uint8List existing, Uint8List incoming) {
     if (incoming.isEmpty) return existing;
     if (existing.isEmpty) return incoming;
-    if (incoming.length > existing.length) return incoming;
+    if (incoming.length < existing.length) return incoming;
     return existing;
   }
 
   bool _prefersIncomingPathBytes(Uint8List existing, Uint8List incoming) {
     if (incoming.isEmpty) return false;
     if (existing.isEmpty) return true;
-    return incoming.length > existing.length;
+    return incoming.length < existing.length;
   }
 
   int _selectPreferredPathHashWidth(
@@ -6481,7 +6481,9 @@ class MeshCoreConnector extends ChangeNotifier {
     if (incoming == null) {
       return existing >= observedLength ? existing : observedLength;
     }
-    final merged = existing >= incoming ? existing : incoming;
+    if (existing < 0) return incoming;
+    if (incoming < 0) return existing;
+    final merged = existing <= incoming ? existing : incoming;
     return merged >= observedLength ? merged : observedLength;
   }
 
@@ -6505,6 +6507,7 @@ class MeshCoreConnector extends ChangeNotifier {
         merged.add(candidate);
       }
     }
+    merged.sort((a, b) => a.length.compareTo(b.length));
     return merged;
   }
 

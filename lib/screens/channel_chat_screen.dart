@@ -507,13 +507,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final originalDisplayText = message.isOutgoing
         ? message.originalText
         : (translatedDisplayText != message.text ? message.text : null);
+    final displayPathHashWidth =
+        message.pathHashByteWidth ?? connector.pathHashByteWidth;
     final displayPath = message.pathBytes.isNotEmpty
         ? message.pathBytes
         : (message.pathVariants.isNotEmpty
               ? message.pathVariants.first
               : Uint8List(0));
-    final displayPathHashWidth =
-        message.pathHashByteWidth ?? connector.pathHashByteWidth;
     final displayHopCount = _displayHopCount(
       message,
       displayPath,
@@ -1612,12 +1612,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       alignedByteCount,
       pathHashByteWidth,
     );
+    final observedHopCount = pathHopCountForBytes(
+      alignedByteCount,
+      pathHashByteWidth,
+    );
     if (normalizedPathLength != null && normalizedPathLength > 0) {
-      return normalizedPathLength;
+      return math.max(normalizedPathLength, observedHopCount);
     }
-    if (alignedByteCount > 0) {
-      return pathHopCountForBytes(alignedByteCount, pathHashByteWidth);
-    }
+    if (observedHopCount > 0) return observedHopCount;
     return null;
   }
 
