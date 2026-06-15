@@ -132,6 +132,76 @@ void main() {
       expect(message.text, equals('hello'));
     });
 
+    test('decodes encoded pathLen in legacy frames without path bytes', () {
+      final writer = BytesBuilder();
+      writer.addByte(respCodeChannelMsgRecv);
+      writer.addByte(0); // channel index
+      writer.addByte(0x40 | 5); // 5 hops, 2 bytes per hop
+      writer.addByte(txtTypePlain);
+      writer.add([1, 0, 0, 0]); // timestamp
+      writer.add('Node: hello'.codeUnits);
+      writer.addByte(0);
+
+      final message = ChannelMessage.fromFrame(
+        Uint8List.fromList(writer.toBytes()),
+      );
+
+      expect(message, isNotNull);
+      expect(message!.pathLength, equals(5));
+      expect(message.pathHashByteWidth, equals(2));
+      expect(message.pathBytes, isEmpty);
+    });
+
+    test('normalizes stored raw encoded pathLen without path bytes', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        status: ChannelMessageStatus.sent,
+        pathLength: 0x45,
+        pathHashByteWidth: 2,
+      );
+
+      expect(message.pathLength, equals(5));
+    });
+
+    test('decodes received 0xFF pathLen as direct', () {
+      final writer = BytesBuilder();
+      writer.addByte(respCodeChannelMsgRecvV3);
+      writer.addByte(0); // SNR
+      writer.addByte(0); // flags: no path bytes in receive frame
+      writer.addByte(0); // reserved
+      writer.addByte(0); // channel index
+      writer.addByte(0xFF); // direct receive, not raw-packet flood
+      writer.addByte(txtTypePlain);
+      writer.add([1, 0, 0, 0]); // timestamp
+      writer.add('Node: hello'.codeUnits);
+      writer.addByte(0);
+
+      final message = ChannelMessage.fromFrame(
+        Uint8List.fromList(writer.toBytes()),
+      );
+
+      expect(message, isNotNull);
+      expect(message!.pathLength, equals(0));
+      expect(message.pathBytes, isEmpty);
+    });
+
+    test('normalizes stored old direct receive pathLen artifact', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        status: ChannelMessageStatus.sent,
+        pathLength: -1,
+        pathHashByteWidth: 1,
+      );
+
+      expect(message.pathLength, equals(0));
+    });
+
     test('normalizes stored raw encoded pathLen when bytes are known', () {
       final message = ChannelMessage(
         senderName: 'Node',

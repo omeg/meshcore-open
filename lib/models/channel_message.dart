@@ -125,14 +125,29 @@ class ChannelMessage {
     int? pathHashByteWidth,
     Uint8List? pathBytes,
   ) {
-    if (pathHashByteWidth == null || pathBytes == null || pathBytes.isEmpty) {
+    if (pathHashByteWidth == null) {
       return pathLength;
     }
-    return normalizePathLengthWithBytes(
-      pathLength,
-      pathBytes.length,
-      pathHashByteWidth,
-    );
+    final normalizedWidth = normalizePathHashByteWidth(pathHashByteWidth);
+    if (pathBytes != null && pathBytes.isNotEmpty) {
+      return normalizePathLengthWithBytes(
+        pathLength,
+        pathBytes.length,
+        normalizedWidth,
+      );
+    }
+    if (pathLength == -1 || pathLength == 0xff) {
+      return 0;
+    }
+    if (pathLength != null &&
+        pathLength > maxPathHopCountForWidth(normalizedWidth)) {
+      final decodedWidth = decodePathHashWidth(pathLength);
+      final decodedHopCount = decodePathHopCount(pathLength);
+      if (decodedWidth == normalizedWidth && decodedHopCount >= 0) {
+        return decodedHopCount;
+      }
+    }
+    return pathLength;
   }
 
   ChannelMessage copyWith({
@@ -214,7 +229,7 @@ class ChannelMessage {
         reader.skipBytes(1); // Skip reserved byte
         channelIdx = reader.readByte();
         final pathLenRaw = reader.readByte();
-        pathLen = decodePathHopCount(pathLenRaw);
+        pathLen = decodeReceivedPathHopCount(pathLenRaw);
         pathHashWidth = decodePathHashWidth(pathLenRaw);
         final pathByteLen = decodePathByteLen(pathLenRaw);
         if (hasPath && pathByteLen > 0) {
@@ -224,8 +239,8 @@ class ChannelMessage {
       } else {
         channelIdx = reader.readByte();
         final pathLenRaw = reader.readByte();
-        pathLen = pathLenRaw == 0xFF ? -1 : pathLenRaw;
-        pathHashWidth = 1;
+        pathLen = decodeReceivedPathHopCount(pathLenRaw);
+        pathHashWidth = decodePathHashWidth(pathLenRaw);
         txtType = reader.readByte();
       }
       final timestampRaw = reader.readUInt32LE();

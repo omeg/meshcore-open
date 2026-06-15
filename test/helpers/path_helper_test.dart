@@ -74,6 +74,21 @@ void main() {
     expect(encodePathLenForHashWidth(0, 3), equals(0));
   });
 
+  test('validates raw packet path_len like firmware', () {
+    expect(isValidPacketPathLen(0x3F), isTrue); // 63 one-byte hops
+    expect(isValidPacketPathLen(0x40 | 32), isTrue); // 32 two-byte hops
+    expect(isValidPacketPathLen(0x80 | 21), isTrue); // 21 three-byte hops
+    expect(isValidPacketPathLen(0x40 | 33), isFalse);
+    expect(isValidPacketPathLen(0x80 | 22), isFalse);
+    expect(isValidPacketPathLen(0xC0), isFalse); // 4-byte mode reserved
+    expect(isValidPacketPathLen(0xFF), isFalse); // reserved mode, not flood
+  });
+
+  test('decodes companion receive 0xFF as direct', () {
+    expect(decodeReceivedPathHopCount(0xFF), equals(0));
+    expect(decodeReceivedPathHopCount(0x40 | 5), equals(5));
+  });
+
   test('trims dangling partial multibyte path chunks', () {
     expect(trimPathBytesToWidth([0x04, 0xF9, 0x84], 2), equals([0x04, 0xF9]));
     expect(trimPathBytesToWidth([0x04], 2), isEmpty);

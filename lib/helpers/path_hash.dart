@@ -4,6 +4,9 @@ import 'dart:typed_data';
 import '../connector/meshcore_protocol.dart';
 
 const int maxPathHashByteWidth = 3;
+const int pathLenHopCountMask = 0x3f;
+const int pathLenHashWidthShift = 6;
+const int pathLenHashWidthMask = 0x03;
 
 int normalizePathHashByteWidth(int width) {
   return width.clamp(1, maxPathHashByteWidth).toInt();
@@ -13,6 +16,16 @@ int maxPathHopCountForWidth(int width) {
   final w = normalizePathHashByteWidth(width);
   if (w == 1) return maxPathSize;
   return math.min(maxPathSize ~/ w, 0x3f);
+}
+
+bool isValidPacketPathLen(int pathLenRaw) {
+  // Mirrors firmware Packet::isValidPathLen(): low 6 bits are hop count,
+  // high 2 bits encode hash width minus one, and width mode 3 is reserved.
+  final hashCount = pathLenRaw & pathLenHopCountMask;
+  final hashSize =
+      ((pathLenRaw >> pathLenHashWidthShift) & pathLenHashWidthMask) + 1;
+  if (hashSize > maxPathHashByteWidth) return false;
+  return hashCount * hashSize <= maxPathSize;
 }
 
 int pathHopCountForBytes(int byteCount, int hashByteWidth) {
@@ -80,18 +93,25 @@ int? encodePathLenForHashWidth(int hopCount, int hashByteWidth) {
   if (hopCount < 0 || hopCount > maxPathHopCountForWidth(w)) return null;
   if (hopCount == 0) return 0;
   if (w == 1 && hopCount == maxPathSize) return maxPathSize;
-  return ((w - 1) << 6) | hopCount;
+  return ((w - 1) << pathLenHashWidthShift) | hopCount;
 }
 
 int decodePathHashWidth(int pathLenRaw) {
   if (pathLenRaw == 0xff) return 1;
-  return normalizePathHashByteWidth(((pathLenRaw >> 6) & 0x03) + 1);
+  return normalizePathHashByteWidth(
+    ((pathLenRaw >> pathLenHashWidthShift) & pathLenHashWidthMask) + 1,
+  );
 }
 
 int decodePathHopCount(int pathLenRaw) {
   if (pathLenRaw == 0xff) return -1;
   if (pathLenRaw == maxPathSize) return maxPathSize;
-  return pathLenRaw & 0x3f;
+  return pathLenRaw & pathLenHopCountMask;
+}
+
+int decodeReceivedPathHopCount(int pathLenRaw) {
+  if (pathLenRaw == 0xff) return 0;
+  return decodePathHopCount(pathLenRaw);
 }
 
 int decodePathByteLen(int pathLenRaw) {

@@ -102,6 +102,29 @@ class DirectRepeater {
     return true;
   }
 
+  static bool shouldTrackPacketPath({
+    required int packetHashWidth,
+    required int pathByteLength,
+    required int payloadByteLength,
+    required int routeType,
+    required int payloadType,
+  }) {
+    final isFloodRoute =
+        routeType == _routeFlood || routeType == _routeTransportFlood;
+    if (!isFloodRoute ||
+        payloadType == payloadTypeREQ ||
+        payloadType == payloadTypeRESPONSE) {
+      return false;
+    }
+    final width = normalizePathHashByteWidth(packetHashWidth);
+    if (payloadByteLength <= 0) return false;
+    if (pathByteLength < width || pathByteLength % width != 0) {
+      return false;
+    }
+    final hops = pathHopCountForBytes(pathByteLength, width);
+    return hops > 0 && hops <= maxPathHopCountForWidth(width);
+  }
+
   void update(
     double newSNR, {
     required int observedPathHops,
@@ -2623,7 +2646,14 @@ class MeshCoreConnector extends ChangeNotifier {
     _hasReceivedDeviceInfo = false;
     _resetSyncProgressState();
     _bleInitialSyncStarted = false;
-    _pathHashByteWidth = 1;
+    _setPathHashByteWidth(1);
+  }
+
+  void _setPathHashByteWidth(int width) {
+    final nextWidth = normalizePathHashByteWidth(width);
+    if (_pathHashByteWidth == nextWidth) return;
+    _pathHashByteWidth = nextWidth;
+    _directRepeaters.clear();
   }
 
   void _resetSyncProgressState() {
@@ -4370,9 +4400,9 @@ class MeshCoreConnector extends ChangeNotifier {
     // Path hash mode v10+ (byte 81): width = mode + 1 byte(s) per hop
     if (frame.length >= 82) {
       final mode = (frame[81] & 0xFF).clamp(0, 2);
-      _pathHashByteWidth = normalizePathHashByteWidth(mode + 1);
+      _setPathHashByteWidth(mode + 1);
     } else {
-      _pathHashByteWidth = 1;
+      _setPathHashByteWidth(1);
     }
 
     // Firmware reports MAX_CONTACTS / 2 for v3+ device info.
@@ -5096,7 +5126,7 @@ class MeshCoreConnector extends ChangeNotifier {
 
       final senderPrefix = reader.readBytes(6);
       final pathLengthRaw = reader.readByte();
-      final pathLength = decodePathHopCount(pathLengthRaw);
+      final pathLength = decodeReceivedPathHopCount(pathLengthRaw);
       final txtType = reader.readByte();
       final timestampRaw = reader.readUInt32LE();
       final timestamp = DateTime.fromMillisecondsSinceEpoch(
@@ -6067,6 +6097,7 @@ class MeshCoreConnector extends ChangeNotifier {
         reader.skipBytes(4);
       }
       final pathLenRaw = reader.readByte();
+      if (!isValidPacketPathLen(pathLenRaw)) return null;
       final pathByteLen = decodePathByteLen(pathLenRaw);
       final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = reader.readBytes(pathByteLen);
@@ -6738,11 +6769,19 @@ class MeshCoreConnector extends ChangeNotifier {
       }
       //final payloadVer = (header >> 6) & 0x03;
       final pathLenRaw = packet.readByte();
+      if (!isValidPacketPathLen(pathLenRaw)) return;
       final pathByteLen = decodePathByteLen(pathLenRaw);
       final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = packet.readBytes(pathByteLen);
       final payload = packet.readBytes(packet.remaining);
-      _updateDirectRepeaterFromPacketPath(pathBytes, pathHashWidth, snr);
+      _updateDirectRepeaterFromPacketPath(
+        pathBytes,
+        pathHashWidth,
+        snr,
+        routeType: routeType,
+        payloadType: payloadType,
+        payloadLength: payload.length,
+      );
 
       final rawPacket = frame.sublist(3);
       switch (payloadType) {
@@ -6782,6 +6821,7 @@ class MeshCoreConnector extends ChangeNotifier {
       }
       //final payloadVer = (header >> 6) & 0x03;
       final pathLenRaw = packet.readByte();
+      if (!isValidPacketPathLen(pathLenRaw)) return;
       final pathByteLen = decodePathByteLen(pathLenRaw);
       pathHashWidth = decodePathHashWidth(pathLenRaw);
       pathBytes = packet.readBytes(pathByteLen);
@@ -7013,11 +7053,22 @@ class MeshCoreConnector extends ChangeNotifier {
   void _updateDirectRepeaterFromPacketPath(
     Uint8List path,
     int pathHashWidth,
-    double snr,
-  ) {
+    double snr, {
+    required int routeType,
+    required int payloadType,
+    required int payloadLength,
+  }) {
     final width = normalizePathHashByteWidth(pathHashWidth);
+    if (!DirectRepeater.shouldTrackPacketPath(
+      packetHashWidth: width,
+      pathByteLength: path.length,
+      payloadByteLength: payloadLength,
+      routeType: routeType,
+      payloadType: payloadType,
+    )) {
+      return;
+    }
     final alignedPath = trimPathBytesToWidth(path, width);
-    if (alignedPath.length < width) return;
 
     _upsertDirectRepeater(
       hashPrefix: alignedPath.sublist(alignedPath.length - width),

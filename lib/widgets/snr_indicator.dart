@@ -16,6 +16,7 @@ Contact? _getRepeaterPrefixMatchNearLocation(
   LatLng? searchPoint,
   bool preferFavorites = false,
 }) {
+  const maxNearbyMatchDistanceMeters = 200000.0;
   if (hashPrefix.isEmpty) return null;
   final candidates = contacts
       .where(
@@ -47,7 +48,7 @@ Contact? _getRepeaterPrefixMatchNearLocation(
   }
 
   final distance = Distance();
-  Contact best = candidates.first;
+  Contact? best;
   var bestDistance = double.infinity;
 
   for (final c in candidates) {
@@ -60,7 +61,10 @@ Contact? _getRepeaterPrefixMatchNearLocation(
     }
   }
 
-  return best;
+  if (best != null) {
+    return bestDistance <= maxNearbyMatchDistanceMeters ? best : null;
+  }
+  return candidates.first;
 }
 
 class SNRUi {
