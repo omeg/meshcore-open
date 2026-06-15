@@ -32,6 +32,8 @@ import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
 import 'utils/startup_options.dart';
 
+final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>();
+
 void main(List<String> args) async {
   WidgetsFlutterBinding.ensureInitialized();
   final startupOptions = StartupOptions.parse(args);
@@ -144,6 +146,10 @@ https://creativecommons.org/licenses/by/4.0/
 ''',
     );
   });
+}
+
+class _EscapeBackIntent extends Intent {
+  const _EscapeBackIntent();
 }
 
 class DesktopBleExitObserver extends StatefulWidget {
@@ -278,6 +284,7 @@ class MeshCoreApp extends StatelessWidget {
           builder: (context, settingsService, child) {
             return MaterialApp(
               title: 'MeshCore Open',
+              navigatorKey: _rootNavigatorKey,
               debugShowCheckedModeBanner: false,
               localizationsDelegates: const [
                 AppLocalizations.delegate,
@@ -298,9 +305,31 @@ class MeshCoreApp extends StatelessWidget {
                 // Update notification service with resolved locale
                 final locale = Localizations.localeOf(context);
                 NotificationService().setLocale(locale);
-                return AnnotatedRegion<SystemUiOverlayStyle>(
-                  value: _systemUiOverlayStyle(context),
-                  child: child ?? const SizedBox.shrink(),
+                return Shortcuts(
+                  shortcuts: const <ShortcutActivator, Intent>{
+                    SingleActivator(LogicalKeyboardKey.escape):
+                        _EscapeBackIntent(),
+                  },
+                  child: Actions(
+                    actions: <Type, Action<Intent>>{
+                      _EscapeBackIntent: CallbackAction<_EscapeBackIntent>(
+                        onInvoke: (_) {
+                          unawaited(
+                            _rootNavigatorKey.currentState?.maybePop() ??
+                                Future<bool>.value(false),
+                          );
+                          return null;
+                        },
+                      ),
+                    },
+                    child: Focus(
+                      autofocus: true,
+                      child: AnnotatedRegion<SystemUiOverlayStyle>(
+                        value: _systemUiOverlayStyle(context),
+                        child: child ?? const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
                 );
               },
               home: (PlatformInfo.isWeb && !PlatformInfo.isChrome)
