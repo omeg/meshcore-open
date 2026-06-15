@@ -181,15 +181,15 @@ class StatTile extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 14, color: accent),
+              Icon(icon, size: 15, color: accent),
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
                   label.toUpperCase(),
                   style: MeshTheme.accentLabel(
                     color: scheme.onSurfaceVariant,
-                    fontSize: 9,
-                  ),
+                    fontSize: 10.5,
+                  ).copyWith(letterSpacing: 1.2, height: 1.15),
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -215,7 +215,8 @@ class StatTile extends StatelessWidget {
                   ),
               ],
             ),
-            maxLines: 1,
+            softWrap: true,
+            maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
         ],
