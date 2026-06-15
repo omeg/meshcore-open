@@ -186,6 +186,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     setState(() {
       _replyingToMessage = message;
     });
+    _desktopTextInputFocus.requestFocus(
+      delay: const Duration(milliseconds: 250),
+    );
   }
 
   void _cancelReply() {
