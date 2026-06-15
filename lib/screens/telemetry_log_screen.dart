@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -5,10 +7,12 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/telemetry_log.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../services/repeater_command_service.dart';
 import '../services/telemetry_log_fetch_service.dart';
 import '../services/telemetry_saf_export.dart';
 import '../storage/prefs_manager.dart';
@@ -31,6 +35,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   late final TelemetryLogFetchService _service;
   final TelemetryLogStore _store = TelemetryLogStore();
   final TelemetrySafExport _saf = TelemetrySafExport();
+  StreamSubscription<Uint8List>? _frameSubscription;
+  RepeaterCommandService? _commandService;
+  bool _statusLoading = false;
 
   /// Whether the global service's current/last fetch is for this repeater.
   bool get _isMyFetch => _service.targetKey == widget.repeater.publicKeyHex;
@@ -56,6 +63,9 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     super.initState();
     _service = Provider.of<TelemetryLogFetchService>(context, listen: false)
       ..addListener(_onChange);
+    final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    _commandService = RepeaterCommandService(connector);
+    _setupMessageListener();
     // Pick up state from a fetch that's already running/finished for this
     // repeater (e.g. the user left and came back).
     if (_isMyFetch) _cacheLogFromService();
@@ -78,8 +88,55 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     // The service is app-scoped — only detach our listener; never cancel or
     // dispose it, so an in-flight fetch survives leaving the screen.
     _service.removeListener(_onChange);
+    _frameSubscription?.cancel();
+    _commandService?.dispose();
     _chunkController.dispose();
     super.dispose();
+  }
+
+  void _setupMessageListener() {
+    final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    _frameSubscription = connector.receivedFrames.listen((frame) {
+      if (frame.isEmpty) return;
+      if (frame[0] == respCodeContactMsgRecv ||
+          frame[0] == respCodeContactMsgRecvV3) {
+        _handleTextMessageResponse(frame);
+      }
+    });
+  }
+
+  int _resolveRepeaterIndex = -1;
+
+  Contact _resolveRepeater(MeshCoreConnector connector) {
+    if (_resolveRepeaterIndex >= 0 &&
+        _resolveRepeaterIndex < connector.contacts.length &&
+        connector.contacts[_resolveRepeaterIndex].publicKeyHex ==
+            widget.repeater.publicKeyHex) {
+      return connector.contacts[_resolveRepeaterIndex];
+    }
+    _resolveRepeaterIndex = connector.contacts.indexWhere(
+      (c) => c.publicKeyHex == widget.repeater.publicKeyHex,
+    );
+    if (_resolveRepeaterIndex == -1) {
+      return widget.repeater;
+    }
+    return connector.contacts[_resolveRepeaterIndex];
+  }
+
+  void _handleTextMessageResponse(Uint8List frame) {
+    final parsed = parseContactMessageText(frame);
+    if (parsed == null) return;
+    if (!_matchesRepeaterPrefix(parsed.senderPrefix)) return;
+    _commandService?.handleResponse(widget.repeater, parsed.text);
+  }
+
+  bool _matchesRepeaterPrefix(Uint8List prefix) {
+    final target = widget.repeater.publicKey;
+    if (target.length < 6 || prefix.length < 6) return false;
+    for (int i = 0; i < 6; i++) {
+      if (prefix[i] != target[i]) return false;
+    }
+    return true;
   }
 
   void _cacheLogFromService() {
@@ -110,6 +167,67 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
       chunkSize: _chunkSize,
     );
     await _reloadSavedLogs();
+  }
+
+  Future<void> _showTlogStatus() async {
+    if (_commandService == null || _statusLoading) return;
+    final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    final repeater = _resolveRepeater(connector);
+    setState(() => _statusLoading = true);
+    try {
+      final response = await _commandService!.sendCommand(
+        repeater,
+        'tlog status',
+        retries: 1,
+      );
+      if (!mounted) return;
+      await _showStatusDialog(response.trim().isEmpty ? '(empty)' : response);
+    } catch (e) {
+      if (!mounted) return;
+      await _showStatusDialog('Failed to fetch status:\n$e');
+    } finally {
+      if (mounted) setState(() => _statusLoading = false);
+    }
+  }
+
+  Future<void> _showStatusDialog(String response) {
+    final l10n = context.l10n;
+    return showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('${l10n.telemetryLog_title} ${l10n.repeater_status}'),
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: SingleChildScrollView(
+            child: SelectableText(
+              response,
+              style: const TextStyle(fontFamily: 'monospace'),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(l10n.common_close),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _statusButton(BuildContext context) {
+    final l10n = context.l10n;
+    return OutlinedButton.icon(
+      onPressed: _statusLoading ? null : _showTlogStatus,
+      icon: _statusLoading
+          ? const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.info_outline),
+      label: Text(l10n.repeater_status),
+    );
   }
 
   /// Normalize the chunk-size field to a clamped value, persist it, and reflect
@@ -348,7 +466,8 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final busy = _service.status == TelemetryLogFetchStatus.fetching;
+    final busy =
+        _service.status == TelemetryLogFetchStatus.fetching || _statusLoading;
     // savedFilePath belongs to the global service's last fetch — only expose
     // share/export when that fetch was for the repeater we're showing.
     final myFile = _isMyFetch ? _service.savedFilePath : null;
@@ -503,10 +622,17 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: () => _startFetch(),
-                icon: const Icon(Icons.refresh),
-                label: Text(l10n.telemetryLog_retry),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilledButton.icon(
+                    onPressed: _statusLoading ? null : () => _startFetch(),
+                    icon: const Icon(Icons.refresh),
+                    label: Text(l10n.telemetryLog_retry),
+                  ),
+                  _statusButton(context),
+                ],
               ),
             ),
           ],
@@ -533,15 +659,18 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
               runSpacing: 8,
               children: [
                 FilledButton.icon(
-                  onPressed: () => _startFetch(),
+                  onPressed: _statusLoading ? null : () => _startFetch(),
                   icon: const Icon(Icons.refresh),
                   label: Text(l10n.telemetryLog_refresh),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () => _startFetch(forceRestart: true),
+                  onPressed: _statusLoading
+                      ? null
+                      : () => _startFetch(forceRestart: true),
                   icon: const Icon(Icons.restart_alt),
                   label: Text(l10n.telemetryLog_restart),
                 ),
+                _statusButton(context),
               ],
             ),
           ],
@@ -555,13 +684,17 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             const SizedBox(height: 8),
             _chunkSizeField(context),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: () => _startFetch(),
-                icon: const Icon(Icons.download),
-                label: Text(l10n.telemetryLog_fetch),
-              ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                FilledButton.icon(
+                  onPressed: _statusLoading ? null : () => _startFetch(),
+                  icon: const Icon(Icons.download),
+                  label: Text(l10n.telemetryLog_fetch),
+                ),
+                _statusButton(context),
+              ],
             ),
           ],
         );
