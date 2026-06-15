@@ -6,7 +6,12 @@ class MainFlutterWindow: NSWindow {
     let flutterViewController = FlutterViewController()
     let windowFrame = self.frame
     self.contentViewController = flutterViewController
-    self.setFrame(windowFrame, display: true)
+
+    let autosaveName = NSWindow.FrameAutosaveName("meshcore_open.main_window")
+    if !self.setFrameUsingName(autosaveName) {
+      self.setFrame(windowFrame, display: true)
+    }
+    self.setFrameAutosaveName(autosaveName)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
 

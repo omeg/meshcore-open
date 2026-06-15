@@ -25,6 +25,9 @@ constexpr const wchar_t kWindowClassName[] = L"FLUTTER_RUNNER_WIN32_WINDOW";
 constexpr const wchar_t kGetPreferredBrightnessRegKey[] =
   L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize";
 constexpr const wchar_t kGetPreferredBrightnessRegValue[] = L"AppsUseLightTheme";
+constexpr const wchar_t kWindowPlacementRegKey[] =
+  L"Software\\meshcore_open\\Window";
+constexpr const wchar_t kWindowPlacementRegValue[] = L"Placement";
 
 // The number of Win32Window objects that currently exist.
 static int g_active_window_count = 0;
@@ -51,6 +54,60 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
     enable_non_client_dpi_scaling(hwnd);
   }
   FreeLibrary(user32_module);
+}
+
+bool IsValidWindowPlacement(const WINDOWPLACEMENT& placement) {
+  const RECT& rect = placement.rcNormalPosition;
+  if (rect.right - rect.left < 640 || rect.bottom - rect.top < 480) {
+    return false;
+  }
+
+  return MonitorFromRect(&rect, MONITOR_DEFAULTTONULL) != nullptr;
+}
+
+bool LoadSavedWindowPlacement(WINDOWPLACEMENT* placement) {
+  DWORD value_type = REG_BINARY;
+  DWORD value_size = sizeof(WINDOWPLACEMENT);
+  LSTATUS result = RegGetValue(
+      HKEY_CURRENT_USER, kWindowPlacementRegKey, kWindowPlacementRegValue,
+      RRF_RT_REG_BINARY, &value_type, placement, &value_size);
+  if (result != ERROR_SUCCESS || value_size != sizeof(WINDOWPLACEMENT)) {
+    return false;
+  }
+
+  placement->length = sizeof(WINDOWPLACEMENT);
+  if (placement->showCmd == SW_SHOWMINIMIZED ||
+      placement->showCmd == SW_MINIMIZE) {
+    placement->showCmd = SW_SHOWNORMAL;
+  }
+
+  return IsValidWindowPlacement(*placement);
+}
+
+void SaveWindowPlacement(HWND hwnd) {
+  WINDOWPLACEMENT placement = {};
+  placement.length = sizeof(WINDOWPLACEMENT);
+  if (!GetWindowPlacement(hwnd, &placement)) {
+    return;
+  }
+
+  if (placement.showCmd == SW_SHOWMINIMIZED ||
+      placement.showCmd == SW_MINIMIZE) {
+    placement.showCmd = SW_SHOWNORMAL;
+  }
+
+  HKEY key = nullptr;
+  LSTATUS result = RegCreateKeyEx(HKEY_CURRENT_USER, kWindowPlacementRegKey, 0,
+                                  nullptr, 0, KEY_SET_VALUE, nullptr, &key,
+                                  nullptr);
+  if (result != ERROR_SUCCESS) {
+    return;
+  }
+
+  RegSetValueEx(key, kWindowPlacementRegValue, 0, REG_BINARY,
+                reinterpret_cast<const BYTE*>(&placement),
+                sizeof(WINDOWPLACEMENT));
+  RegCloseKey(key);
 }
 
 }  // namespace
@@ -145,11 +202,18 @@ bool Win32Window::Create(const std::wstring& title,
   }
 
   UpdateTheme(window);
+  has_initial_window_placement_ =
+      LoadSavedWindowPlacement(&initial_window_placement_);
 
   return OnCreate();
 }
 
 bool Win32Window::Show() {
+  if (has_initial_window_placement_) {
+    has_initial_window_placement_ = false;
+    return SetWindowPlacement(window_handle_, &initial_window_placement_);
+  }
+
   return ShowWindow(window_handle_, SW_SHOWNORMAL);
 }
 
@@ -179,7 +243,12 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      SaveWindowPlacement(hwnd);
+      break;
+
     case WM_DESTROY:
+      SaveWindowPlacement(hwnd);
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {

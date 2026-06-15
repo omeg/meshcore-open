@@ -4,8 +4,136 @@
 #ifdef GDK_WINDOWING_X11
 #include <gdk/gdkx.h>
 #endif
+#include <glib/gstdio.h>
 
 #include "flutter/generated_plugin_registrant.h"
+
+namespace {
+
+constexpr int kDefaultWindowWidth = 1280;
+constexpr int kDefaultWindowHeight = 720;
+constexpr int kMinimumWindowWidth = 640;
+constexpr int kMinimumWindowHeight = 480;
+constexpr char kWindowStateGroup[] = "window";
+
+gchar* get_window_state_path() {
+  g_autofree gchar* app_dir =
+      g_build_filename(g_get_user_config_dir(), "meshcore_open", nullptr);
+  g_mkdir_with_parents(app_dir, 0700);
+  return g_build_filename(app_dir, "window-state.ini", nullptr);
+}
+
+gboolean window_rect_intersects_screen(GtkWindow* window,
+                                       gint x,
+                                       gint y,
+                                       gint width,
+                                       gint height) {
+  GdkDisplay* display = gtk_widget_get_display(GTK_WIDGET(window));
+  if (display == nullptr) {
+    return TRUE;
+  }
+
+  const gint monitor_count = gdk_display_get_n_monitors(display);
+  for (gint i = 0; i < monitor_count; ++i) {
+    GdkMonitor* gdk_monitor = gdk_display_get_monitor(display, i);
+    if (gdk_monitor == nullptr) {
+      continue;
+    }
+
+    GdkRectangle monitor;
+    gdk_monitor_get_geometry(gdk_monitor, &monitor);
+    if (x < monitor.x + monitor.width && x + width > monitor.x &&
+        y < monitor.y + monitor.height && y + height > monitor.y) {
+      return TRUE;
+    }
+  }
+
+  return FALSE;
+}
+
+gboolean key_file_has_int(GKeyFile* key_file, const gchar* key) {
+  return g_key_file_has_key(key_file, kWindowStateGroup, key, nullptr);
+}
+
+void restore_window_state(GtkWindow* window) {
+  g_autofree gchar* path = get_window_state_path();
+  g_autoptr(GKeyFile) key_file = g_key_file_new();
+  if (!g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, nullptr)) {
+    return;
+  }
+
+  gint width = kDefaultWindowWidth;
+  gint height = kDefaultWindowHeight;
+  if (key_file_has_int(key_file, "width") &&
+      key_file_has_int(key_file, "height")) {
+    width = g_key_file_get_integer(
+        key_file, kWindowStateGroup, "width", nullptr);
+    height = g_key_file_get_integer(
+        key_file, kWindowStateGroup, "height", nullptr);
+    if (width >= kMinimumWindowWidth && height >= kMinimumWindowHeight) {
+      gtk_window_set_default_size(window, width, height);
+    }
+  }
+
+  if (key_file_has_int(key_file, "x") && key_file_has_int(key_file, "y")) {
+    const gint x =
+        g_key_file_get_integer(key_file, kWindowStateGroup, "x", nullptr);
+    const gint y =
+        g_key_file_get_integer(key_file, kWindowStateGroup, "y", nullptr);
+    if (window_rect_intersects_screen(window, x, y, width, height)) {
+      gtk_window_move(window, x, y);
+    }
+  }
+
+  if (g_key_file_has_key(
+          key_file, kWindowStateGroup, "maximized", nullptr) &&
+      g_key_file_get_boolean(
+          key_file, kWindowStateGroup, "maximized", nullptr)) {
+    gtk_window_maximize(window);
+  }
+}
+
+void save_window_state(GtkWindow* window) {
+  g_autofree gchar* path = get_window_state_path();
+  g_autoptr(GKeyFile) key_file = g_key_file_new();
+  g_key_file_load_from_file(key_file, path, G_KEY_FILE_NONE, nullptr);
+
+  GdkWindow* gdk_window = gtk_widget_get_window(GTK_WIDGET(window));
+  const gboolean maximized =
+      gdk_window != nullptr &&
+      (gdk_window_get_state(gdk_window) & GDK_WINDOW_STATE_MAXIMIZED) != 0;
+
+  g_key_file_set_boolean(
+      key_file, kWindowStateGroup, "maximized", maximized);
+
+  if (!maximized) {
+    gint x = 0;
+    gint y = 0;
+    gint width = 0;
+    gint height = 0;
+    gtk_window_get_position(window, &x, &y);
+    gtk_window_get_size(window, &width, &height);
+
+    if (width >= kMinimumWindowWidth && height >= kMinimumWindowHeight) {
+      g_key_file_set_integer(key_file, kWindowStateGroup, "x", x);
+      g_key_file_set_integer(key_file, kWindowStateGroup, "y", y);
+      g_key_file_set_integer(key_file, kWindowStateGroup, "width", width);
+      g_key_file_set_integer(key_file, kWindowStateGroup, "height", height);
+    }
+  }
+
+  g_autofree gchar* data = g_key_file_to_data(key_file, nullptr, nullptr);
+  g_file_set_contents(path, data, -1, nullptr);
+}
+
+gboolean save_window_state_cb(GtkWidget* widget,
+                              GdkEvent*,
+                              gpointer) {
+  save_window_state(GTK_WINDOW(widget));
+  return FALSE;
+}
+
+}  // namespace
 
 struct _MyApplication {
   GtkApplication parent_instance;
@@ -53,7 +181,11 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "meshcore_open");
   }
 
-  gtk_window_set_default_size(window, 1280, 720);
+  gtk_window_set_default_size(
+      window, kDefaultWindowWidth, kDefaultWindowHeight);
+  restore_window_state(window);
+  g_signal_connect(window, "delete-event", G_CALLBACK(save_window_state_cb),
+                   nullptr);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
