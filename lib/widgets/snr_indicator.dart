@@ -314,6 +314,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
             searchPoint: selfPoint,
             preferFavorites: true,
           );
+          final distanceKmLabel = _formatDistanceKm(selfPoint, contact);
 
           final name = contact?.name;
           final prefixHex = PathHelper.formatHopHex(repeater.hashPrefix);
@@ -325,8 +326,11 @@ class _SNRIndicatorState extends State<SNRIndicator> {
             l10n,
             repeater.observedPathHops,
           );
+          final distanceSegment = distanceKmLabel == null
+              ? ''
+              : ' • distance: $distanceKmLabel';
           final pathLine =
-              '$prefixHex • route: $routeLabel • path: $observedPathLabel';
+              '$prefixHex • route: $routeLabel • path: $observedPathLabel$distanceSegment';
           final signalLine =
               'Packets: ${repeater.snrSampleCount} • Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
 
@@ -375,5 +379,21 @@ class _SNRIndicatorState extends State<SNRIndicator> {
   String _formatHopLabel(AppLocalizations l10n, int hops) {
     if (hops <= 0) return l10n.chat_direct;
     return l10n.chat_hopsCount(hops);
+  }
+
+  String? _formatDistanceKm(LatLng? selfPoint, Contact? contact) {
+    if (selfPoint == null ||
+        contact == null ||
+        !contact.hasLocation ||
+        contact.latitude == null ||
+        contact.longitude == null) {
+      return null;
+    }
+
+    final distanceMeters = const Distance()(
+      selfPoint,
+      LatLng(contact.latitude!, contact.longitude!),
+    );
+    return '${(distanceMeters / 1000).toStringAsFixed(2)} km';
   }
 }
