@@ -322,7 +322,7 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get scanner_bluetoothWebUnsupported =>
-      'Bluetooth isn\'t available in the browser. Connect over USB instead.';
+      'A funcionalidade Bluetooth não está disponível no navegador. Conecte-se via USB em vez disso.';
 
   @override
   String get device_quickSwitch => 'Mudar rapidamente';
@@ -368,6 +368,45 @@ class AppLocalizationsPt extends AppLocalizations {
   @override
   String get settings_radioSettingsUpdated =>
       'Configurações de rádio atualizadas';
+
+  @override
+  String get settings_regionSettings => 'Regions';
+
+  @override
+  String get settings_regionSettingsSubtitle => 'Manage stored regions';
+
+  @override
+  String get settings_regionManagement_screenTitle => 'Region Management';
+
+  @override
+  String get settings_regionNameHint => 'Enter region name';
+
+  @override
+  String get settings_regionAddRegion => 'Add region';
+
+  @override
+  String get settings_regionFetchRegions => 'Fetch regions from repeaters';
+
+  @override
+  String get settings_regionFetchRegionsFail => 'No regions were found';
+
+  @override
+  String get settings_regionFetchRegionsAlreadyExists =>
+      'This region has already been added';
+
+  @override
+  String get settings_regionName => 'Region Name';
+
+  @override
+  String get settings_regionDeleted => 'Region deleted';
+
+  @override
+  String get settings_deleteRegion => 'Delete Region';
+
+  @override
+  String settings_deleteRegionConfirm(String region) {
+    return 'Remove \"$region\" from region list?';
+  }
 
   @override
   String get settings_location => 'Localização';
@@ -1327,6 +1366,20 @@ class AppLocalizationsPt extends AppLocalizations {
   String get channels_hashtagHint => 'ex. #equipe';
 
   @override
+  String channels_regionSetTo(String region) {
+    return 'Region: $region';
+  }
+
+  @override
+  String get channels_regionNotSet => 'Region: none';
+
+  @override
+  String get channels_regionSelect_Title => 'Select a region';
+
+  @override
+  String get channels_clearRegion => 'Clear region';
+
+  @override
   String get chat_noMessages => 'Ainda não existem mensagens.';
 
   @override
@@ -1739,37 +1792,37 @@ class AppLocalizationsPt extends AppLocalizations {
   String get map_title => 'Mapa de Nós';
 
   @override
-  String get map_searchHint => 'Search node name or ID';
+  String get map_searchHint => 'Pesquisar por nome ou ID do nó';
 
   @override
-  String get map_activity => 'Activity';
+  String get map_activity => 'Atividade';
 
   @override
   String get map_online => 'Online';
 
   @override
-  String get map_recent => 'Recent';
+  String get map_recent => 'Recente';
 
   @override
-  String get map_stale => 'Stale';
+  String get map_stale => 'Vencido';
 
   @override
-  String get map_visible => 'Visible';
+  String get map_visible => 'Visível';
 
   @override
-  String get map_hidden => 'Hidden';
+  String get map_hidden => 'Escondido';
 
   @override
-  String get map_centerOnNode => 'Center on node';
+  String get map_centerOnNode => 'Centralizar no nó';
 
   @override
-  String get map_details => 'Details';
+  String get map_details => 'Detalhes';
 
   @override
-  String get map_noGps => 'No GPS';
+  String get map_noGps => 'Sem GPS';
 
   @override
-  String get map_noResults => 'No matching nodes';
+  String get map_noResults => 'Nenhum nó encontrado';
 
   @override
   String get map_lineOfSight => 'Linha de visão';
@@ -4706,44 +4759,44 @@ class AppLocalizationsPt extends AppLocalizations {
   String get pathTrace_legendInferred => 'Posição inferida';
 
   @override
-  String get pathMap_viewSingle => 'Single';
+  String get pathMap_viewSingle => 'Único';
 
   @override
-  String get pathMap_viewCombined => 'Combined';
+  String get pathMap_viewCombined => 'Combinado';
 
   @override
-  String get pathMap_play => 'Play';
+  String get pathMap_play => 'Reproduzir';
 
   @override
-  String get pathMap_pause => 'Pause';
+  String get pathMap_pause => 'Pausa';
 
   @override
-  String get pathMap_replay => 'Replay';
+  String get pathMap_replay => 'Repetir';
 
   @override
-  String get pathMap_stepBack => 'Previous hop';
+  String get pathMap_stepBack => 'Salto anterior';
 
   @override
-  String get pathMap_stepForward => 'Next hop';
+  String get pathMap_stepForward => 'Próximo salto';
 
   @override
-  String get pathMap_animationOn => 'Show packet animation';
+  String get pathMap_animationOn => 'Exibir animação do pacote';
 
   @override
-  String get pathMap_animationOff => 'Hide packet animation';
+  String get pathMap_animationOff => 'Ocultar a animação do pacote';
 
   @override
   String pathMap_hopOf(int current, int total) {
-    return 'Hop $current of $total';
+    return 'Salto $current de $total';
   }
 
   @override
   String pathMap_observedPaths(int count) {
-    return 'Observed paths: $count';
+    return 'Caminhos observados: $count';
   }
 
   @override
-  String get pathMap_primary => 'Primary';
+  String get pathMap_primary => 'Primário';
 
   @override
   String pathMap_alternate(int index) {
@@ -4755,8 +4808,8 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops',
-      one: '1 hop',
+      other: '$count saltos',
+      one: '1 salto',
     );
     return '$_temp0';
   }
@@ -4767,14 +4820,14 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get pathMap_legendShared => 'Shared segment';
+  String get pathMap_legendShared => 'Segmento compartilhado';
 
   @override
-  String get pathMap_legendEstimated => 'Estimated segment';
+  String get pathMap_legendEstimated => 'Segmento estimado';
 
   @override
   String pathMap_sharedNodeCount(int count) {
-    return 'Used by $count paths';
+    return 'Utilizado em $count caminhos';
   }
 
   @override
@@ -4782,33 +4835,33 @@ class AppLocalizationsPt extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops have no location — the shown path is partial',
-      one: '1 hop has no location — the shown path is partial',
+      other: '$count saltos não têm localização — o caminho mostrado é parcial',
+      one: '1 salto não tem localização — o caminho mostrado é parcial',
     );
     return '$_temp0';
   }
 
   @override
-  String get pathMap_showAllPaths => 'Show all';
+  String get pathMap_showAllPaths => 'Mostrar tudo';
 
   @override
-  String get pathMap_hidePath => 'Hide path';
+  String get pathMap_hidePath => 'Esconder caminho';
 
   @override
-  String get pathMap_showPath => 'Show path';
+  String get pathMap_showPath => 'Mostrar o caminho';
 
   @override
-  String get pathMap_collapsePanel => 'Collapse panel';
+  String get pathMap_collapsePanel => 'Recolher painel';
 
   @override
-  String get pathMap_expandPanel => 'Expand panel';
+  String get pathMap_expandPanel => 'Expandir painel';
 
   @override
-  String get pathMap_noLocation => 'No location';
+  String get pathMap_noLocation => 'Sem localização';
 
   @override
-  String get pathMap_followPacket => 'Lock view to packet';
+  String get pathMap_followPacket => 'Fixar vista no pacote';
 
   @override
-  String get pathMap_unfollowPacket => 'Unlock view from packet';
+  String get pathMap_unfollowPacket => 'Liberar vista do pacote';
 }

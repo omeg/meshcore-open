@@ -321,7 +321,7 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get scanner_bluetoothWebUnsupported =>
-      'Bluetooth isn\'t available in the browser. Connect over USB instead.';
+      'Funkcia Bluetooth nie je dostupná v prehliadači. Prepojte sa pomocou USB.';
 
   @override
   String get device_quickSwitch => 'Rýchle prepínač';
@@ -366,6 +366,45 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get settings_radioSettingsUpdated => 'Nastavenia rádia aktualizované';
+
+  @override
+  String get settings_regionSettings => 'Regions';
+
+  @override
+  String get settings_regionSettingsSubtitle => 'Manage stored regions';
+
+  @override
+  String get settings_regionManagement_screenTitle => 'Region Management';
+
+  @override
+  String get settings_regionNameHint => 'Enter region name';
+
+  @override
+  String get settings_regionAddRegion => 'Add region';
+
+  @override
+  String get settings_regionFetchRegions => 'Fetch regions from repeaters';
+
+  @override
+  String get settings_regionFetchRegionsFail => 'No regions were found';
+
+  @override
+  String get settings_regionFetchRegionsAlreadyExists =>
+      'This region has already been added';
+
+  @override
+  String get settings_regionName => 'Region Name';
+
+  @override
+  String get settings_regionDeleted => 'Region deleted';
+
+  @override
+  String get settings_deleteRegion => 'Delete Region';
+
+  @override
+  String settings_deleteRegionConfirm(String region) {
+    return 'Remove \"$region\" from region list?';
+  }
 
   @override
   String get settings_location => 'Lokalita';
@@ -1317,6 +1356,20 @@ class AppLocalizationsSk extends AppLocalizations {
   String get channels_hashtagHint => 'napr. #tím';
 
   @override
+  String channels_regionSetTo(String region) {
+    return 'Region: $region';
+  }
+
+  @override
+  String get channels_regionNotSet => 'Region: none';
+
+  @override
+  String get channels_regionSelect_Title => 'Select a region';
+
+  @override
+  String get channels_clearRegion => 'Clear region';
+
+  @override
   String get chat_noMessages => 'Zatiaľ žiadne správy.';
 
   @override
@@ -1731,37 +1784,37 @@ class AppLocalizationsSk extends AppLocalizations {
   String get map_title => 'Mapa uzlov';
 
   @override
-  String get map_searchHint => 'Search node name or ID';
+  String get map_searchHint => 'Vyhľadajte podľa názvu alebo ID uzla';
 
   @override
-  String get map_activity => 'Activity';
+  String get map_activity => 'Aktivita';
 
   @override
   String get map_online => 'Online';
 
   @override
-  String get map_recent => 'Recent';
+  String get map_recent => 'Nedávne';
 
   @override
-  String get map_stale => 'Stale';
+  String get map_stale => 'Neaktuálne';
 
   @override
-  String get map_visible => 'Visible';
+  String get map_visible => 'Viditeľný';
 
   @override
-  String get map_hidden => 'Hidden';
+  String get map_hidden => 'Skrytý';
 
   @override
-  String get map_centerOnNode => 'Center on node';
+  String get map_centerOnNode => 'Nacentrovať na uzol';
 
   @override
-  String get map_details => 'Details';
+  String get map_details => 'Podrobnosti';
 
   @override
-  String get map_noGps => 'No GPS';
+  String get map_noGps => 'Bez GPS';
 
   @override
-  String get map_noResults => 'No matching nodes';
+  String get map_noResults => 'Nenašli sa žiadne zodpovedajúce uzly.';
 
   @override
   String get map_lineOfSight => 'Úroveň výhľadu';
@@ -4688,48 +4741,48 @@ class AppLocalizationsSk extends AppLocalizations {
   String get pathTrace_legendInferred => 'Odvodená poloha';
 
   @override
-  String get pathMap_viewSingle => 'Single';
+  String get pathMap_viewSingle => 'Jednotlivý';
 
   @override
-  String get pathMap_viewCombined => 'Combined';
+  String get pathMap_viewCombined => 'Spojené';
 
   @override
-  String get pathMap_play => 'Play';
+  String get pathMap_play => 'Prehrať';
 
   @override
-  String get pathMap_pause => 'Pause';
+  String get pathMap_pause => 'Pozastaviť';
 
   @override
-  String get pathMap_replay => 'Replay';
+  String get pathMap_replay => 'Prehrať znova';
 
   @override
-  String get pathMap_stepBack => 'Previous hop';
+  String get pathMap_stepBack => 'Predchádzajúci skok';
 
   @override
-  String get pathMap_stepForward => 'Next hop';
+  String get pathMap_stepForward => 'Nasledujúci skok';
 
   @override
-  String get pathMap_animationOn => 'Show packet animation';
+  String get pathMap_animationOn => 'Zobraziť animáciu paketu';
 
   @override
-  String get pathMap_animationOff => 'Hide packet animation';
+  String get pathMap_animationOff => 'Skryť animáciu paketu';
 
   @override
   String pathMap_hopOf(int current, int total) {
-    return 'Hop $current of $total';
+    return 'Skok $current z $total';
   }
 
   @override
   String pathMap_observedPaths(int count) {
-    return 'Observed paths: $count';
+    return 'Pozorované cesty: $count';
   }
 
   @override
-  String get pathMap_primary => 'Primary';
+  String get pathMap_primary => 'Primárna';
 
   @override
   String pathMap_alternate(int index) {
-    return 'Alt $index';
+    return 'Alternatívny $index';
   }
 
   @override
@@ -4737,8 +4790,9 @@ class AppLocalizationsSk extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops',
-      one: '1 hop',
+      other: '$count skokov',
+      few: '$count skoky',
+      one: '1 skok',
     );
     return '$_temp0';
   }
@@ -4749,14 +4803,14 @@ class AppLocalizationsSk extends AppLocalizations {
   }
 
   @override
-  String get pathMap_legendShared => 'Shared segment';
+  String get pathMap_legendShared => 'Spoločný segment';
 
   @override
-  String get pathMap_legendEstimated => 'Estimated segment';
+  String get pathMap_legendEstimated => 'Odhadovaný segment';
 
   @override
   String pathMap_sharedNodeCount(int count) {
-    return 'Used by $count paths';
+    return 'Používané $count cestami';
   }
 
   @override
@@ -4764,33 +4818,34 @@ class AppLocalizationsSk extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops have no location — the shown path is partial',
-      one: '1 hop has no location — the shown path is partial',
+      other: '$count skokov nemá polohu — zobrazená trasa je neúplná',
+      few: '$count skoky nemajú polohu — zobrazená trasa je neúplná',
+      one: '1 skok nemá polohu — zobrazená trasa je neúplná',
     );
     return '$_temp0';
   }
 
   @override
-  String get pathMap_showAllPaths => 'Show all';
+  String get pathMap_showAllPaths => 'Zobraziť všetky';
 
   @override
-  String get pathMap_hidePath => 'Hide path';
+  String get pathMap_hidePath => 'Skryť cestu';
 
   @override
-  String get pathMap_showPath => 'Show path';
+  String get pathMap_showPath => 'Zobraziť trasu';
 
   @override
-  String get pathMap_collapsePanel => 'Collapse panel';
+  String get pathMap_collapsePanel => 'Zatvoriť panel';
 
   @override
-  String get pathMap_expandPanel => 'Expand panel';
+  String get pathMap_expandPanel => 'Rozbaliť panel';
 
   @override
-  String get pathMap_noLocation => 'No location';
+  String get pathMap_noLocation => 'Bez polohy';
 
   @override
-  String get pathMap_followPacket => 'Lock view to packet';
+  String get pathMap_followPacket => 'Uzamknúť pohľad na paket';
 
   @override
-  String get pathMap_unfollowPacket => 'Unlock view from packet';
+  String get pathMap_unfollowPacket => 'Odomknúť pohľad od paketu';
 }

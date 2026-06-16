@@ -322,7 +322,7 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get scanner_bluetoothWebUnsupported =>
-      'Bluetooth isn\'t available in the browser. Connect over USB instead.';
+      'Bluetooth недоступен в браузере. Подключитесь через USB.';
 
   @override
   String get device_quickSwitch => 'Быстрое переключение';
@@ -367,6 +367,45 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get settings_radioSettingsUpdated => 'Настройки радио обновлены';
+
+  @override
+  String get settings_regionSettings => 'Regions';
+
+  @override
+  String get settings_regionSettingsSubtitle => 'Manage stored regions';
+
+  @override
+  String get settings_regionManagement_screenTitle => 'Region Management';
+
+  @override
+  String get settings_regionNameHint => 'Enter region name';
+
+  @override
+  String get settings_regionAddRegion => 'Add region';
+
+  @override
+  String get settings_regionFetchRegions => 'Fetch regions from repeaters';
+
+  @override
+  String get settings_regionFetchRegionsFail => 'No regions were found';
+
+  @override
+  String get settings_regionFetchRegionsAlreadyExists =>
+      'This region has already been added';
+
+  @override
+  String get settings_regionName => 'Region Name';
+
+  @override
+  String get settings_regionDeleted => 'Region deleted';
+
+  @override
+  String get settings_deleteRegion => 'Delete Region';
+
+  @override
+  String settings_deleteRegionConfirm(String region) {
+    return 'Remove \"$region\" from region list?';
+  }
 
   @override
   String get settings_location => 'Позиция';
@@ -1328,6 +1367,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get channels_hashtagHint => 'например, #команда';
 
   @override
+  String channels_regionSetTo(String region) {
+    return 'Region: $region';
+  }
+
+  @override
+  String get channels_regionNotSet => 'Region: none';
+
+  @override
+  String get channels_regionSelect_Title => 'Select a region';
+
+  @override
+  String get channels_clearRegion => 'Clear region';
+
+  @override
   String get chat_noMessages => 'Сообщений пока нет';
 
   @override
@@ -1744,37 +1797,37 @@ class AppLocalizationsRu extends AppLocalizations {
   String get map_title => 'Карта нод';
 
   @override
-  String get map_searchHint => 'Search node name or ID';
+  String get map_searchHint => 'Поиск по имени или ID узла';
 
   @override
-  String get map_activity => 'Activity';
+  String get map_activity => 'Активность';
 
   @override
-  String get map_online => 'Online';
+  String get map_online => 'Онлайн';
 
   @override
-  String get map_recent => 'Recent';
+  String get map_recent => 'Недавно';
 
   @override
-  String get map_stale => 'Stale';
+  String get map_stale => 'Устаревший';
 
   @override
-  String get map_visible => 'Visible';
+  String get map_visible => 'Видимый';
 
   @override
-  String get map_hidden => 'Hidden';
+  String get map_hidden => 'Скрытый';
 
   @override
-  String get map_centerOnNode => 'Center on node';
+  String get map_centerOnNode => 'Центрировать на узле';
 
   @override
-  String get map_details => 'Details';
+  String get map_details => 'Детали';
 
   @override
-  String get map_noGps => 'No GPS';
+  String get map_noGps => 'Без GPS';
 
   @override
-  String get map_noResults => 'No matching nodes';
+  String get map_noResults => 'Не найдено соответствующих узлов';
 
   @override
   String get map_lineOfSight => 'Линия видимости';
@@ -4722,48 +4775,48 @@ class AppLocalizationsRu extends AppLocalizations {
   String get pathTrace_legendInferred => 'Выведенная позиция';
 
   @override
-  String get pathMap_viewSingle => 'Single';
+  String get pathMap_viewSingle => 'Одиночный';
 
   @override
-  String get pathMap_viewCombined => 'Combined';
+  String get pathMap_viewCombined => 'Объединённые';
 
   @override
-  String get pathMap_play => 'Play';
+  String get pathMap_play => 'Воспроизвести';
 
   @override
-  String get pathMap_pause => 'Pause';
+  String get pathMap_pause => 'Пауза';
 
   @override
-  String get pathMap_replay => 'Replay';
+  String get pathMap_replay => 'Повтор';
 
   @override
-  String get pathMap_stepBack => 'Previous hop';
+  String get pathMap_stepBack => 'Предыдущий хоп';
 
   @override
-  String get pathMap_stepForward => 'Next hop';
+  String get pathMap_stepForward => 'Следующий хоп';
 
   @override
-  String get pathMap_animationOn => 'Show packet animation';
+  String get pathMap_animationOn => 'Показать анимацию пакета';
 
   @override
-  String get pathMap_animationOff => 'Hide packet animation';
+  String get pathMap_animationOff => 'Скрыть анимацию пакета';
 
   @override
   String pathMap_hopOf(int current, int total) {
-    return 'Hop $current of $total';
+    return 'Хоп $current из $total';
   }
 
   @override
   String pathMap_observedPaths(int count) {
-    return 'Observed paths: $count';
+    return 'Наблюдаемые маршруты: $count';
   }
 
   @override
-  String get pathMap_primary => 'Primary';
+  String get pathMap_primary => 'Основной';
 
   @override
   String pathMap_alternate(int index) {
-    return 'Alt $index';
+    return 'Альт $index';
   }
 
   @override
@@ -4771,8 +4824,10 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops',
-      one: '1 hop',
+      other: '$count хопов',
+      many: '$count хопов',
+      few: '$count хопа',
+      one: '$count хоп',
     );
     return '$_temp0';
   }
@@ -4783,14 +4838,14 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get pathMap_legendShared => 'Shared segment';
+  String get pathMap_legendShared => 'Общий сегмент';
 
   @override
-  String get pathMap_legendEstimated => 'Estimated segment';
+  String get pathMap_legendEstimated => 'Расчётный сегмент';
 
   @override
   String pathMap_sharedNodeCount(int count) {
-    return 'Used by $count paths';
+    return 'Используется в $count маршрутах';
   }
 
   @override
@@ -4798,33 +4853,35 @@ class AppLocalizationsRu extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops have no location — the shown path is partial',
-      one: '1 hop has no location — the shown path is partial',
+      other: '$count хопов не имеют координат — показанный путь неполный',
+      many: '$count хопов не имеют координат — показанный путь неполный',
+      few: '$count хопа не имеют координат — показанный путь неполный',
+      one: '$count хоп не имеет координат — показанный путь неполный',
     );
     return '$_temp0';
   }
 
   @override
-  String get pathMap_showAllPaths => 'Show all';
+  String get pathMap_showAllPaths => 'Показать всё';
 
   @override
-  String get pathMap_hidePath => 'Hide path';
+  String get pathMap_hidePath => 'Скрыть путь';
 
   @override
-  String get pathMap_showPath => 'Show path';
+  String get pathMap_showPath => 'Показать маршрут';
 
   @override
-  String get pathMap_collapsePanel => 'Collapse panel';
+  String get pathMap_collapsePanel => 'Скрыть панель';
 
   @override
-  String get pathMap_expandPanel => 'Expand panel';
+  String get pathMap_expandPanel => 'Расширить панель';
 
   @override
-  String get pathMap_noLocation => 'No location';
+  String get pathMap_noLocation => 'Нет координат';
 
   @override
-  String get pathMap_followPacket => 'Lock view to packet';
+  String get pathMap_followPacket => 'Следить за пакетом';
 
   @override
-  String get pathMap_unfollowPacket => 'Unlock view from packet';
+  String get pathMap_unfollowPacket => 'Не следить за пакетом';
 }

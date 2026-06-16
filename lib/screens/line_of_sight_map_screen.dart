@@ -430,6 +430,7 @@ class _LineOfSightMapScreenState extends State<LineOfSightMapScreen> {
               minZoom: _mapMinZoom,
               maxZoom: _mapMaxZoom,
               onLongPress: (_, point) => _addCustomPoint(point),
+              onSecondaryTap: (_, point) => _addCustomPoint(point),
               onPositionChanged: (camera, hasGesture) {
                 final shouldShow = camera.zoom >= _labelZoomThreshold;
                 if (!_didReceivePositionUpdate ||

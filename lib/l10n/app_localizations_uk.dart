@@ -321,7 +321,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get scanner_bluetoothWebUnsupported =>
-      'Bluetooth isn\'t available in the browser. Connect over USB instead.';
+      'Bluetooth недоступний у браузері. Підключіться через USB.';
 
   @override
   String get device_quickSwitch => 'Швидке перемикання';
@@ -366,6 +366,45 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get settings_radioSettingsUpdated => 'Налаштування радіо оновлено';
+
+  @override
+  String get settings_regionSettings => 'Regions';
+
+  @override
+  String get settings_regionSettingsSubtitle => 'Manage stored regions';
+
+  @override
+  String get settings_regionManagement_screenTitle => 'Region Management';
+
+  @override
+  String get settings_regionNameHint => 'Enter region name';
+
+  @override
+  String get settings_regionAddRegion => 'Add region';
+
+  @override
+  String get settings_regionFetchRegions => 'Fetch regions from repeaters';
+
+  @override
+  String get settings_regionFetchRegionsFail => 'No regions were found';
+
+  @override
+  String get settings_regionFetchRegionsAlreadyExists =>
+      'This region has already been added';
+
+  @override
+  String get settings_regionName => 'Region Name';
+
+  @override
+  String get settings_regionDeleted => 'Region deleted';
+
+  @override
+  String get settings_deleteRegion => 'Delete Region';
+
+  @override
+  String settings_deleteRegionConfirm(String region) {
+    return 'Remove \"$region\" from region list?';
+  }
 
   @override
   String get settings_location => 'Геопозиція';
@@ -1321,6 +1360,20 @@ class AppLocalizationsUk extends AppLocalizations {
   String get channels_hashtagHint => 'напр. #команда';
 
   @override
+  String channels_regionSetTo(String region) {
+    return 'Region: $region';
+  }
+
+  @override
+  String get channels_regionNotSet => 'Region: none';
+
+  @override
+  String get channels_regionSelect_Title => 'Select a region';
+
+  @override
+  String get channels_clearRegion => 'Clear region';
+
+  @override
   String get chat_noMessages => 'Поки немає повідомлень.';
 
   @override
@@ -1737,37 +1790,37 @@ class AppLocalizationsUk extends AppLocalizations {
   String get map_title => 'Карта вузлів';
 
   @override
-  String get map_searchHint => 'Search node name or ID';
+  String get map_searchHint => 'Назва або ID вузла';
 
   @override
-  String get map_activity => 'Activity';
+  String get map_activity => 'Активність';
 
   @override
-  String get map_online => 'Online';
+  String get map_online => 'Онлайн';
 
   @override
-  String get map_recent => 'Recent';
+  String get map_recent => 'Нещодавні';
 
   @override
-  String get map_stale => 'Stale';
+  String get map_stale => 'Застаріло';
 
   @override
-  String get map_visible => 'Visible';
+  String get map_visible => 'Видимий';
 
   @override
-  String get map_hidden => 'Hidden';
+  String get map_hidden => 'Прихований';
 
   @override
-  String get map_centerOnNode => 'Center on node';
+  String get map_centerOnNode => 'Центрувати на вузлі';
 
   @override
-  String get map_details => 'Details';
+  String get map_details => 'Деталі';
 
   @override
-  String get map_noGps => 'No GPS';
+  String get map_noGps => 'Без GPS';
 
   @override
-  String get map_noResults => 'No matching nodes';
+  String get map_noResults => 'Не знайдено відповідних вузлів';
 
   @override
   String get map_lineOfSight => 'Пряма видимість';
@@ -4721,48 +4774,48 @@ class AppLocalizationsUk extends AppLocalizations {
   String get pathTrace_legendInferred => 'Висновок щодо положення';
 
   @override
-  String get pathMap_viewSingle => 'Single';
+  String get pathMap_viewSingle => 'Один';
 
   @override
-  String get pathMap_viewCombined => 'Combined';
+  String get pathMap_viewCombined => 'Об\'єднаний';
 
   @override
-  String get pathMap_play => 'Play';
+  String get pathMap_play => 'Відтворити';
 
   @override
-  String get pathMap_pause => 'Pause';
+  String get pathMap_pause => 'Призупинити';
 
   @override
-  String get pathMap_replay => 'Replay';
+  String get pathMap_replay => 'Повтор';
 
   @override
-  String get pathMap_stepBack => 'Previous hop';
+  String get pathMap_stepBack => 'Попередній перехід';
 
   @override
-  String get pathMap_stepForward => 'Next hop';
+  String get pathMap_stepForward => 'Наступний перехід';
 
   @override
-  String get pathMap_animationOn => 'Show packet animation';
+  String get pathMap_animationOn => 'Відобразити анімацію пакета';
 
   @override
-  String get pathMap_animationOff => 'Hide packet animation';
+  String get pathMap_animationOff => 'Приховати анімацію пакета';
 
   @override
   String pathMap_hopOf(int current, int total) {
-    return 'Hop $current of $total';
+    return 'Перехід $current з $total';
   }
 
   @override
   String pathMap_observedPaths(int count) {
-    return 'Observed paths: $count';
+    return 'Зафіксовані маршрути: $count';
   }
 
   @override
-  String get pathMap_primary => 'Primary';
+  String get pathMap_primary => 'Основний';
 
   @override
   String pathMap_alternate(int index) {
-    return 'Alt $index';
+    return 'Альт. $index';
   }
 
   @override
@@ -4770,8 +4823,10 @@ class AppLocalizationsUk extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops',
-      one: '1 hop',
+      other: '$count переходів',
+      many: '$count переходів',
+      few: '$count переходи',
+      one: '1 перехід',
     );
     return '$_temp0';
   }
@@ -4782,14 +4837,14 @@ class AppLocalizationsUk extends AppLocalizations {
   }
 
   @override
-  String get pathMap_legendShared => 'Shared segment';
+  String get pathMap_legendShared => 'Об\'єднаний сегмент';
 
   @override
-  String get pathMap_legendEstimated => 'Estimated segment';
+  String get pathMap_legendEstimated => 'Орієнтовний сегмент';
 
   @override
   String pathMap_sharedNodeCount(int count) {
-    return 'Used by $count paths';
+    return 'Використовується $count шляхами';
   }
 
   @override
@@ -4797,33 +4852,36 @@ class AppLocalizationsUk extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '$count hops have no location — the shown path is partial',
-      one: '1 hop has no location — the shown path is partial',
+      other:
+          '$count переходів не мають геопозиції — показаний шлях є частковим',
+      many: '$count переходів не мають геопозиції — показаний шлях є частковим',
+      few: '$count переходи не мають геопозиції — показаний шлях є частковим',
+      one: '1 перехід не має геопозиції — показаний шлях є частковим',
     );
     return '$_temp0';
   }
 
   @override
-  String get pathMap_showAllPaths => 'Show all';
+  String get pathMap_showAllPaths => 'Показати все';
 
   @override
-  String get pathMap_hidePath => 'Hide path';
+  String get pathMap_hidePath => 'Приховати шлях';
 
   @override
-  String get pathMap_showPath => 'Show path';
+  String get pathMap_showPath => 'Показати шлях';
 
   @override
-  String get pathMap_collapsePanel => 'Collapse panel';
+  String get pathMap_collapsePanel => 'Згорнути панель';
 
   @override
-  String get pathMap_expandPanel => 'Expand panel';
+  String get pathMap_expandPanel => 'Розгорнути панель';
 
   @override
-  String get pathMap_noLocation => 'No location';
+  String get pathMap_noLocation => 'Без геопозиції';
 
   @override
-  String get pathMap_followPacket => 'Lock view to packet';
+  String get pathMap_followPacket => 'Прив\'язати вигляд до пакету';
 
   @override
-  String get pathMap_unfollowPacket => 'Unlock view from packet';
+  String get pathMap_unfollowPacket => 'Відв\'язати вигляд від пакету';
 }

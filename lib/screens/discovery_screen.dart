@@ -160,13 +160,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           settings.discoveredContactTapAction,
                           index,
                         );
-                        if (PlatformInfo.isDesktop) {
-                          return GestureDetector(
-                            onSecondaryTapUp: (_) =>
-                                _showContactContextMenu(contact, connector),
-                            child: tile,
-                          );
-                        }
                         return tile;
                       },
                     ),
@@ -194,6 +187,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       child: MeshCard(
         onTap: () => _handleContactTap(contact, connector, tapAction),
         onLongPress: () => _showContactContextMenu(contact, connector),
+        onSecondaryTap: PlatformInfo.isDesktop
+            ? () => _showContactContextMenu(contact, connector)
+            : null,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [

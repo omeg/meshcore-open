@@ -1560,114 +1560,136 @@ class _ChannelMessagePathMapScreenState
             border: Border.all(color: MeshPalette.line2),
           ),
           clipBehavior: Clip.antiAlias,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
-                child: Row(
+          child: DefaultTextStyle(
+            style: const TextStyle(color: MeshPalette.ink),
+            child: IconTheme(
+              data: const IconThemeData(color: MeshPalette.ink),
+              child: TextButtonTheme(
+                data: TextButtonThemeData(
+                  style: TextButton.styleFrom(foregroundColor: MeshPalette.ink),
+                ),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 4, 0),
+                      child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  l10n.channelPath_repeaterHops,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        l10n.channelPath_repeaterHops,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                    Text(
+                                      formatDistance(
+                                        selectedDisplay?.distanceMeters ??
+                                            _pathDistance,
+                                        isImperial: isImperial,
+                                      ),
+                                      style: MeshTheme.mono(
+                                        fontSize: 12,
+                                        color: MeshPalette.ink2,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              Text(
-                                formatDistance(
-                                  selectedDisplay?.distanceMeters ??
-                                      _pathDistance,
-                                  isImperial: isImperial,
+                                const SizedBox(height: 4),
+                                PathMiniLegend(
+                                  combined: combined,
+                                  showInferred: false,
                                 ),
-                                style: MeshTheme.mono(
-                                  fontSize: 12,
-                                  color: MeshPalette.ink2,
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          const SizedBox(height: 4),
-                          PathMiniLegend(
-                            combined: combined,
-                            showInferred: false,
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            icon: Icon(
+                              _panelCollapsed
+                                  ? Icons.expand_less
+                                  : Icons.expand_more,
+                              size: 20,
+                            ),
+                            tooltip: _panelCollapsed
+                                ? l10n.pathMap_expandPanel
+                                : l10n.pathMap_collapsePanel,
+                            onPressed: () => setState(
+                              () => _panelCollapsed = !_panelCollapsed,
+                            ),
                           ),
                         ],
                       ),
                     ),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      icon: Icon(
-                        _panelCollapsed ? Icons.expand_less : Icons.expand_more,
-                        size: 20,
-                      ),
-                      tooltip: _panelCollapsed
-                          ? l10n.pathMap_expandPanel
-                          : l10n.pathMap_collapsePanel,
-                      onPressed: () =>
-                          setState(() => _panelCollapsed = !_panelCollapsed),
+                    PathAnimationControls(
+                      playback: _playback,
+                      selected: selectedDisplay,
+                      animationEnabled: _animationEnabled,
+                      onToggleAnimation: () => setState(() {
+                        _animationEnabled = !_animationEnabled;
+                        if (!_animationEnabled) _playback.stop();
+                      }),
+                      followEnabled: _followPacket,
+                      onToggleFollow: _toggleFollowPacket,
                     ),
+                    if (!_panelCollapsed) ...[
+                      if (selectedDisplay != null &&
+                          selectedDisplay.unresolvedHops > 0)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
+                          child: Text(
+                            l10n.pathMap_partialAnimation(
+                              selectedDisplay.unresolvedHops,
+                            ),
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              color: MeshPalette.warn,
+                            ),
+                          ),
+                        ),
+                      if (combined)
+                        PathSummaryList(
+                          paths: entries.map((e) => e.display).toList(),
+                          selectedId: selectedDisplay?.id ?? '',
+                          hiddenIds: _hiddenPathIds,
+                          isImperial: isImperial,
+                          onSelect: (display) {
+                            for (final entry in entries) {
+                              if (entry.display.id == display.id) {
+                                _selectEntry(entry);
+                                break;
+                              }
+                            }
+                          },
+                          onToggleVisibility: (display) =>
+                              _togglePathVisibility(
+                                display,
+                                entries,
+                                selectedDisplay,
+                              ),
+                          onShowAll: () => setState(_hiddenPathIds.clear),
+                        ),
+                      const Divider(height: 1),
+                      Expanded(
+                        child: _buildHopListView(
+                          hops,
+                          selectedDisplay,
+                          hopUseCount,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
-              PathAnimationControls(
-                playback: _playback,
-                selected: selectedDisplay,
-                animationEnabled: _animationEnabled,
-                onToggleAnimation: () => setState(() {
-                  _animationEnabled = !_animationEnabled;
-                  if (!_animationEnabled) _playback.stop();
-                }),
-                followEnabled: _followPacket,
-                onToggleFollow: _toggleFollowPacket,
-              ),
-              if (!_panelCollapsed) ...[
-                if (selectedDisplay != null &&
-                    selectedDisplay.unresolvedHops > 0)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 4),
-                    child: Text(
-                      l10n.pathMap_partialAnimation(
-                        selectedDisplay.unresolvedHops,
-                      ),
-                      style: TextStyle(fontSize: 10.5, color: MeshPalette.warn),
-                    ),
-                  ),
-                if (combined)
-                  PathSummaryList(
-                    paths: entries.map((e) => e.display).toList(),
-                    selectedId: selectedDisplay?.id ?? '',
-                    hiddenIds: _hiddenPathIds,
-                    isImperial: isImperial,
-                    onSelect: (display) {
-                      for (final entry in entries) {
-                        if (entry.display.id == display.id) {
-                          _selectEntry(entry);
-                          break;
-                        }
-                      }
-                    },
-                    onToggleVisibility: (display) => _togglePathVisibility(
-                      display,
-                      entries,
-                      selectedDisplay,
-                    ),
-                    onShowAll: () => setState(_hiddenPathIds.clear),
-                  ),
-                const Divider(height: 1),
-                Expanded(
-                  child: _buildHopListView(hops, selectedDisplay, hopUseCount),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),

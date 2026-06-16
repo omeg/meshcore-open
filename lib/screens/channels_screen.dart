@@ -391,13 +391,30 @@ class _ChannelsScreenState extends State<ChannelsScreen>
       _communityIndex,
     );
     final bool isCommunityChannel = Channel.isCommunityChannel(channelType);
+    final community = isCommunityChannel
+        ? _communityIndex.getCommunityForChannel(channel)
+        : null;
+    // Only flood-routed channels carry a region; show it when one is set.
+    String subtitle = connector.hasChannelRegion(channel.index)
+        ? context.l10n.channels_regionSetTo(
+            connector.getChannelRegion(channel.index),
+          )
+        : '';
     switch (channelType) {
       case ChannelType.communityPublic:
         icon = Icons.groups;
         iconColor = MeshPalette.magenta;
+        if (community != null) {
+          subtitle =
+              '${context.l10n.community_publicChannel} • ${community.name}';
+        }
       case ChannelType.communityHashtag:
         icon = Icons.groups;
         iconColor = MeshPalette.magenta;
+        if (community != null) {
+          subtitle =
+              '${context.l10n.community_hashtagChannel} • ${community.name}';
+        }
       case ChannelType.public:
         icon = Icons.public;
         iconColor = MeshPalette.signal;
@@ -446,130 +463,151 @@ class _ChannelsScreenState extends State<ChannelsScreen>
           channelMessageStore,
           channel,
         ),
-        child: GestureDetector(
-          onSecondaryTapUp: PlatformInfo.isDesktop
-              ? (_) => _showChannelActions(
-                  this.context,
-                  connector,
-                  channelMessageStore,
-                  channel,
-                )
-              : null,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Leading avatar with optional community badge
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  AvatarCircle(
-                    name: channelLabel,
-                    size: 42,
-                    color: iconColor,
-                    icon: icon,
-                  ),
-                  if (isCommunityChannel)
-                    Positioned(
-                      right: -2,
-                      bottom: -2,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: BoxDecoration(
-                          color: MeshPalette.magenta,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerLow,
-                            width: 2,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.people,
-                          size: 8,
-                          color: Colors.white,
+        onSecondaryTap: PlatformInfo.isDesktop
+            ? () => _showChannelActions(
+                this.context,
+                connector,
+                channelMessageStore,
+                channel,
+              )
+            : null,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Leading avatar with optional community badge
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                AvatarCircle(
+                  name: channelLabel,
+                  size: 42,
+                  color: iconColor,
+                  icon: icon,
+                ),
+                if (isCommunityChannel)
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 16,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: MeshPalette.magenta,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerLow,
+                          width: 2,
                         ),
                       ),
+                      child: const Icon(
+                        Icons.people,
+                        size: 8,
+                        color: Colors.white,
+                      ),
                     ),
-                ],
-              ),
-              const SizedBox(width: 12),
-              // Title + subtitle
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                  ),
+              ],
+            ),
+            const SizedBox(width: 12),
+            // Title + subtitle + ch chip
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          channelLabel,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      StatusChip(
+                        label: 'CH ${channel.index}',
+                        color: MeshPalette.blue,
+                        fontSize: 10,
+                      ),
+                    ],
+                  ),
+                  if (subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      channelLabel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w500,
+                      subtitle,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: scheme.onSurfaceVariant,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (lastPreview.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        lastPreview,
-                        style: MeshTheme.mono(
-                          fontSize: 11.5,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
                   ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Right side: time + unread badge + muted + drag handle
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (lastTime != null)
+                  if (lastPreview.isNotEmpty) ...[
+                    const SizedBox(height: 2),
                     Text(
-                      _relativeTime(lastTime),
+                      lastPreview,
                       style: MeshTheme.mono(
-                        fontSize: 11,
+                        fontSize: 11.5,
                         color: scheme.onSurfaceVariant,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  const SizedBox(height: 4),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (isMuted) ...[
-                        Icon(
-                          Icons.notifications_off,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                      ],
-                      if (unreadCount > 0) UnreadBadge(count: unreadCount),
-                    ],
-                  ),
+                  ],
                 ],
               ),
-              if (showDragHandle && dragIndex != null) ...[
-                const SizedBox(width: 4),
-                ReorderableDragStartListener(
-                  index: dragIndex,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: Icon(
-                      Icons.drag_handle,
+            ),
+            const SizedBox(width: 8),
+            // Right side: time + unread badge + muted + drag handle
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (lastTime != null)
+                  Text(
+                    _relativeTime(lastTime),
+                    style: MeshTheme.mono(
+                      fontSize: 11,
                       color: scheme.onSurfaceVariant,
                     ),
                   ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isMuted) ...[
+                      Icon(
+                        Icons.notifications_off,
+                        size: 14,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 4),
+                    ],
+                    if (unreadCount > 0) UnreadBadge(count: unreadCount),
+                  ],
                 ),
               ],
+            ),
+            if (showDragHandle && dragIndex != null) ...[
+              const SizedBox(width: 4),
+              ReorderableDragStartListener(
+                index: dragIndex,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Icon(
+                    Icons.drag_handle,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );

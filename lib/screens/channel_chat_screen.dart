@@ -45,6 +45,8 @@ import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
+import 'region_management_screen.dart';
+import '../storage/region_store.dart';
 
 class ChannelChatScreen extends StatefulWidget {
   final Channel channel;
@@ -276,46 +278,63 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            _channelIcon(widget.channel),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.channel.name.isEmpty
-                        ? context.l10n.channels_channelIndex(
-                            widget.channel.index,
-                          )
-                        : widget.channel.name,
-                    style: const TextStyle(fontSize: 16),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Consumer<MeshCoreConnector>(
-                    builder: (context, connector, _) {
-                      final unreadCount = connector
-                          .getUnreadCountForChannelIndex(widget.channel.index);
-                      final privacy = widget.channel.isPublicChannel
-                          ? context.l10n.channels_public
-                          : context.l10n.channels_private;
-                      return Text(
-                        '$privacy • ${context.l10n.chat_unread(unreadCount)}',
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 12),
-                      );
-                    },
-                  ),
-                ],
+        title: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => openRegionSelectDialog(widget.channel),
+          child: Row(
+            children: [
+              _channelIcon(widget.channel),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.channel.name.isEmpty
+                          ? context.l10n.channels_channelIndex(
+                              widget.channel.index,
+                            )
+                          : widget.channel.name,
+                      style: const TextStyle(fontSize: 16),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Consumer<MeshCoreConnector>(
+                      builder: (context, connector, _) {
+                        final unreadCount = connector
+                            .getUnreadCountForChannelIndex(
+                              widget.channel.index,
+                            );
+                        final privacy = widget.channel.isPublicChannel
+                            ? context.l10n.channels_public
+                            : context.l10n.channels_private;
+                        final region = connector.getChannelRegion(
+                          widget.channel.index,
+                        );
+                        final regionText = region.isNotEmpty
+                            ? ' • ${context.l10n.channels_regionSetTo(region)}'
+                            : '';
+                        return Text(
+                          '$privacy • ${context.l10n.chat_unread(unreadCount)}$regionText',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 12),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         centerTitle: false,
         bottom: const SyncProgressAppBarBottom(),
         actions: [
+          IconButton(
+            tooltip: context.l10n.channels_regionSelect_Title,
+            icon: const Icon(Icons.landscape),
+            onPressed: () => openRegionSelectDialog(widget.channel),
+          ),
           const RadioStatsIconButton(),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),
@@ -660,6 +679,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                     fontStyle: FontStyle.italic,
                                     color: textColor.withValues(alpha: 0.72),
                                   ),
+                                  onSecondaryTap: PlatformInfo.isDesktop
+                                      ? () => _showMessageActions(message)
+                                      : null,
                                 ),
                               ),
                             ],
@@ -672,17 +694,25 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                                 : EdgeInsets.zero,
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  context.l10n.channels_via(
-                                    _formatPathPrefixes(
-                                      displayPath,
-                                      displayPathHashWidth,
+                                RouteChip(
+                                  isDirect: (message.pathLength ?? -1) >= 0,
+                                  hops: displayHopCount,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    context.l10n.channels_via(
+                                      _formatPathPrefixes(
+                                        displayPath,
+                                        displayPathHashWidth,
+                                      ),
                                     ),
-                                  ),
-                                  style: MeshTheme.mono(
-                                    fontSize: 9.5 * textScale,
-                                    color: metaColor,
+                                    style: MeshTheme.mono(
+                                      fontSize: 9.5 * textScale,
+                                      color: metaColor,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -1641,6 +1671,118 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       h = (h * 31 + c) & 0x7fffffff;
     }
     return hues[h % hues.length];
+  }
+
+  Future<void> openRegionSelectDialog(Channel channel) async {
+    // The AppBar subtitle reads the region from the connector inside a
+    // Consumer, so setChannelRegion's notifyListeners refreshes it directly —
+    // no post-dialog setState needed.
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) => _RegionSelectDialog(channel: channel),
+    );
+  }
+}
+
+class _RegionSelectDialog extends StatefulWidget {
+  final Channel channel;
+
+  const _RegionSelectDialog({required this.channel});
+
+  @override
+  State<_RegionSelectDialog> createState() => _RegionSelectDialogState();
+}
+
+class _RegionSelectDialogState extends State<_RegionSelectDialog> {
+  final RegionStore regionStore = RegionStore();
+
+  List<Region> regions = [];
+  int selectedIndex = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    loadRegions();
+  }
+
+  void loadRegions() {
+    setState(() {
+      regions = regionStore.loadRegions();
+      final channelRegion = context.read<MeshCoreConnector>().getChannelRegion(
+        widget.channel.index,
+      );
+      selectedIndex = regions.indexOf(channelRegion);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AppBar(
+              backgroundColor: Colors.transparent,
+              title: Text(context.l10n.channels_regionSelect_Title),
+              centerTitle: true,
+              actions: [
+                IconButton(
+                  tooltip: context.l10n.channels_clearRegion,
+                  icon: const Icon(Icons.backspace_outlined),
+                  onPressed: () {
+                    context.read<MeshCoreConnector>().setChannelRegion(
+                      widget.channel.index,
+                      '',
+                    );
+                    Navigator.pop(context);
+                  },
+                ),
+                IconButton(
+                  tooltip: context.l10n.settings_regionSettingsSubtitle,
+                  icon: const Icon(Icons.settings),
+                  onPressed: () async {
+                    await pushRegionManagementScreen(context);
+                    if (!mounted) return;
+                    loadRegions();
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 15),
+            Expanded(
+              child: ListView.builder(
+                itemCount: regions.length,
+                itemBuilder: (context, index) {
+                  final selected = selectedIndex == index;
+                  return ListTile(
+                    leading: Icon(
+                      Icons.landscape,
+                      color: selected ? MeshPalette.blue : null,
+                    ),
+                    title: Text(regions[index]),
+                    trailing: selected
+                        ? const Icon(Icons.check, color: MeshPalette.blue)
+                        : null,
+                    tileColor: selected ? MeshPalette.blueBg : null,
+                    onTap: () {
+                      // Tapping the already-selected region clears it.
+                      context.read<MeshCoreConnector>().setChannelRegion(
+                        widget.channel.index,
+                        selected ? '' : regions[index],
+                      );
+                      Navigator.pop(context);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

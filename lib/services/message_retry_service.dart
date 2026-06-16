@@ -227,7 +227,13 @@ class MessageRetryService extends ChangeNotifier {
   void _onMessageResolved(String messageId, String contactKey) {
     if (_resolvedMessages.contains(messageId)) return;
     _resolvedMessages.add(messageId);
-    _activeMessages.remove(messageId);
+    // If cleanup already removed this message from the active set, it has
+    // already pumped the queues; avoid double-pumping.
+    if (!_activeMessages.remove(messageId)) return;
+    _pumpQueues(contactKey);
+  }
+
+  void _pumpQueues(String contactKey) {
     // Pump this contact's queue first, then any other contacts that are waiting.
     _sendNextForContact(contactKey);
     for (final key in _sendQueue.keys) {
@@ -495,11 +501,17 @@ class MessageRetryService extends ChangeNotifier {
       (_, mapping) => mapping.messageId == messageId,
     );
     _expectedHashToMessageId.removeWhere((_, msgId) => msgId == messageId);
+    final contactKey = _pendingContacts[messageId]?.publicKeyHex;
     _pendingMessages.remove(messageId);
     _pendingContacts.remove(messageId);
     _attemptPathHistory.remove(messageId);
     _timeoutTimers.remove(messageId);
     _resolvedMessages.remove(messageId);
+    // Cancellation (and other cleanup paths) must release the active in-flight
+    // slot and pump waiting queues so the global cap does not stall forever.
+    if (_activeMessages.remove(messageId) && contactKey != null) {
+      _pumpQueues(contactKey);
+    }
   }
 
   void _handleTimeout(String messageId) {

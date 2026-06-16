@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:crypto/crypto.dart' as crypto;
+import 'package:meshcore_open/storage/region_store.dart';
 import 'package:pointycastle/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
@@ -36,6 +37,7 @@ import 'meshcore_connector_tcp.dart';
 import '../storage/channel_message_store.dart';
 import '../storage/channel_order_store.dart';
 import '../storage/channel_settings_store.dart';
+import '../storage/channel_region_store.dart';
 import '../storage/channel_store.dart';
 import '../storage/contact_discovery_store.dart';
 import '../storage/contact_settings_store.dart';
@@ -362,6 +364,10 @@ class MeshCoreConnector extends ChangeNotifier {
   // Serializes path operations (setContactPath/clearContactPath) to prevent
   // interleaved async calls from leaving in-memory state inconsistent with device.
   Future<void> _pathOpLock = Future.value();
+  // Flood scope is a global firmware setting, so scoped channel sends must not
+  // overlap or a message may inherit another channel's region.
+  Future<void> _channelScopedSendLock = Future.value();
+  static const Duration _commandAckTimeout = Duration(seconds: 5);
   Map<String, String>? _currentCustomVars;
 
   /// Maps repeater pubkey-prefix hex (12 hex chars = first 6 bytes) → the
@@ -401,6 +407,7 @@ class MeshCoreConnector extends ChangeNotifier {
   final MessageStore _messageStore = MessageStore();
   final ChannelOrderStore _channelOrderStore = ChannelOrderStore();
   final ChannelSettingsStore _channelSettingsStore = ChannelSettingsStore();
+  final ChannelRegionStore _channelRegionStore = ChannelRegionStore();
   final ContactSettingsStore _contactSettingsStore = ContactSettingsStore();
   final ContactStore _contactStore = ContactStore();
   final ContactDiscoveryStore _discoveryContactStore = ContactDiscoveryStore();
@@ -410,6 +417,7 @@ class MeshCoreConnector extends ChangeNotifier {
   final Map<int, bool> _channelSmazEnabled = {};
   final Map<int, bool> _channelCyr2LatEnabled = {};
   final Map<int, String?> _channelCyr2LatProfileId = {};
+  final Map<int, Region> _channelRegions = {};
   bool _lastSentWasCliCommand =
       false; // Track if last sent message was a CLI command
   final Map<String, bool> _contactSmazEnabled = {};
@@ -815,6 +823,14 @@ class MeshCoreConnector extends ChangeNotifier {
     return _contactSmazEnabled[contactKeyHex] ?? false;
   }
 
+  bool hasChannelRegion(int channelIndex) {
+    return (_channelRegions[channelIndex] ?? '').isNotEmpty;
+  }
+
+  Region getChannelRegion(int channelIndex) {
+    return _channelRegions[channelIndex] ?? '';
+  }
+
   void ensureContactSmazSettingLoaded(String contactKeyHex) {
     _ensureContactSmazSettingLoaded(contactKeyHex);
   }
@@ -966,6 +982,14 @@ class MeshCoreConnector extends ChangeNotifier {
     _contactCyr2LatEnabled[contactKeyHex] = enabled;
     await _contactSettingsStore.saveCyr2LatEnabled(contactKeyHex, enabled);
     notifyListeners();
+  }
+
+  Future<void> setChannelRegion(int channelIndex, String region) async {
+    // Update in-memory state and notify synchronously so the UI reflects the
+    // change immediately; persistence happens in the background.
+    _channelRegions[channelIndex] = region;
+    notifyListeners();
+    await _channelRegionStore.saveRegion(channelIndex, region);
   }
 
   Future<void> _loadChannelOrder() async {
@@ -1127,11 +1151,13 @@ class MeshCoreConnector extends ChangeNotifier {
   Future<void> loadChannelSettings({int? maxChannels}) async {
     _channelSmazEnabled.clear();
     _channelCyr2LatEnabled.clear();
+    _channelRegions.clear();
     final channelCount = maxChannels ?? _maxChannels;
     for (int i = 0; i < channelCount; i++) {
       _channelSmazEnabled[i] = await _channelSettingsStore.loadSmazEnabled(i);
       _channelCyr2LatEnabled[i] = await _channelSettingsStore
           .loadCyr2LatEnabled(i);
+      _channelRegions[i] = await _channelRegionStore.loadRegion(i);
     }
   }
 
@@ -3557,12 +3583,15 @@ class MeshCoreConnector extends ChangeNotifier {
       // Send the reaction to the device (don't add as a visible message)
       final reactionQueueId = _nextReactionSendQueueId();
       _pendingChannelSentQueue.add(reactionQueueId);
-      await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
-      await sendFrame(
-        buildSendChannelTextMsgFrame(channel.index, text),
-        channelSendQueueId: reactionQueueId,
-        expectsGenericAck: true,
-      );
+      await _runScopedChannelSend(() async {
+        await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+        await _sendFrameAndWaitForCommandAck(
+          buildSendChannelTextMsgFrame(channel.index, text),
+          channelSendQueueId: reactionQueueId,
+          expectsGenericAck: true,
+          successCode: respCodeSent,
+        );
+      }, region: getChannelRegion(channel.index));
       return;
     }
 
@@ -3579,12 +3608,97 @@ class MeshCoreConnector extends ChangeNotifier {
     notifyListeners();
 
     final outboundText = prepareChannelOutboundText(channel.index, text);
-    await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
-    await sendFrame(
-      buildSendChannelTextMsgFrame(channel.index, outboundText),
-      channelSendQueueId: message.messageId,
-      expectsGenericAck: true,
-    );
+    await _runScopedChannelSend(() async {
+      await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
+      await _sendFrameAndWaitForCommandAck(
+        buildSendChannelTextMsgFrame(channel.index, outboundText),
+        channelSendQueueId: message.messageId,
+        expectsGenericAck: true,
+        successCode: respCodeSent,
+      );
+    }, region: getChannelRegion(channel.index));
+  }
+
+  Future<void> _runScopedChannelSend(
+    Future<void> Function() action, {
+    required String region,
+  }) async {
+    final prev = _channelScopedSendLock;
+    final completer = Completer<void>();
+    _channelScopedSendLock = completer.future;
+    await prev;
+
+    try {
+      // Only touch the global flood scope for region-scoped channels. Plain
+      // channels send exactly as before, which also stays compatible with
+      // firmware that predates CMD_SET_FLOOD_SCOPE. The lock is still held so an
+      // unscoped send can't interleave with (and inherit the scope of) a
+      // concurrent scoped send.
+      if (region.isEmpty) {
+        await action();
+        return;
+      }
+      await _sendFrameAndWaitForCommandAck(buildSetFloodScopeFrame(region));
+      try {
+        await action();
+      } finally {
+        if (isConnected) {
+          await _sendFrameAndWaitForCommandAck(buildSetFloodScopeFrame(''));
+        }
+      }
+    } finally {
+      completer.complete();
+    }
+  }
+
+  // Sends [data] and resolves once the device replies. [successCode] is the
+  // response code that signals success for this frame: SET_FLOOD_SCOPE replies
+  // with RESP_CODE_OK, whereas a channel text send replies with RESP_CODE_SENT.
+  // Waiting for the text send's RESP_CODE_SENT before the scope is reset
+  // guarantees the firmware has already built the packet with the active scope.
+  Future<void> _sendFrameAndWaitForCommandAck(
+    Uint8List data, {
+    String? channelSendQueueId,
+    bool expectsGenericAck = false,
+    int successCode = respCodeOk,
+  }) async {
+    final completer = Completer<void>();
+    late final StreamSubscription<Uint8List> subscription;
+    late final Timer timeout;
+
+    void complete() {
+      if (!completer.isCompleted) completer.complete();
+    }
+
+    void completeError(Object error) {
+      if (!completer.isCompleted) completer.completeError(error);
+    }
+
+    subscription = receivedFrames.listen((frame) {
+      if (frame.isEmpty) return;
+      if (frame[0] == successCode) {
+        complete();
+      } else if (frame[0] == respCodeErr) {
+        final errCode = frame.length > 1 ? frame[1] : -1;
+        completeError(Exception('Command failed with error code $errCode'));
+      }
+    });
+
+    timeout = Timer(_commandAckTimeout, () {
+      completeError(TimeoutException('Command ACK timed out'));
+    });
+
+    try {
+      await sendFrame(
+        data,
+        channelSendQueueId: channelSendQueueId,
+        expectsGenericAck: expectsGenericAck,
+      );
+      await completer.future;
+    } finally {
+      timeout.cancel();
+      await subscription.cancel();
+    }
   }
 
   Future<void> removeContact(Contact contact) async {
@@ -4209,6 +4323,9 @@ class MeshCoreConnector extends ChangeNotifier {
       case pushCodePathUpdated:
         _handlePathUpdated(frame);
         break;
+      case pushCodeControlData:
+        // Optional feature-specific services listen to receivedFrames directly.
+        break;
       case pushCodeLoginSuccess:
         _handleLoginSuccess(frame);
         break;
@@ -4360,6 +4477,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _messageStore.setPublicKeyHex = selfPublicKeyHex;
     _channelOrderStore.setPublicKeyHex = selfPublicKeyHex;
     _channelSettingsStore.setPublicKeyHex = selfPublicKeyHex;
+    _channelRegionStore.setPublicKeyHex = selfPublicKeyHex;
     _contactSettingsStore.setPublicKeyHex = selfPublicKeyHex;
     _contactStore.setPublicKeyHex = selfPublicKeyHex;
     _discoveryContactStore.setPublicKeyHex = selfPublicKeyHex;
@@ -4660,24 +4778,27 @@ class MeshCoreConnector extends ChangeNotifier {
       secondsSinceLastRx: secSinceRx,
     );
     if (mlTimeout != null) {
-      // Use device est_timeout as an additional ceiling when available —
-      // the firmware computed it from real airtime, so it's better than
-      // a physics guess built on a 50 ms fallback.
-      final ceiling = deviceTimeoutMs != null && deviceTimeoutMs > physicsMin
+      // Use device est_timeout as a baseline floor when available —
+      // the firmware computed it from real airtime. Let the learned ML
+      // estimate widen above it up to the hard cap, but never below it.
+      final floor = deviceTimeoutMs != null && deviceTimeoutMs > physicsMin
           ? deviceTimeoutMs.clamp(physicsMin, _hardMaxTimeoutMs)
-          : physicsMax;
+          : physicsMin.clamp(0, _hardMaxTimeoutMs);
       if (pathLength < 0) {
-        // Flood: trust ML, only enforce firmware formula as floor
-        if (mlTimeout < physicsMin) {
-          return physicsMin.clamp(0, _hardMaxTimeoutMs);
+        // Flood: trust ML, only enforce firmware estimate as floor
+        if (mlTimeout < floor) {
+          return floor.clamp(0, _hardMaxTimeoutMs);
         }
       }
-      return mlTimeout.clamp(physicsMin, ceiling).clamp(0, _hardMaxTimeoutMs);
+      return mlTimeout.clamp(floor, _hardMaxTimeoutMs);
     }
 
     // No ML data — prefer device est_timeout (it used real airtime), then physics.
+    // Cap the floor to the hard maximum so slow-flood physicsMin cannot exceed
+    // the upper bound and make clamp() throw.
     if (deviceTimeoutMs != null && deviceTimeoutMs > 0) {
-      return deviceTimeoutMs.clamp(physicsMin, _hardMaxTimeoutMs);
+      final floor = physicsMin.clamp(0, _hardMaxTimeoutMs);
+      return deviceTimeoutMs.clamp(floor, _hardMaxTimeoutMs);
     }
     return physicsMax.clamp(0, _hardMaxTimeoutMs);
   }
