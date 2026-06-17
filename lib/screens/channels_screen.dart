@@ -511,31 +511,19 @@ class _ChannelsScreenState extends State<ChannelsScreen>
               ],
             ),
             const SizedBox(width: 12),
-            // Title + subtitle + ch chip
+            // Title + subtitle
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          channelLabel,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      StatusChip(
-                        label: 'CH ${channel.index}',
-                        color: MeshPalette.blue,
-                        fontSize: 10,
-                      ),
-                    ],
+                  Text(
+                    channelLabel,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   if (subtitle.isNotEmpty) ...[
                     const SizedBox(height: 2),
