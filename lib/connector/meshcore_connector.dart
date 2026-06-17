@@ -32,6 +32,7 @@ import '../services/background_service.dart';
 import '../services/timeout_prediction_service.dart';
 import '../services/translation_service.dart';
 import '../services/notification_service.dart';
+import '../services/state_sync_service.dart';
 import 'meshcore_connector_usb.dart';
 import 'meshcore_connector_tcp.dart';
 import '../storage/channel_message_store.dart';
@@ -400,6 +401,7 @@ class MeshCoreConnector extends ChangeNotifier {
   PathHistoryService? _pathHistoryService;
   AppSettingsService? _appSettingsService;
   BackgroundService? _backgroundService;
+  StateSyncService? _stateSyncService;
   final NotificationService _notificationService = NotificationService();
   BleDebugLogService? _bleDebugLogService;
   AppDebugLogService? _appDebugLogService;
@@ -1059,6 +1061,7 @@ class MeshCoreConnector extends ChangeNotifier {
     AppDebugLogService? appDebugLogService,
     BackgroundService? backgroundService,
     TimeoutPredictionService? timeoutPredictionService,
+    StateSyncService? stateSyncService,
   }) {
     _retryService = retryService;
     _pathHistoryService = pathHistoryService;
@@ -1068,6 +1071,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _appDebugLogService = appDebugLogService;
     _backgroundService = backgroundService;
     _timeoutPredictionService = timeoutPredictionService;
+    _stateSyncService = stateSyncService;
     _usbManager.setDebugLogService(_appDebugLogService);
     _tcpConnector.setDebugLogService(_appDebugLogService);
 
@@ -1124,6 +1128,28 @@ class MeshCoreConnector extends ChangeNotifier {
     );
     final maxRetries = _appSettingsService?.settings.maxMessageRetries ?? 5;
     _retryService?.setMaxRetries(maxRetries);
+  }
+
+  void scheduleStateSyncExport() {
+    _scheduleStateSyncExport();
+  }
+
+  Future<void> flushStateSyncExport() async {
+    await _stateSyncService?.flushPendingExport();
+  }
+
+  Future<bool> importStateSyncNow() async {
+    if (_selfPublicKey == null || _selfPublicKey!.isEmpty) return false;
+    final changed = await _stateSyncService?.importForNode(selfPublicKeyHex);
+    if (changed != true) return false;
+    await _reloadPersistedNodeState();
+    notifyListeners();
+    return true;
+  }
+
+  void _scheduleStateSyncExport() {
+    if (_selfPublicKey == null || _selfPublicKey!.isEmpty) return;
+    _stateSyncService?.scheduleExportForNode(selfPublicKeyHex);
   }
 
   Future<void> loadContactCache() async {
@@ -4484,16 +4510,13 @@ class MeshCoreConnector extends ChangeNotifier {
     _channelStore.setPublicKeyHex = selfPublicKeyHex;
     _unreadStore.setPublicKeyHex = selfPublicKeyHex;
 
-    // Now that we have self info, we can load all the persisted data for this node
-    _loadChannelOrder();
-    loadContactCache();
-    loadChannelSettings();
-    loadCachedChannels();
+    unawaited(_loadPersistedNodeStateAfterSelfInfo());
+  }
 
-    // Load persisted channel messages
-    loadAllChannelMessages();
-    loadUnreadState();
-    _loadDiscoveredContactCache();
+  Future<void> _loadPersistedNodeStateAfterSelfInfo() async {
+    await _stateSyncService?.importForNode(selfPublicKeyHex);
+
+    await _reloadPersistedNodeState();
 
     _awaitingSelfInfo = false;
     _selfInfoRetryTimer?.cancel();
@@ -4502,6 +4525,21 @@ class MeshCoreConnector extends ChangeNotifier {
 
     // Start the serialized initial sync pipeline after SELF_INFO.
     _maybeStartInitialChannelSync();
+  }
+
+  Future<void> _reloadPersistedNodeState() async {
+    // Now that we have self info, load all persisted data for this node.
+    _loadedConversationKeys.clear();
+    _channelMessages.clear();
+    await _loadChannelOrder();
+    await loadContactCache();
+    await loadChannelSettings();
+    await loadCachedChannels();
+
+    // Load persisted channel messages.
+    await loadAllChannelMessages();
+    await loadUnreadState();
+    await _loadDiscoveredContactCache();
   }
 
   void _handleDeviceInfo(Uint8List frame) {
@@ -6837,6 +6875,7 @@ class MeshCoreConnector extends ChangeNotifier {
 
     _notifyListenersDirty = false;
     super.notifyListeners();
+    _scheduleStateSyncExport();
 
     if (_notifyListenersDirty && _notifyListenersTimer == null) {
       _notifyListenersTimer = Timer(

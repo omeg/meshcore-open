@@ -9,8 +9,10 @@ import '../models/app_settings.dart';
 import '../models/translation_support.dart';
 import '../services/app_settings_service.dart';
 import '../services/notification_service.dart';
+import '../services/state_sync_service.dart';
 import '../services/translation_service.dart';
 import '../theme/mesh_theme.dart';
+import '../utils/platform_info.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/sync_progress_overlay.dart';
@@ -31,10 +33,11 @@ class AppSettingsScreen extends StatelessWidget {
       body: SafeArea(
         top: false,
         child:
-            Consumer3<
+            Consumer4<
               AppSettingsService,
               MeshCoreConnector,
-              TranslationService
+              TranslationService,
+              StateSyncService
             >(
               builder:
                   (
@@ -42,6 +45,7 @@ class AppSettingsScreen extends StatelessWidget {
                     settingsService,
                     connector,
                     translationService,
+                    stateSyncService,
                     child,
                   ) {
                     return ListView(
@@ -74,6 +78,17 @@ class AppSettingsScreen extends StatelessWidget {
                           child: _buildMessagingContent(
                             context,
                             settingsService,
+                          ),
+                        ),
+
+                        // STATE SYNC
+                        SectionHeader('Sync'),
+                        MeshCard(
+                          padding: EdgeInsets.zero,
+                          child: _buildStateSyncContent(
+                            context,
+                            stateSyncService,
+                            connector,
                           ),
                         ),
 
@@ -641,6 +656,115 @@ class AppSettingsScreen extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildStateSyncContent(
+    BuildContext context,
+    StateSyncService stateSyncService,
+    MeshCoreConnector connector,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final supported = stateSyncService.isSupported;
+    final folder = stateSyncService.folderPath;
+    final canEnable = supported && stateSyncService.hasFolder;
+    return Column(
+      children: [
+        SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          secondary: Icon(
+            Icons.sync_outlined,
+            size: 20,
+            color: supported ? null : Theme.of(context).disabledColor,
+          ),
+          title: Text(
+            'Automatic state sync',
+            style: TextStyle(
+              color: supported ? null : Theme.of(context).disabledColor,
+            ),
+          ),
+          subtitle: Text(
+            supported
+                ? (folder ?? 'Choose a sync folder to enable handoff.')
+                : 'Automatic folder sync is available on Android and desktop.',
+            style: TextStyle(
+              color: supported ? null : Theme.of(context).disabledColor,
+            ),
+          ),
+          value: stateSyncService.isEnabled,
+          onChanged: canEnable
+              ? (value) async {
+                  await stateSyncService.setEnabled(value);
+                  if (value) {
+                    await connector.importStateSyncNow();
+                    connector.scheduleStateSyncExport();
+                  }
+                }
+              : null,
+        ),
+        const Divider(height: 1, indent: 16),
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          enabled: supported,
+          leading: const Icon(Icons.folder_outlined, size: 20),
+          title: Text(folder == null ? 'Choose sync folder' : 'Sync folder'),
+          subtitle: Text(folder ?? 'No folder selected'),
+          trailing: Icon(
+            Icons.chevron_right,
+            color: supported ? scheme.onSurfaceVariant : null,
+            size: 16,
+          ),
+          onTap: supported
+              ? () async {
+                  final picked = await stateSyncService.pickFolder();
+                  if (!context.mounted) return;
+                  if (picked) {
+                    await connector.importStateSyncNow();
+                    connector.scheduleStateSyncExport();
+                    if (!context.mounted) return;
+                    showDismissibleSnackBar(
+                      context,
+                      content: Text(
+                        'Sync folder set to ${stateSyncService.folderPath ?? 'folder'}',
+                      ),
+                      duration: const Duration(seconds: 2),
+                    );
+                  }
+                }
+              : null,
+        ),
+        if (stateSyncService.hasFolder) ...[
+          const Divider(height: 1, indent: 16),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: const Icon(Icons.folder_off_outlined, size: 20),
+            title: const Text('Forget sync folder'),
+            subtitle: Text(
+              PlatformInfo.isAndroid
+                  ? 'Keeps files in the folder and disables automatic sync.'
+                  : 'Keeps files on disk and disables automatic sync.',
+            ),
+            onTap: () async {
+              await stateSyncService.clearFolder();
+              if (!context.mounted) return;
+              showDismissibleSnackBar(
+                context,
+                content: const Text('Automatic state sync disabled'),
+                duration: const Duration(seconds: 2),
+              );
+            },
+          ),
+        ],
       ],
     );
   }

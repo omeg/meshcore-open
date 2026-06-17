@@ -27,6 +27,7 @@ import 'services/telemetry_log_fetch_service.dart';
 import 'services/translation_service.dart';
 import 'services/ui_view_state_service.dart';
 import 'services/timeout_prediction_service.dart';
+import 'services/state_sync_service.dart';
 import 'storage/prefs_manager.dart';
 import 'theme/mesh_theme.dart';
 import 'utils/app_logger.dart';
@@ -64,6 +65,7 @@ void main(List<String> args) async {
   final translationService = TranslationService(appSettingsService);
   final uiViewStateService = UiViewStateService();
   final timeoutPredictionService = TimeoutPredictionService(storage);
+  final stateSyncService = StateSyncService();
 
   // Load settings
   await appSettingsService.loadSettings();
@@ -87,6 +89,7 @@ void main(List<String> args) async {
   await translationService.refreshDownloadedModels();
   await uiViewStateService.initialize();
   await timeoutPredictionService.initialize();
+  await stateSyncService.initialize();
 
   // Wire up connector with services
   connector.initialize(
@@ -98,7 +101,9 @@ void main(List<String> args) async {
     appDebugLogService: appDebugLogService,
     backgroundService: backgroundService,
     timeoutPredictionService: timeoutPredictionService,
+    stateSyncService: stateSyncService,
   );
+  appSettingsService.addListener(connector.scheduleStateSyncExport);
 
   await connector.loadContactCache();
   await connector.loadChannelSettings();
@@ -122,6 +127,7 @@ void main(List<String> args) async {
       translationService: translationService,
       uiViewStateService: uiViewStateService,
       timeoutPredictionService: timeoutPredictionService,
+      stateSyncService: stateSyncService,
       startupOptions: startupOptions,
     ),
   );
@@ -184,12 +190,18 @@ class _DesktopBleExitObserverState extends State<DesktopBleExitObserver>
 
   @override
   Future<AppExitResponse> didRequestAppExit() async {
+    await widget.connector.flushStateSyncExport();
     await _disconnectBleForDesktopExit();
     return AppExitResponse.exit;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      unawaited(widget.connector.flushStateSyncExport());
+    }
     if (state == AppLifecycleState.detached) {
       unawaited(_disconnectBleForDesktopExit());
     }
@@ -237,6 +249,7 @@ class MeshCoreApp extends StatelessWidget {
   final TranslationService translationService;
   final UiViewStateService uiViewStateService;
   final TimeoutPredictionService timeoutPredictionService;
+  final StateSyncService stateSyncService;
   final StartupOptions startupOptions;
 
   const MeshCoreApp({
@@ -253,6 +266,7 @@ class MeshCoreApp extends StatelessWidget {
     required this.translationService,
     required this.uiViewStateService,
     required this.timeoutPredictionService,
+    required this.stateSyncService,
     this.startupOptions = const StartupOptions(),
   });
 
@@ -274,6 +288,7 @@ class MeshCoreApp extends StatelessWidget {
           Provider.value(value: storage),
           Provider.value(value: mapTileCacheService),
           ChangeNotifierProvider.value(value: timeoutPredictionService),
+          ChangeNotifierProvider.value(value: stateSyncService),
           // App-scoped so a telemetry-log fetch keeps running when the user leaves
           // the screen, notifying on completion.
           ChangeNotifierProvider(
