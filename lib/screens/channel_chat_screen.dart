@@ -156,7 +156,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   void _onTextFieldFocusChange() {
-    if (_textFieldFocusNode.hasFocus && mounted) {
+    if (_textFieldFocusNode.hasFocus && mounted && !PlatformInfo.isDesktop) {
       _scrollController.handleKeyboardOpen();
     }
   }
