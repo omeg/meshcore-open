@@ -256,16 +256,41 @@ class TelemetryLogStore {
     final telemetry = File(telemetryPath);
     if (telemetry.existsSync()) {
       final name = telemetry.uri.pathSegments.last;
-      await telemetry.copy('$destDir/$name');
+      await _copyUnlessSameFile(telemetry, '$destDir/$name');
       written.add(name);
     }
     final statePath = await stateFilePath(repeaterHex);
     if (statePath != null) {
-      final name = File(statePath).uri.pathSegments.last;
-      await File(statePath).copy('$destDir/$name');
+      final state = File(statePath);
+      final name = state.uri.pathSegments.last;
+      await _copyUnlessSameFile(state, '$destDir/$name');
       written.add(name);
     }
     return written;
+  }
+
+  /// `File.copy()` may truncate a file when its destination resolves to the
+  /// source itself. That can happen on desktop when the user picks this store's
+  /// own `telemetry_logs` directory as the export folder.
+  Future<void> _copyUnlessSameFile(File source, String destinationPath) async {
+    final destination = File(destinationPath);
+    if (_normalizedPath(source.path) == _normalizedPath(destination.path)) {
+      return;
+    }
+    if (destination.existsSync() &&
+        FileSystemEntity.identicalSync(source.path, destination.path)) {
+      return;
+    }
+    await source.copy(destination.path);
+  }
+
+  String _normalizedPath(String path) {
+    final absolute = File(path).absolute.path;
+    final normalized = Uri.file(
+      absolute,
+      windows: Platform.isWindows,
+    ).normalizePath().toFilePath(windows: Platform.isWindows);
+    return Platform.isWindows ? normalized.toLowerCase() : normalized;
   }
 
   /// The `.telemetry` + `.state.json` pair as in-memory bytes, for writing into
