@@ -49,7 +49,9 @@ class TelemetrySafExport {
     // its own slashes, so a literal '/' marks the boundary.
     final slash = docId.indexOf('/');
     if (slash >= 0) docId = docId.substring(0, slash);
-    docId = Uri.decodeComponent(docId); // e.g. "primary:Documents/telemetry_logs"
+    docId = Uri.decodeComponent(
+      docId,
+    ); // e.g. "primary:Documents/telemetry_logs"
     final colon = docId.indexOf(':');
     if (colon < 0) return docId.isEmpty ? null : docId;
     final volume = docId.substring(0, colon);
@@ -90,6 +92,9 @@ class TelemetrySafExport {
     return await _validSavedUri() ?? await pickDirectory();
   }
 
+  /// The remembered directory if still accessible. Does not prompt.
+  Future<String?> configuredDirectoryUri() => _validSavedUri();
+
   /// Write each entry into [treeUri], overwriting same-named files so a resumed
   /// pull updates the existing file rather than creating duplicates.
   Future<void> writeEntries(
@@ -124,14 +129,19 @@ class TelemetrySafExport {
     final treeUri = await _validSavedUri();
     if (treeUri == null) return null;
     try {
-      final doc = await _safUtil.child(treeUri, ['${_short(repeaterHex)}.state.json']);
+      final doc = await _safUtil.child(treeUri, [
+        '${_short(repeaterHex)}.state.json',
+      ]);
       if (doc == null) return null;
       final bytes = await _safStream.readFileBytes(doc.uri);
       return TelemetryLogSession.fromJson(
         jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>,
       );
     } catch (e) {
-      appLogger.warn('Failed reading shared telemetry state: $e', tag: 'TelemLog');
+      appLogger.warn(
+        'Failed reading shared telemetry state: $e',
+        tag: 'TelemLog',
+      );
       return null;
     }
   }
@@ -145,7 +155,10 @@ class TelemetrySafExport {
       if (doc == null) return null;
       return await _safStream.readFileBytes(doc.uri);
     } catch (e) {
-      appLogger.warn('Failed reading shared telemetry bytes: $e', tag: 'TelemLog');
+      appLogger.warn(
+        'Failed reading shared telemetry bytes: $e',
+        tag: 'TelemLog',
+      );
       return null;
     }
   }
@@ -175,7 +188,10 @@ class TelemetrySafExport {
         overwrite: true,
       );
     } catch (e) {
-      appLogger.warn('Failed writing shared telemetry state: $e', tag: 'TelemLog');
+      appLogger.warn(
+        'Failed writing shared telemetry state: $e',
+        tag: 'TelemLog',
+      );
     }
   }
 }

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:meshcore_open/helpers/telemetry_log.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/models/path_selection.dart';
 import 'package:meshcore_open/services/telemetry_log_fetch_service.dart';
+import 'package:meshcore_open/services/telemetry_saf_export.dart';
 import 'package:meshcore_open/storage/telemetry_log_store.dart';
 
 void main() {
@@ -59,6 +61,31 @@ void main() {
     await fetchFuture.timeout(const Duration(milliseconds: 500));
     expect(service.status, TelemetryLogFetchStatus.idle);
     expect(service.errorMessage, isNull);
+  });
+
+  test('successful fetch auto-exports to configured mobile folder', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()
+      ..logBytes = _sampleLog(sampleCount: 2);
+    final store = _MemoryTelemetryLogStore();
+    final safExport = _MemoryTelemetrySafExport();
+    final service = TelemetryLogFetchService(
+      connector,
+      store: store,
+      safExport: safExport,
+      supportsMobileExportFolder: () => true,
+    );
+    service.addListener(() {});
+
+    await service.fetch(repeater, chunkSize: 35);
+
+    expect(service.status, TelemetryLogFetchStatus.done);
+    expect(safExport.writes, hasLength(1));
+    expect(safExport.writes.single.map((e) => e.name), [
+      store.session!.sessionFilename,
+      '${repeater.publicKeyHex.substring(0, 8)}.state.json',
+    ]);
+    expect(safExport.writes.single.first.bytes, connector.logBytes);
   });
 }
 
@@ -199,4 +226,60 @@ class _MemoryTelemetryLogStore extends TelemetryLogStore {
     final filename = session?.sessionFilename;
     return filename == null ? null : '/memory/$filename';
   }
+
+  @override
+  Future<List<TelemetryExportEntry>> exportPayload(
+    String telemetryPath,
+    String repeaterHex,
+  ) async {
+    final currentSession = session;
+    final currentBytes = savedBytes;
+    if (currentSession == null || currentBytes == null) return const [];
+    return [
+      TelemetryExportEntry(
+        name: currentSession.sessionFilename,
+        bytes: Uint8List.fromList(currentBytes),
+        mime: 'application/octet-stream',
+      ),
+      TelemetryExportEntry(
+        name: '${repeaterHex.substring(0, 8)}.state.json',
+        bytes: Uint8List.fromList(
+          utf8.encode(jsonEncode(currentSession.toJson())),
+        ),
+        mime: 'application/json',
+      ),
+    ];
+  }
+}
+
+class _MemoryTelemetrySafExport extends TelemetrySafExport {
+  final List<List<TelemetryExportEntry>> writes = [];
+
+  @override
+  Future<String?> configuredDirectoryUri() async => 'content://memory/tree';
+
+  @override
+  Future<void> writeEntries(
+    String treeUri,
+    List<TelemetryExportEntry> entries,
+  ) async {
+    writes.add(entries);
+  }
+
+  @override
+  Future<TelemetryLogSession?> readSharedSession(String repeaterHex) async {
+    return null;
+  }
+
+  @override
+  Future<Uint8List?> readSharedBytes(String sessionFilename) async {
+    return null;
+  }
+
+  @override
+  Future<void> writeShared(
+    String repeaterHex,
+    TelemetryLogSession session,
+    Uint8List bytes,
+  ) async {}
 }

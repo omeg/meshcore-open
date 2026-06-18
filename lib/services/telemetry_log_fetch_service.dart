@@ -33,19 +33,23 @@ class TelemetryLogFetchService extends ChangeNotifier {
   final MeshCoreConnector _connector;
   final TelemetryLogStore _store;
   final TelemetrySafExport? _safExport;
+  final bool Function() _supportsMobileExportFolder;
   final Random _random = Random();
 
   TelemetryLogFetchService(
     this._connector, {
     TelemetryLogStore? store,
     TelemetrySafExport? safExport,
+    bool Function()? supportsMobileExportFolder,
   }) : _store = store ?? TelemetryLogStore(),
-       _safExport = safExport ?? TelemetrySafExport();
+       _safExport = safExport ?? TelemetrySafExport(),
+       _supportsMobileExportFolder =
+           supportsMobileExportFolder ?? (() => PlatformInfo.isAndroid);
 
   // Cross-device resume reads/writes the synced export folder, which only
   // exists on Android (SAF). Null elsewhere.
   TelemetrySafExport? get _sharedStore =>
-      PlatformInfo.isAndroid ? _safExport : null;
+      _supportsMobileExportFolder() ? _safExport : null;
 
   static const int _chunkAttempts = 10;
   static const Duration _retryDelay = Duration(seconds: 3);
@@ -162,6 +166,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
           appLogger.warn('Telemetry log decode failed: $e', tag: 'TelemLog');
         }
       }
+      await _autoExportIfConfigured(repeater);
       _status = TelemetryLogFetchStatus.done;
       _notifyResult(success: true, repeater: repeater);
     } on _TelemetryLogFetchCancelled {
@@ -175,6 +180,26 @@ class TelemetryLogFetchService extends ChangeNotifier {
       _cancelSignal = null;
     }
     _safeNotify();
+  }
+
+  Future<void> _autoExportIfConfigured(Contact repeater) async {
+    final saf = _sharedStore;
+    if (saf == null) return;
+    final telemetryPath =
+        _savedFilePath ?? await _store.currentFilePath(repeater.publicKeyHex);
+    if (telemetryPath == null) return;
+    final treeUri = await saf.configuredDirectoryUri();
+    if (treeUri == null) return;
+    final entries = await _store.exportPayload(
+      telemetryPath,
+      repeater.publicKeyHex,
+    );
+    if (entries.isEmpty) return;
+    try {
+      await saf.writeEntries(treeUri, entries);
+    } catch (e) {
+      appLogger.warn('Telemetry auto-export failed: $e', tag: 'TelemLog');
+    }
   }
 
   Future<T> _cancelable<T>(Future<T> operation) {
