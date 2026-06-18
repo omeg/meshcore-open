@@ -488,6 +488,12 @@ class _RepeaterStatusScreenState extends State<RepeaterStatusScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildStatGrid([
             _StatItem(
+              icon: Icons.cell_tower,
+              label: l10n.repeater_repeaterName,
+              value: name,
+              color: MeshPalette.warn,
+            ),
+            _StatItem(
               icon: Icons.battery_std,
               label: l10n.repeater_battery,
               value: _batteryText(),
