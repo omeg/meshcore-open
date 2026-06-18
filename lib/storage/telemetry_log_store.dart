@@ -138,7 +138,10 @@ class TelemetryLogStore {
     if (logStartTs == null) {
       return '$short-${_stamp(DateTime.now())}-nortc.telemetry';
     }
-    final dt = DateTime.fromMillisecondsSinceEpoch(logStartTs * 1000, isUtc: true);
+    final dt = DateTime.fromMillisecondsSinceEpoch(
+      logStartTs * 1000,
+      isUtc: true,
+    );
     return '$short-${_stamp(dt)}.telemetry';
   }
 
@@ -154,9 +157,42 @@ class TelemetryLogStore {
         jsonDecode(await file.readAsString()) as Map<String, dynamic>,
       );
     } catch (e) {
-      appLogger.warn('Corrupt telemetry log state ignored: $e', tag: 'TelemLog');
+      appLogger.warn(
+        'Corrupt telemetry log state ignored: $e',
+        tag: 'TelemLog',
+      );
       return null;
     }
+  }
+
+  /// Read the complete shared fetch/import state for a repeater.
+  Future<Map<String, dynamic>> loadStateData(String repeaterHex) async {
+    try {
+      final dir = await _dir();
+      final file = File(_statePath(dir, repeaterHex));
+      if (!file.existsSync()) return {};
+      return Map<String, dynamic>.from(
+        jsonDecode(await file.readAsString()) as Map,
+      );
+    } catch (e) {
+      appLogger.warn(
+        'Corrupt telemetry log state ignored: $e',
+        tag: 'TelemLog',
+      );
+      return {};
+    }
+  }
+
+  /// Merge importer-owned fields into the state file without disturbing the
+  /// fetcher's resume cursor.
+  Future<void> updateStateData(
+    String repeaterHex,
+    Map<String, dynamic> updates,
+  ) async {
+    final dir = await _dir();
+    final state = await loadStateData(repeaterHex);
+    state.addAll(updates);
+    await _atomicWriteString(_statePath(dir, repeaterHex), jsonEncode(state));
   }
 
   Future<Uint8List?> loadBytes(String filename) async {
@@ -183,10 +219,9 @@ class TelemetryLogStore {
       final dir = await _dir();
       final logPath = '${dir.path}/${session.sessionFilename}';
       await _atomicWrite(logPath, bytes);
-      await _atomicWriteString(
-        _statePath(dir, repeaterHex),
-        jsonEncode(session.toJson()),
-      );
+      final state = await loadStateData(repeaterHex);
+      state.addAll(session.toJson());
+      await _atomicWriteString(_statePath(dir, repeaterHex), jsonEncode(state));
       return logPath;
     } catch (e) {
       appLogger.warn('Failed writing telemetry log file: $e', tag: 'TelemLog');
@@ -343,7 +378,10 @@ class TelemetryLogStore {
       final stateFile = File(_statePath(dir, repeaterHex));
       if (stateFile.existsSync()) await stateFile.delete();
     } catch (e) {
-      appLogger.warn('Failed clearing telemetry log files: $e', tag: 'TelemLog');
+      appLogger.warn(
+        'Failed clearing telemetry log files: $e',
+        tag: 'TelemLog',
+      );
     }
   }
 

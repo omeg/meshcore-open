@@ -237,6 +237,10 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(discoveredContactTapAction: value));
   }
 
+  Future<void> setInfluxDbSettings(InfluxDbSettings value) async {
+    await updateSettings(_settings.copyWith(influxDb: value));
+  }
+
   Future<void> setTranslationEnabled(bool value) async {
     await updateSettings(_settings.copyWith(translationEnabled: value));
   }

@@ -1,26 +1,50 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
 import '../models/translation_support.dart';
 import '../services/app_settings_service.dart';
+import '../services/influxdb_telemetry_service.dart';
 import '../services/notification_service.dart';
 import '../services/state_sync_service.dart';
+import '../services/telemetry_saf_export.dart';
 import '../services/translation_service.dart';
+import '../storage/telemetry_log_store.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/platform_info.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/sync_progress_overlay.dart';
-import '../helpers/snack_bar_builder.dart';
 import 'map_cache_screen.dart';
 
-class AppSettingsScreen extends StatelessWidget {
+class AppSettingsScreen extends StatefulWidget {
   const AppSettingsScreen({super.key});
+
+  @override
+  State<AppSettingsScreen> createState() => _AppSettingsScreenState();
+}
+
+class _AppSettingsScreenState extends State<AppSettingsScreen> {
+  final TelemetryLogStore _telemetryStore = TelemetryLogStore();
+  final TelemetrySafExport _telemetrySaf = TelemetrySafExport();
+  String? _telemetryStorageDir;
+
+  @override
+  void initState() {
+    super.initState();
+    if (PlatformInfo.isDesktop) {
+      _telemetryStore.storageDirectoryPath().then((dir) {
+        if (mounted) setState(() => _telemetryStorageDir = dir);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -92,6 +116,18 @@ class AppSettingsScreen extends StatelessWidget {
                           ),
                         ),
 
+                        // TELEMETRY LOG
+                        if (!kIsWeb) ...[
+                          SectionHeader(context.l10n.telemetryLog_title),
+                          MeshCard(
+                            padding: EdgeInsets.zero,
+                            child: _buildTelemetryLogContent(
+                              context,
+                              settingsService,
+                            ),
+                          ),
+                        ],
+
                         // BATTERY
                         SectionHeader(context.l10n.appSettings_battery),
                         MeshCard(
@@ -143,6 +179,129 @@ class AppSettingsScreen extends StatelessWidget {
                   },
             ),
       ),
+    );
+  }
+
+  Widget _buildTelemetryLogContent(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) {
+    final influx = settingsService.settings.influxDb;
+    return Column(
+      children: [
+        if (PlatformInfo.isAndroid) ...[
+          Builder(
+            builder: (context) {
+              final folder = _telemetrySaf.rememberedFolderPath;
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 4,
+                ),
+                leading: const Icon(Icons.folder_outlined, size: 20),
+                title: Text(context.l10n.telemetryLog_exportFolder),
+                subtitle: Text(
+                  folder ?? context.l10n.telemetryLog_exportFolderNotSet,
+                ),
+                trailing: TextButton(
+                  onPressed: _changeTelemetryExportFolder,
+                  child: Text(
+                    folder == null
+                        ? context.l10n.telemetryLog_choose
+                        : context.l10n.telemetryLog_change,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Divider(height: 1, indent: 16),
+        ],
+        if (PlatformInfo.isDesktop) ...[
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: const Icon(Icons.folder_outlined, size: 20),
+            title: Text(context.l10n.telemetryLog_storageFolder),
+            subtitle: _telemetryStorageDir == null
+                ? const LinearProgressIndicator()
+                : Text(
+                    _telemetryStorageDir!,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+            trailing: _telemetryStorageDir == null
+                ? null
+                : TextButton(
+                    onPressed: () =>
+                        _openTelemetryStorageDir(_telemetryStorageDir!),
+                    child: Text(context.l10n.telemetryLog_open),
+                  ),
+          ),
+          const Divider(height: 1, indent: 16),
+        ],
+        ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: const Icon(Icons.storage_outlined, size: 20),
+          title: const Text('InfluxDB'),
+          subtitle: Text(
+            influx.isConfigured
+                ? '${influx.url} · ${influx.organization}/${influx.bucket}'
+                : 'Not configured',
+          ),
+          trailing: const Icon(Icons.chevron_right, size: 16),
+          onTap: () => _showInfluxDbSettings(context, settingsService),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _changeTelemetryExportFolder() async {
+    final picked = await _telemetrySaf.pickDirectory();
+    if (!mounted || picked == null) return;
+    setState(() {});
+    showDismissibleSnackBar(
+      context,
+      content: Text(
+        context.l10n.telemetryLog_exportFolderSet(
+          _telemetrySaf.rememberedFolderPath ?? '',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openTelemetryStorageDir(String dir) async {
+    await Clipboard.setData(ClipboardData(text: dir));
+    try {
+      await launchUrl(Uri.file(dir));
+    } catch (_) {
+      // Best effort: the path is on the clipboard regardless.
+    }
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.telemetryLog_pathCopied(dir)),
+    );
+  }
+
+  Future<void> _showInfluxDbSettings(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) async {
+    final updated = await showDialog<InfluxDbSettings>(
+      context: context,
+      builder: (context) =>
+          _InfluxDbSettingsDialog(initial: settingsService.settings.influxDb),
+    );
+    if (updated == null) return;
+    await settingsService.setInfluxDbSettings(updated);
+    if (!context.mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: const Text('InfluxDB settings saved'),
     );
   }
 
@@ -2175,6 +2334,160 @@ class AppSettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _InfluxDbSettingsDialog extends StatefulWidget {
+  const _InfluxDbSettingsDialog({required this.initial});
+
+  final InfluxDbSettings initial;
+
+  @override
+  State<_InfluxDbSettingsDialog> createState() =>
+      _InfluxDbSettingsDialogState();
+}
+
+class _InfluxDbSettingsDialogState extends State<_InfluxDbSettingsDialog> {
+  late final TextEditingController _url;
+  late final TextEditingController _token;
+  late final TextEditingController _organization;
+  late final TextEditingController _bucket;
+  late final TextEditingController _retention;
+  bool _showToken = false;
+  bool _testing = false;
+  String? _testResult;
+
+  @override
+  void initState() {
+    super.initState();
+    _url = TextEditingController(text: widget.initial.url);
+    _token = TextEditingController(text: widget.initial.token);
+    _organization = TextEditingController(text: widget.initial.organization);
+    _bucket = TextEditingController(text: widget.initial.bucket);
+    _retention = TextEditingController(
+      text: widget.initial.retentionSeconds.toString(),
+    );
+  }
+
+  @override
+  void dispose() {
+    _url.dispose();
+    _token.dispose();
+    _organization.dispose();
+    _bucket.dispose();
+    _retention.dispose();
+    super.dispose();
+  }
+
+  InfluxDbSettings get _value => InfluxDbSettings(
+    url: _url.text.trim(),
+    token: _token.text.trim(),
+    organization: _organization.text.trim(),
+    bucket: _bucket.text.trim(),
+    retentionSeconds: int.tryParse(_retention.text.trim()) ?? 0,
+  );
+
+  Future<void> _test() async {
+    setState(() {
+      _testing = true;
+      _testResult = null;
+    });
+    final service = InfluxDbTelemetryService();
+    try {
+      await service.testConnection(_value);
+      if (mounted) setState(() => _testResult = 'Connection successful');
+    } catch (e) {
+      if (mounted) setState(() => _testResult = e.toString());
+    } finally {
+      service.close();
+      if (mounted) setState(() => _testing = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('InfluxDB settings'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _url,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'InfluxDB v2 URL',
+                  hintText: 'http://localhost:8086',
+                ),
+              ),
+              TextField(
+                controller: _token,
+                obscureText: !_showToken,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: InputDecoration(
+                  labelText: 'API token',
+                  suffixIcon: IconButton(
+                    onPressed: () => setState(() => _showToken = !_showToken),
+                    icon: Icon(
+                      _showToken ? Icons.visibility_off : Icons.visibility,
+                    ),
+                  ),
+                ),
+              ),
+              TextField(
+                controller: _organization,
+                decoration: const InputDecoration(labelText: 'Organization'),
+              ),
+              TextField(
+                controller: _bucket,
+                decoration: const InputDecoration(labelText: 'Bucket'),
+              ),
+              TextField(
+                controller: _retention,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                decoration: const InputDecoration(
+                  labelText: 'Retention (seconds)',
+                  helperText:
+                      '0 keeps data indefinitely; used when creating the bucket.',
+                ),
+              ),
+              if (_testResult != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(_testResult!),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _testing ? null : () => Navigator.pop(context),
+          child: Text(context.l10n.common_cancel),
+        ),
+        OutlinedButton(
+          onPressed: _testing ? null : _test,
+          child: _testing
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Test connection'),
+        ),
+        FilledButton(
+          onPressed: _testing ? null : () => Navigator.pop(context, _value),
+          child: Text(context.l10n.common_save),
+        ),
+      ],
     );
   }
 }

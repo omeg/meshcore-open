@@ -26,6 +26,46 @@ extension DiscoveredContactTapActionValue on DiscoveredContactTapAction {
   }
 }
 
+class InfluxDbSettings {
+  final String url;
+  final String token;
+  final String organization;
+  final String bucket;
+  final int retentionSeconds;
+
+  const InfluxDbSettings({
+    this.url = 'http://localhost:8086',
+    this.token = '',
+    this.organization = '',
+    this.bucket = 'meshcore',
+    this.retentionSeconds = 0,
+  });
+
+  bool get isConfigured =>
+      url.trim().isNotEmpty &&
+      token.trim().isNotEmpty &&
+      organization.trim().isNotEmpty &&
+      bucket.trim().isNotEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'url': url,
+    'token': token,
+    'organization': organization,
+    'bucket': bucket,
+    'retention_seconds': retentionSeconds,
+  };
+
+  factory InfluxDbSettings.fromJson(Map<String, dynamic> json) {
+    return InfluxDbSettings(
+      url: json['url'] as String? ?? 'http://localhost:8086',
+      token: json['token'] as String? ?? '',
+      organization: json['organization'] as String? ?? '',
+      bucket: json['bucket'] as String? ?? 'meshcore',
+      retentionSeconds: json['retention_seconds'] as int? ?? 0,
+    );
+  }
+}
+
 const Map<String, String> defaultCyr2LatCharMap = {
   'А': 'A',
   'В': 'B',
@@ -135,6 +175,7 @@ class AppSettings {
   final List<Cyr2LatProfile> cyr2latProfiles;
   final String selectedCyr2latProfileId;
   final DiscoveredContactTapAction discoveredContactTapAction;
+  final InfluxDbSettings influxDb;
 
   Map<String, String> get cyr2latCharMap {
     final profile = cyr2latProfiles.firstWhere(
@@ -190,6 +231,7 @@ class AppSettings {
     List<Cyr2LatProfile>? cyr2latProfiles,
     String? selectedCyr2latProfileId,
     this.discoveredContactTapAction = DiscoveredContactTapAction.importContact,
+    this.influxDb = const InfluxDbSettings(),
   }) : batteryChemistryByDeviceId = batteryChemistryByDeviceId ?? {},
        batteryChemistryByRepeaterId = batteryChemistryByRepeaterId ?? {},
        mutedChannels = mutedChannels ?? {},
@@ -256,6 +298,7 @@ class AppSettings {
           .toList(),
       'selected_cyr2lat_profile_id': selectedCyr2latProfileId,
       'discovered_contact_tap_action': discoveredContactTapAction.value,
+      'influx_db': influxDb.toJson(),
     };
   }
 
@@ -387,6 +430,11 @@ class AppSettings {
       discoveredContactTapAction: parseDiscoveredContactTapAction(
         json['discovered_contact_tap_action'],
       ),
+      influxDb: json['influx_db'] is Map
+          ? InfluxDbSettings.fromJson(
+              Map<String, dynamic>.from(json['influx_db'] as Map),
+            )
+          : const InfluxDbSettings(),
     );
   }
 
@@ -436,6 +484,7 @@ class AppSettings {
     List<Cyr2LatProfile>? cyr2latProfiles,
     String? selectedCyr2latProfileId,
     DiscoveredContactTapAction? discoveredContactTapAction,
+    InfluxDbSettings? influxDb,
   }) {
     return AppSettings(
       clearPathOnMaxRetry: clearPathOnMaxRetry ?? this.clearPathOnMaxRetry,
@@ -506,6 +555,7 @@ class AppSettings {
           selectedCyr2latProfileId ?? this.selectedCyr2latProfileId,
       discoveredContactTapAction:
           discoveredContactTapAction ?? this.discoveredContactTapAction,
+      influxDb: influxDb ?? this.influxDb,
     );
   }
 }

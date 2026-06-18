@@ -12,6 +12,8 @@ import '../connector/meshcore_protocol.dart';
 import '../helpers/telemetry_log.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../services/app_settings_service.dart';
+import '../services/influxdb_telemetry_service.dart';
 import '../services/repeater_command_service.dart';
 import '../services/telemetry_log_fetch_service.dart';
 import '../services/telemetry_saf_export.dart';
@@ -38,6 +40,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   StreamSubscription<Uint8List>? _frameSubscription;
   RepeaterCommandService? _commandService;
   bool _statusLoading = false;
+  final Set<String> _importingPaths = {};
 
   /// Whether the global service's current/last fetch is for this repeater.
   bool get _isMyFetch => _service.targetKey == widget.repeater.publicKeyHex;
@@ -48,9 +51,6 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
 
   // All retained .telemetry files for this repeater (the export archive).
   List<TelemetryLogFile> _savedLogs = const [];
-
-  // Desktop: absolute path of the directory the .telemetry files live in.
-  String? _storageDir;
 
   // Bytes requested per round trip (1..telemLogMaxChunkLen). Persisted so a
   // value that works on a given link is remembered.
@@ -76,11 +76,6 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     // Don't auto-pull: a fetch is a deliberate, admin-only mesh operation, so
     // wait for the user to tap Fetch. Just surface any already-saved logs.
     _reloadSavedLogs();
-    if (PlatformInfo.isDesktop) {
-      _store.storageDirectoryPath().then((dir) {
-        if (mounted) setState(() => _storageDir = dir);
-      });
-    }
   }
 
   @override
@@ -359,64 +354,6 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     _snack(l10n.telemetryLog_exported(_saf.rememberedFolderPath ?? 'folder'));
   }
 
-  Future<void> _changeExportFolder() async {
-    final picked = await _saf.pickDirectory();
-    if (!mounted || picked == null) return;
-    setState(() {});
-    _snack(
-      context.l10n.telemetryLog_exportFolderSet(
-        _saf.rememberedFolderPath ?? '',
-      ),
-    );
-  }
-
-  Widget _exportFolderCard(BuildContext context) {
-    final l10n = context.l10n;
-    final folder = _saf.rememberedFolderPath;
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.folder_outlined),
-        title: Text(l10n.telemetryLog_exportFolder),
-        subtitle: Text(folder ?? l10n.telemetryLog_exportFolderNotSet),
-        trailing: TextButton(
-          onPressed: _changeExportFolder,
-          child: Text(
-            folder == null
-                ? l10n.telemetryLog_choose
-                : l10n.telemetryLog_change,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _storageFolderCard(BuildContext context) {
-    final l10n = context.l10n;
-    final dir = _storageDir!;
-    return Card(
-      child: ListTile(
-        leading: const Icon(Icons.folder_outlined),
-        title: Text(l10n.telemetryLog_storageFolder),
-        subtitle: Text(dir, style: const TextStyle(fontSize: 12)),
-        trailing: TextButton(
-          onPressed: () => _openDir(dir),
-          child: Text(l10n.telemetryLog_open),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _openDir(String dir) async {
-    await Clipboard.setData(ClipboardData(text: dir));
-    try {
-      await launchUrl(Uri.file(dir));
-    } catch (_) {
-      // Best effort: the path is on the clipboard regardless.
-    }
-    if (!mounted) return;
-    _snack(context.l10n.telemetryLog_pathCopied(dir));
-  }
-
   void _snack(String message) {
     ScaffoldMessenger.of(
       context,
@@ -463,6 +400,44 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     await _reloadSavedLogs();
   }
 
+  Future<void> _importLog(String path) async {
+    if (_importingPaths.contains(path)) return;
+    if (_service.status == TelemetryLogFetchStatus.fetching) {
+      _snack('Wait for the telemetry log fetch to finish before importing.');
+      return;
+    }
+    final settings = Provider.of<AppSettingsService>(
+      context,
+      listen: false,
+    ).settings.influxDb;
+    if (!settings.isConfigured) {
+      _snack('Configure InfluxDB in App Settings first.');
+      return;
+    }
+    setState(() => _importingPaths.add(path));
+    final importer = InfluxDbTelemetryService(store: _store);
+    try {
+      final result = await importer.importFile(
+        path: path,
+        node: widget.repeater.publicKeyHex,
+        settings: settings,
+      );
+      if (!mounted) return;
+      if (result.alreadyUpToDate) {
+        _snack('InfluxDB is already up to date.');
+      } else {
+        _snack(
+          'Imported ${result.points} point(s) from ${result.ticks} tick(s).',
+        );
+      }
+    } catch (e) {
+      if (mounted) _snack('InfluxDB import failed: $e');
+    } finally {
+      importer.close();
+      if (mounted) setState(() => _importingPaths.remove(path));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -503,12 +478,18 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
             onSelected: (v) {
               if (v == 'restart') _startFetch(forceRestart: true);
               if (v == 'export' && myFile != null) _exportLog(myFile);
+              if (v == 'import' && myFile != null) _importLog(myFile);
             },
             itemBuilder: (context) => [
               if (myFile != null)
                 PopupMenuItem(
                   value: 'export',
                   child: Text(l10n.telemetryLog_export),
+                ),
+              if (myFile != null)
+                const PopupMenuItem(
+                  value: 'import',
+                  child: Text('Import to InfluxDB'),
                 ),
               PopupMenuItem(
                 value: 'restart',
@@ -523,9 +504,6 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
         children: [
           _statusCard(context),
           ..._buildContent(context),
-          if (PlatformInfo.isAndroid) _exportFolderCard(context),
-          if (PlatformInfo.isDesktop && _storageDir != null)
-            _storageFolderCard(context),
           if (_savedLogs.isNotEmpty) _savedLogsCard(context),
         ],
       ),
@@ -916,9 +894,14 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
                   PopupMenuButton<String>(
                     onSelected: (v) {
                       if (v == 'export') _exportLog(file.path);
+                      if (v == 'import') _importLog(file.path);
                       if (v == 'delete') _deleteLog(file);
                     },
                     itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'import',
+                        child: Text('Import to InfluxDB'),
+                      ),
                       PopupMenuItem(
                         value: 'export',
                         child: Text(l10n.telemetryLog_export),
