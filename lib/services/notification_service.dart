@@ -423,6 +423,63 @@ class NotificationService {
     }
   }
 
+  Future<void> showTelemetryInfluxImportNotification({
+    required String repeaterName,
+    required bool success,
+    required bool alreadyUpToDate,
+    required int ticks,
+    required int points,
+    String? error,
+  }) async {
+    if (!await _ensureInitialized()) return;
+
+    final String title;
+    final String body;
+    if (!success) {
+      title = _l10n.notification_influxImportFailedTitle;
+      body = error == null || error.isEmpty
+          ? repeaterName
+          : '$repeaterName: $error';
+    } else if (alreadyUpToDate) {
+      title = _l10n.notification_influxUpToDateTitle;
+      body = repeaterName;
+    } else {
+      title = _l10n.notification_influxImportTitle;
+      body = _l10n.notification_influxImportBody(repeaterName, points, ticks);
+    }
+
+    const androidDetails = AndroidNotificationDetails(
+      'telemetry_influx',
+      'Telemetry InfluxDB',
+      channelDescription: 'Telemetry InfluxDB import results',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+    const darwinDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: false,
+      presentSound: true,
+    );
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: darwinDetails,
+      macOS: darwinDetails,
+    );
+
+    try {
+      await _notifications.show(
+        id: 'telemetry_influx'.hashCode,
+        title: title,
+        body: body,
+        notificationDetails: details,
+        payload: 'telemetry_influx',
+      );
+    } catch (e) {
+      debugPrint('Failed to show telemetry InfluxDB notification: $e');
+    }
+  }
+
   Future<void> cancelAll() async {
     await _notifications.cancelAll();
   }

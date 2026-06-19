@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:meshcore_open/helpers/telemetry_log.dart';
+import 'package:meshcore_open/models/app_settings.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/models/path_selection.dart';
+import 'package:meshcore_open/services/influxdb_telemetry_service.dart';
 import 'package:meshcore_open/services/telemetry_log_fetch_service.dart';
 import 'package:meshcore_open/services/telemetry_saf_export.dart';
 import 'package:meshcore_open/storage/telemetry_log_store.dart';
@@ -87,7 +89,119 @@ void main() {
     ]);
     expect(safExport.writes.single.first.bytes, connector.logBytes);
   });
+
+  test('successful fetch auto-imports to configured InfluxDB', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()
+      ..logBytes = _sampleLog(sampleCount: 2);
+    final store = _MemoryTelemetryLogStore();
+    final influx = _FakeInfluxDbTelemetryService(store: store);
+    final service = TelemetryLogFetchService(
+      connector,
+      store: store,
+      influxSettings: () => _influxSettings,
+      influxServiceFactory: (_) => influx,
+    );
+    service.addListener(() {});
+
+    await service.fetch(repeater, chunkSize: 35);
+
+    expect(service.status, TelemetryLogFetchStatus.done);
+    expect(influx.importedPaths, ['/memory/${store.session!.sessionFilename}']);
+    expect(influx.importedNodes, [repeater.publicKeyHex]);
+    expect(influx.importedSettings, [_influxSettings]);
+    expect(influx.closed, isTrue);
+    expect(service.influxImportStatus, TelemetryInfluxImportStatus.imported);
+    expect(service.influxImportTicks, 2);
+    expect(service.influxImportPoints, 2);
+    expect(service.influxImportGeneration, 1);
+  });
+
+  test('successful fetch skips InfluxDB when it is not configured', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()
+      ..logBytes = _sampleLog(sampleCount: 2);
+    final store = _MemoryTelemetryLogStore();
+    final influx = _FakeInfluxDbTelemetryService(store: store);
+    final service = TelemetryLogFetchService(
+      connector,
+      store: store,
+      influxSettings: () => const InfluxDbSettings(),
+      influxServiceFactory: (_) => influx,
+    );
+    service.addListener(() {});
+
+    await service.fetch(repeater, chunkSize: 35);
+
+    expect(service.status, TelemetryLogFetchStatus.done);
+    expect(influx.importedPaths, isEmpty);
+    expect(influx.closed, isFalse);
+    expect(
+      service.influxImportStatus,
+      TelemetryInfluxImportStatus.notAttempted,
+    );
+    expect(service.influxImportGeneration, 0);
+  });
+
+  test('successful fetch reports InfluxDB already up to date', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()
+      ..logBytes = _sampleLog(sampleCount: 2);
+    final store = _MemoryTelemetryLogStore();
+    final influx = _FakeInfluxDbTelemetryService(store: store)
+      ..result = const InfluxDbImportResult(
+        ticks: 0,
+        points: 0,
+        alreadyUpToDate: true,
+      );
+    final service = TelemetryLogFetchService(
+      connector,
+      store: store,
+      influxSettings: () => _influxSettings,
+      influxServiceFactory: (_) => influx,
+    );
+    service.addListener(() {});
+
+    await service.fetch(repeater, chunkSize: 35);
+
+    expect(service.status, TelemetryLogFetchStatus.done);
+    expect(service.influxImportStatus, TelemetryInfluxImportStatus.upToDate);
+    expect(service.influxImportGeneration, 1);
+  });
+
+  test('InfluxDB auto-import failure does not fail the fetch', () async {
+    final repeater = _repeater();
+    final connector = _FakeTelemetryConnector()
+      ..logBytes = _sampleLog(sampleCount: 2);
+    final store = _MemoryTelemetryLogStore();
+    final influx = _FakeInfluxDbTelemetryService(store: store)
+      ..error = const InfluxDbException('offline');
+    final service = TelemetryLogFetchService(
+      connector,
+      store: store,
+      influxSettings: () => _influxSettings,
+      influxServiceFactory: (_) => influx,
+    );
+    service.addListener(() {});
+
+    await service.fetch(repeater, chunkSize: 35);
+
+    expect(service.status, TelemetryLogFetchStatus.done);
+    expect(service.errorMessage, isNull);
+    expect(influx.importedPaths, hasLength(1));
+    expect(influx.closed, isTrue);
+    expect(service.influxImportStatus, TelemetryInfluxImportStatus.failed);
+    expect(service.influxImportError, 'offline');
+    expect(service.influxImportGeneration, 1);
+  });
 }
+
+const _influxSettings = InfluxDbSettings(
+  url: 'http://influx.local:8086',
+  token: 'secret',
+  organization: 'mesh',
+  bucket: 'telemetry',
+);
 
 Contact _repeater() {
   return Contact(
@@ -282,4 +396,34 @@ class _MemoryTelemetrySafExport extends TelemetrySafExport {
     TelemetryLogSession session,
     Uint8List bytes,
   ) async {}
+}
+
+class _FakeInfluxDbTelemetryService extends InfluxDbTelemetryService {
+  _FakeInfluxDbTelemetryService({required super.store});
+
+  final List<String> importedPaths = [];
+  final List<String> importedNodes = [];
+  final List<InfluxDbSettings> importedSettings = [];
+  InfluxDbImportResult result = const InfluxDbImportResult(ticks: 2, points: 2);
+  Object? error;
+  bool closed = false;
+
+  @override
+  Future<InfluxDbImportResult> importFile({
+    required String path,
+    required String node,
+    required InfluxDbSettings settings,
+  }) async {
+    importedPaths.add(path);
+    importedNodes.add(node);
+    importedSettings.add(settings);
+    if (error != null) throw error!;
+    return result;
+  }
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
 }

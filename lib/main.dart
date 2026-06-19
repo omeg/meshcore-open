@@ -292,7 +292,10 @@ class MeshCoreApp extends StatelessWidget {
           // App-scoped so a telemetry-log fetch keeps running when the user leaves
           // the screen, notifying on completion.
           ChangeNotifierProvider(
-            create: (_) => TelemetryLogFetchService(connector),
+            create: (_) => TelemetryLogFetchService(
+              connector,
+              influxSettings: () => appSettingsService.settings.influxDb,
+            ),
           ),
         ],
         child: Consumer<AppSettingsService>(

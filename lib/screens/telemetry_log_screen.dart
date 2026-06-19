@@ -41,6 +41,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   RepeaterCommandService? _commandService;
   bool _statusLoading = false;
   final Set<String> _importingPaths = {};
+  int _handledInfluxImportGeneration = 0;
 
   /// Whether the global service's current/last fetch is for this repeater.
   bool get _isMyFetch => _service.targetKey == widget.repeater.publicKeyHex;
@@ -63,6 +64,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     super.initState();
     _service = Provider.of<TelemetryLogFetchService>(context, listen: false)
       ..addListener(_onChange);
+    _handledInfluxImportGeneration = _service.influxImportGeneration;
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
     _commandService = RepeaterCommandService(connector);
     _setupMessageListener();
@@ -146,6 +148,28 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     if (!mounted) return;
     _cacheLogFromService();
     setState(() {});
+    _showAutoInfluxImportResult();
+  }
+
+  void _showAutoInfluxImportResult() {
+    if (!_isMyFetch ||
+        _service.influxImportGeneration <= _handledInfluxImportGeneration) {
+      return;
+    }
+    _handledInfluxImportGeneration = _service.influxImportGeneration;
+    final message = switch (_service.influxImportStatus) {
+      TelemetryInfluxImportStatus.imported =>
+        'Imported ${_service.influxImportPoints} point(s) from '
+            '${_service.influxImportTicks} tick(s).',
+      TelemetryInfluxImportStatus.upToDate => 'InfluxDB is already up to date.',
+      TelemetryInfluxImportStatus.failed =>
+        'InfluxDB import failed: ${_service.influxImportError}',
+      TelemetryInfluxImportStatus.notAttempted => null,
+    };
+    if (message == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _snack(message);
+    });
   }
 
   Future<void> _reloadSavedLogs() async {

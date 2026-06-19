@@ -4131,6 +4131,22 @@ class AppLocalizationsKo extends AppLocalizations {
       'Telemetry log fetch failed';
 
   @override
+  String get notification_influxImportTitle => 'Telemetry imported to InfluxDB';
+
+  @override
+  String notification_influxImportBody(String repeater, int points, int ticks) {
+    return '$repeater: $points point(s) from $ticks tick(s)';
+  }
+
+  @override
+  String get notification_influxUpToDateTitle =>
+      'InfluxDB is already up to date';
+
+  @override
+  String get notification_influxImportFailedTitle =>
+      'InfluxDB telemetry import failed';
+
+  @override
   String notification_messagesCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

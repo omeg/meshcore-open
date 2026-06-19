@@ -7498,6 +7498,30 @@ abstract class AppLocalizations {
   /// **'Telemetry log fetch failed'**
   String get notification_telemetryLogFailedTitle;
 
+  /// No description provided for @notification_influxImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry imported to InfluxDB'**
+  String get notification_influxImportTitle;
+
+  /// No description provided for @notification_influxImportBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{repeater}: {points} point(s) from {ticks} tick(s)'**
+  String notification_influxImportBody(String repeater, int points, int ticks);
+
+  /// No description provided for @notification_influxUpToDateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'InfluxDB is already up to date'**
+  String get notification_influxUpToDateTitle;
+
+  /// No description provided for @notification_influxImportFailedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'InfluxDB telemetry import failed'**
+  String get notification_influxImportFailedTitle;
+
   /// No description provided for @notification_messagesCount.
   ///
   /// In en, this message translates to:

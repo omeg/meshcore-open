@@ -7,15 +7,19 @@ import 'package:flutter/foundation.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/telemetry_log.dart';
+import '../models/app_settings.dart';
 import '../models/contact.dart';
 import '../models/path_selection.dart';
 import '../storage/telemetry_log_store.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_info.dart';
+import 'influxdb_telemetry_service.dart';
 import 'notification_service.dart';
 import 'telemetry_saf_export.dart';
 
 enum TelemetryLogFetchStatus { idle, fetching, done, error }
+
+enum TelemetryInfluxImportStatus { notAttempted, imported, upToDate, failed }
 
 /// Pulls a repeater's telemetry log over the mesh via `CMD_SEND_BINARY_REQ`
 /// (`REQ_TYPE_GET_TELEMETRY_LOG`) and assembles the chunked response.
@@ -34,6 +38,9 @@ class TelemetryLogFetchService extends ChangeNotifier {
   final TelemetryLogStore _store;
   final TelemetrySafExport? _safExport;
   final bool Function() _supportsMobileExportFolder;
+  final InfluxDbSettings Function()? _influxSettings;
+  final InfluxDbTelemetryService Function(TelemetryLogStore store)
+  _influxServiceFactory;
   final Random _random = Random();
 
   TelemetryLogFetchService(
@@ -41,10 +48,17 @@ class TelemetryLogFetchService extends ChangeNotifier {
     TelemetryLogStore? store,
     TelemetrySafExport? safExport,
     bool Function()? supportsMobileExportFolder,
+    InfluxDbSettings Function()? influxSettings,
+    InfluxDbTelemetryService Function(TelemetryLogStore store)?
+    influxServiceFactory,
   }) : _store = store ?? TelemetryLogStore(),
        _safExport = safExport ?? TelemetrySafExport(),
        _supportsMobileExportFolder =
-           supportsMobileExportFolder ?? (() => PlatformInfo.isAndroid);
+           supportsMobileExportFolder ?? (() => PlatformInfo.isAndroid),
+       _influxSettings = influxSettings,
+       _influxServiceFactory =
+           influxServiceFactory ??
+           ((store) => InfluxDbTelemetryService(store: store));
 
   // Cross-device resume reads/writes the synced export folder, which only
   // exists on Android (SAF). Null elsewhere.
@@ -69,6 +83,12 @@ class TelemetryLogFetchService extends ChangeNotifier {
   TelemetryLog? _log;
   String? _savedFilePath;
   Contact? _target;
+  TelemetryInfluxImportStatus _influxImportStatus =
+      TelemetryInfluxImportStatus.notAttempted;
+  int _influxImportTicks = 0;
+  int _influxImportPoints = 0;
+  String? _influxImportError;
+  int _influxImportGeneration = 0;
 
   /// The repeater the current/last fetch targets. The screen uses this to tell
   /// whether the global service's state belongs to the repeater it's showing.
@@ -90,6 +110,11 @@ class TelemetryLogFetchService extends ChangeNotifier {
 
   /// Full path of the `.telemetry` file written by the last successful fetch.
   String? get savedFilePath => _savedFilePath;
+  TelemetryInfluxImportStatus get influxImportStatus => _influxImportStatus;
+  int get influxImportTicks => _influxImportTicks;
+  int get influxImportPoints => _influxImportPoints;
+  String? get influxImportError => _influxImportError;
+  int get influxImportGeneration => _influxImportGeneration;
   double get progress =>
       _totalSize == 0 ? 0 : (_bytesFetched / _totalSize).clamp(0.0, 1.0);
 
@@ -137,6 +162,10 @@ class TelemetryLogFetchService extends ChangeNotifier {
     _resumed = false;
     _noResponse = false;
     _savedFilePath = null;
+    _influxImportStatus = TelemetryInfluxImportStatus.notAttempted;
+    _influxImportTicks = 0;
+    _influxImportPoints = 0;
+    _influxImportError = null;
     _log = null;
     _bytesFetched = 0;
     _totalSize = 0;
@@ -167,6 +196,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
         }
       }
       await _autoExportIfConfigured(repeater);
+      await _autoImportToInfluxIfConfigured(repeater);
       _status = TelemetryLogFetchStatus.done;
       _notifyResult(success: true, repeater: repeater);
     } on _TelemetryLogFetchCancelled {
@@ -202,6 +232,46 @@ class TelemetryLogFetchService extends ChangeNotifier {
     }
   }
 
+  Future<void> _autoImportToInfluxIfConfigured(Contact repeater) async {
+    final settings = _influxSettings?.call();
+    if (settings == null || !settings.isConfigured) return;
+    final telemetryPath =
+        _savedFilePath ?? await _store.currentFilePath(repeater.publicKeyHex);
+    if (telemetryPath == null) return;
+
+    final importer = _influxServiceFactory(_store);
+    try {
+      final result = await importer.importFile(
+        path: telemetryPath,
+        node: repeater.publicKeyHex,
+        settings: settings,
+      );
+      _influxImportStatus = result.alreadyUpToDate
+          ? TelemetryInfluxImportStatus.upToDate
+          : TelemetryInfluxImportStatus.imported;
+      _influxImportTicks = result.ticks;
+      _influxImportPoints = result.points;
+      _influxImportGeneration++;
+      appLogger.info(
+        result.alreadyUpToDate
+            ? 'InfluxDB telemetry import already up to date'
+            : 'Auto-imported ${result.points} telemetry point(s) '
+                  'from ${result.ticks} tick(s) to InfluxDB',
+        tag: 'TelemLog',
+      );
+    } catch (e) {
+      _influxImportStatus = TelemetryInfluxImportStatus.failed;
+      _influxImportError = e.toString();
+      _influxImportGeneration++;
+      appLogger.warn(
+        'Telemetry InfluxDB auto-import failed: $e',
+        tag: 'TelemLog',
+      );
+    } finally {
+      importer.close();
+    }
+  }
+
   Future<T> _cancelable<T>(Future<T> operation) {
     if (_cancelled) {
       throw const _TelemetryLogFetchCancelled();
@@ -227,6 +297,19 @@ class TelemetryLogFetchService extends ChangeNotifier {
         hasData: _totalSize > 0,
       ),
     );
+    if (_influxImportStatus != TelemetryInfluxImportStatus.notAttempted) {
+      unawaited(
+        NotificationService().showTelemetryInfluxImportNotification(
+          repeaterName: repeater.name,
+          success: _influxImportStatus != TelemetryInfluxImportStatus.failed,
+          alreadyUpToDate:
+              _influxImportStatus == TelemetryInfluxImportStatus.upToDate,
+          ticks: _influxImportTicks,
+          points: _influxImportPoints,
+          error: _influxImportError,
+        ),
+      );
+    }
   }
 
   // A log with a header but zero samples isn't worth decoding.
