@@ -4632,6 +4632,16 @@ class AppLocalizationsFr extends AppLocalizations {
       'Niveau de bruit, RSSI, rapport signal/bruit (SNR) et temps d\'antenne';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Traduction';
 
   @override

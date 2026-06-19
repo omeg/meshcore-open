@@ -75,7 +75,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "de": [
@@ -141,7 +144,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "es": [
@@ -220,7 +226,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "fr": [
@@ -299,7 +308,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "hu": [
@@ -378,7 +390,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "it": [
@@ -457,7 +472,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "ja": [
@@ -536,7 +554,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "ko": [
@@ -615,7 +636,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "nl": [
@@ -694,7 +718,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "pl": [
@@ -773,7 +800,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "pt": [
@@ -852,7 +882,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "ru": [
@@ -931,7 +964,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "sk": [
@@ -1010,7 +1046,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "sl": [
@@ -1089,7 +1128,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "sv": [
@@ -1168,7 +1210,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "uk": [
@@ -1247,7 +1292,10 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ],
 
   "zh": [
@@ -1326,6 +1374,9 @@
     "appSettings_discoveredContactTapActionImport",
     "appSettings_discoveredContactTapActionImportSubtitle",
     "appSettings_discoveredContactTapActionShowActions",
-    "appSettings_discoveredContactTapActionShowActionsSubtitle"
+    "appSettings_discoveredContactTapActionShowActionsSubtitle",
+    "companionTelemetry_title",
+    "companionTelemetry_settingsTile",
+    "companionTelemetry_settingsSubtitle"
   ]
 }

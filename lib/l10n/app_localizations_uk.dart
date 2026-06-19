@@ -4623,6 +4623,16 @@ class AppLocalizationsUk extends AppLocalizations {
       'Рівень шуму, RSSI, SNR та час в ефірі.';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Переклад';
 
   @override

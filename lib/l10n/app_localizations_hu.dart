@@ -4605,6 +4605,16 @@ class AppLocalizationsHu extends AppLocalizations {
   String get radioStats_settingsSubtitle => 'Zajszint, RSSI, SNR és műsoridő';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Fordítás';
 
   @override

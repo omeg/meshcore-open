@@ -4386,6 +4386,16 @@ class AppLocalizationsJa extends AppLocalizations {
   String get radioStats_settingsSubtitle => 'ノイズレベル、RSSI、SNR、および通信時間';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => '翻訳';
 
   @override

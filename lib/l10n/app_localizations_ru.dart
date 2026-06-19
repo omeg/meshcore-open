@@ -4626,6 +4626,16 @@ class AppLocalizationsRu extends AppLocalizations {
       'Уровень шума, RSSI, SNR и время передачи';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Перевод';
 
   @override

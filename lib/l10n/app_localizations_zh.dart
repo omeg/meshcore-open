@@ -4282,6 +4282,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get radioStats_settingsSubtitle => '噪声水平、RSSI、信噪比和空中时间';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => '翻译';
 
   @override

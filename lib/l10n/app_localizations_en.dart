@@ -4536,6 +4536,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Noise floor, RSSI, SNR, and airtime';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Translation';
 
   @override

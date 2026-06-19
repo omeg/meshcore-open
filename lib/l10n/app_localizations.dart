@@ -7918,6 +7918,24 @@ abstract class AppLocalizations {
   /// **'Noise floor, RSSI, SNR, and airtime'**
   String get radioStats_settingsSubtitle;
 
+  /// No description provided for @companionTelemetry_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Companion telemetry'**
+  String get companionTelemetry_title;
+
+  /// No description provided for @companionTelemetry_settingsTile.
+  ///
+  /// In en, this message translates to:
+  /// **'Telemetry'**
+  String get companionTelemetry_settingsTile;
+
+  /// No description provided for @companionTelemetry_settingsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery and connected sensor readings'**
+  String get companionTelemetry_settingsSubtitle;
+
   /// No description provided for @translation_title.
   ///
   /// In en, this message translates to:

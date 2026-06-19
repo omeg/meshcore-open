@@ -4616,6 +4616,16 @@ class AppLocalizationsDe extends AppLocalizations {
       'Rauschpegel, RSSI, Signal-Rausch-Verhältnis (SNR) und Nutzzeit';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Übersetzung';
 
   @override

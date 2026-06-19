@@ -4593,6 +4593,16 @@ class AppLocalizationsNl extends AppLocalizations {
       'Ruimtelijke ruis, RSSI, SNR en beschikbare tijd';
 
   @override
+  String get companionTelemetry_title => 'Companion telemetry';
+
+  @override
+  String get companionTelemetry_settingsTile => 'Telemetry';
+
+  @override
+  String get companionTelemetry_settingsSubtitle =>
+      'Battery and connected sensor readings';
+
+  @override
   String get translation_title => 'Vertaling';
 
   @override
