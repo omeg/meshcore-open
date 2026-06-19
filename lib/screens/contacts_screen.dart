@@ -37,6 +37,7 @@ import 'channels_screen.dart';
 import 'chat_screen.dart';
 import 'discovery_screen.dart';
 import 'map_screen.dart';
+import 'nearby_nodes_screen.dart';
 import 'repeater_hub_screen.dart';
 import 'settings_screen.dart';
 
@@ -360,6 +361,21 @@ class _ContactsScreenState extends State<ContactsScreen>
             PopupMenuButton(
               tooltip: context.l10n.contacts_moreOptions,
               itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
+                PopupMenuItem(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi_find),
+                      const SizedBox(width: 8),
+                      Text(context.l10n.nearbyNodes_menu),
+                    ],
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NearbyNodesScreen(),
+                    ),
+                  ),
+                ),
                 PopupMenuItem(
                   child: Row(
                     children: [

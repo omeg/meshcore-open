@@ -469,6 +469,22 @@
   },
   "contacts_newGroup": "New Group",
   "contacts_moreOptions": "More options",
+  "nearbyNodes_menu": "Discover nearby nodes",
+  "nearbyNodes_title": "Nearby repeaters",
+  "nearbyNodes_description": "Sends a zero-hop request and listens for nearby repeaters for 15 seconds.",
+  "nearbyNodes_listening": "Listening for nearby repeaters…",
+  "nearbyNodes_noneFound": "No nearby repeaters responded",
+  "nearbyNodes_failed": "Discovery failed",
+  "nearbyNodes_unknownRepeater": "Unknown repeater",
+  "nearbyNodes_keyCopied": "Public key copied",
+  "nearbyNodes_snr": "SNR {snr} dB",
+  "@nearbyNodes_snr": {
+    "placeholders": {
+      "snr": {
+        "type": "String"
+      }
+    }
+  },
   "contacts_searchOpen": "Search contacts",
   "contacts_searchClose": "Close search",
   "contacts_groupName": "Group name",

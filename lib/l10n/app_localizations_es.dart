@@ -1057,6 +1057,36 @@ class AppLocalizationsEs extends AppLocalizations {
   String get contacts_moreOptions => 'Más opciones';
 
   @override
+  String get nearbyNodes_menu => 'Discover nearby nodes';
+
+  @override
+  String get nearbyNodes_title => 'Nearby repeaters';
+
+  @override
+  String get nearbyNodes_description =>
+      'Sends a zero-hop request and listens for nearby repeaters for 15 seconds.';
+
+  @override
+  String get nearbyNodes_listening => 'Listening for nearby repeaters…';
+
+  @override
+  String get nearbyNodes_noneFound => 'No nearby repeaters responded';
+
+  @override
+  String get nearbyNodes_failed => 'Discovery failed';
+
+  @override
+  String get nearbyNodes_unknownRepeater => 'Unknown repeater';
+
+  @override
+  String get nearbyNodes_keyCopied => 'Public key copied';
+
+  @override
+  String nearbyNodes_snr(String snr) {
+    return 'SNR $snr dB';
+  }
+
+  @override
   String get contacts_searchOpen => 'Buscar contactos';
 
   @override

@@ -33,6 +33,7 @@ import 'community_qr_scanner_screen.dart';
 import 'contacts_screen.dart';
 import 'discovery_screen.dart';
 import 'map_screen.dart';
+import 'nearby_nodes_screen.dart';
 import 'settings_screen.dart';
 
 class ChannelsScreen extends StatefulWidget {
@@ -122,6 +123,21 @@ class _ChannelsScreenState extends State<ChannelsScreen>
               // capture the screen's context — not the itemBuilder's menu
               // context, which is deactivated by then.
               itemBuilder: (menuContext) => [
+                PopupMenuItem(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi_find),
+                      const SizedBox(width: 8),
+                      Text(menuContext.l10n.nearbyNodes_menu),
+                    ],
+                  ),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NearbyNodesScreen(),
+                    ),
+                  ),
+                ),
                 PopupMenuItem(
                   child: Row(
                     children: [

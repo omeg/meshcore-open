@@ -1996,6 +1996,60 @@ abstract class AppLocalizations {
   /// **'More options'**
   String get contacts_moreOptions;
 
+  /// No description provided for @nearbyNodes_menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover nearby nodes'**
+  String get nearbyNodes_menu;
+
+  /// No description provided for @nearbyNodes_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Nearby repeaters'**
+  String get nearbyNodes_title;
+
+  /// No description provided for @nearbyNodes_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Sends a zero-hop request and listens for nearby repeaters for 15 seconds.'**
+  String get nearbyNodes_description;
+
+  /// No description provided for @nearbyNodes_listening.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for nearby repeaters…'**
+  String get nearbyNodes_listening;
+
+  /// No description provided for @nearbyNodes_noneFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No nearby repeaters responded'**
+  String get nearbyNodes_noneFound;
+
+  /// No description provided for @nearbyNodes_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery failed'**
+  String get nearbyNodes_failed;
+
+  /// No description provided for @nearbyNodes_unknownRepeater.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown repeater'**
+  String get nearbyNodes_unknownRepeater;
+
+  /// No description provided for @nearbyNodes_keyCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Public key copied'**
+  String get nearbyNodes_keyCopied;
+
+  /// No description provided for @nearbyNodes_snr.
+  ///
+  /// In en, this message translates to:
+  /// **'SNR {snr} dB'**
+  String nearbyNodes_snr(String snr);
+
   /// No description provided for @contacts_searchOpen.
   ///
   /// In en, this message translates to:

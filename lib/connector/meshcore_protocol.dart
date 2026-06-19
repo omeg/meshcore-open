@@ -941,6 +941,62 @@ Uint8List buildDiscoveryRequestPayload(
   return writer.toBytes();
 }
 
+class DiscoveryResponse {
+  final int tag;
+  final int nodeType;
+  final int rssi;
+  final double snr;
+  final double responderSnr;
+  final int pathLength;
+  final Uint8List publicKey;
+
+  const DiscoveryResponse({
+    required this.tag,
+    required this.nodeType,
+    required this.rssi,
+    required this.snr,
+    required this.responderSnr,
+    required this.pathLength,
+    required this.publicKey,
+  });
+}
+
+/// Parses a `PUSH_CODE_CONTROL_DATA` discovery response from companion
+/// firmware. Returns null for unrelated or malformed control frames.
+DiscoveryResponse? parseDiscoveryResponseFrame(Uint8List frame) {
+  final reader = BufferReader(frame);
+  try {
+    if (reader.readByte() != pushCodeControlData || reader.remaining < 9) {
+      return null;
+    }
+
+    final snr = reader.readInt8() / 4.0;
+    final rssi = reader.readInt8();
+    final pathLength = reader.readByte();
+    final controlType = reader.readByte();
+    if (((controlType >> 4) & 0x0F) != controlSubtypeDiscoverResp) {
+      return null;
+    }
+
+    final responderSnr = reader.readInt8() / 4.0;
+    final tag = reader.readUInt32LE();
+    final publicKey = reader.readRemainingBytes();
+    if (publicKey.isEmpty) return null;
+
+    return DiscoveryResponse(
+      tag: tag,
+      nodeType: controlType & 0x0F,
+      rssi: rssi,
+      snr: snr,
+      responderSnr: responderSnr,
+      pathLength: pathLength,
+      publicKey: publicKey,
+    );
+  } on RangeError {
+    return null;
+  }
+}
+
 Uint8List _reversePathByHop(Uint8List path, int pathHashWidth) {
   if (path.isEmpty) return Uint8List(0);
   final width = pathHashWidth.clamp(1, 4).toInt();
