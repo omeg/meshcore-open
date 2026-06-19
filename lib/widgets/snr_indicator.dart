@@ -328,9 +328,9 @@ class _SNRIndicatorState extends State<SNRIndicator> {
           );
           final distanceSegment = distanceKmLabel == null
               ? ''
-              : ' • distance: $distanceKmLabel';
+              : ' • $distanceKmLabel';
           final pathLine =
-              '$prefixHex • route: $routeLabel • path: $observedPathLabel$distanceSegment';
+              '$prefixHex • $routeLabel • $observedPathLabel$distanceSegment';
           final signalLine =
               'Packets: ${repeater.snrSampleCount} • Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
 
