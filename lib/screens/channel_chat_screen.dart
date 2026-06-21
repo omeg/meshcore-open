@@ -886,11 +886,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   Widget _buildReplyPreview(ChannelMessage message, double textScale) {
-    final connector = context.read<MeshCoreConnector>();
-    final isOwnNode = message.replyToSenderName == connector.selfName;
     final replyText = message.replyToText ?? '';
     final colorScheme = Theme.of(context).colorScheme;
-    final previewTextColor = colorScheme.onSurface.withValues(alpha: 0.7);
+    final replyLabelColor = colorScheme.onSurface.withValues(alpha: 0.6);
+    final previewTextColor = colorScheme.onSurface.withValues(alpha: 0.55);
 
     final gifId = GifHelper.parseGif(replyText);
     final poi = parseMarkerText(replyText);
@@ -935,10 +934,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+          color: colorScheme.onSurface.withValues(alpha: 0.035),
           borderRadius: BorderRadius.circular(MeshRadii.sm),
           border: Border(
-            left: BorderSide(color: colorScheme.primary, width: 3),
+            left: BorderSide(
+              color: colorScheme.onSurface.withValues(alpha: 0.2),
+              width: 2,
+            ),
           ),
         ),
         child: Column(
@@ -948,8 +950,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
               context.l10n.chat_replyTo(message.replyToSenderName ?? ''),
               style: TextStyle(
                 fontSize: 11 * textScale,
-                fontWeight: FontWeight.bold,
-                color: isOwnNode ? colorScheme.primary : colorScheme.onSurface,
+                fontWeight: FontWeight.w600,
+                color: replyLabelColor,
               ),
             ),
             const SizedBox(height: 2),
