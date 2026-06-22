@@ -7,6 +7,8 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
+import 'package:meshcore_open/helpers/path_helper.dart';
+import 'package:meshcore_open/helpers/path_trace_codec.dart';
 import 'package:meshcore_open/l10n/l10n.dart';
 import 'package:meshcore_open/models/app_settings.dart';
 import 'package:meshcore_open/models/contact.dart';
@@ -27,15 +29,29 @@ export 'package:meshcore_open/widgets/path_map_ui.dart'
     show formatDistance, getPathDistanceMeters;
 
 class PathTraceData {
-  final Uint8List pathData;
+  final List<Uint8List> pathData;
   final List<double> snrData;
-  final Map<int, Contact> pathContacts;
+  final Map<String, Contact> pathContacts;
 
   PathTraceData({
     required this.pathData,
     required this.snrData,
     required this.pathContacts,
   });
+}
+
+String _hopKey(List<int> hop) => PathHelper.formatHopHex(hop);
+
+Uint8List _lastHopChunk(Uint8List path, int hopWidth) {
+  if (path.isEmpty) return Uint8List(0);
+  final width = hopWidth.clamp(1, path.length).toInt();
+  return Uint8List.fromList(path.sublist(path.length - width));
+}
+
+bool _matchesHopPrefix(List<int> a, List<int> b) {
+  if (a.isEmpty || b.isEmpty) return false;
+  final width = min(a.length, b.length);
+  return listEquals(a.sublist(0, width), b.sublist(0, width));
 }
 
 class PathTraceMapScreen extends StatefulWidget {
@@ -81,7 +97,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   bool _hasData = false;
   PathTraceData? _traceData;
   // Inferred positions for hops that have no GPS location, keyed by hop byte.
-  Map<int, LatLng> _inferredHopPositions = {};
+  Map<String, LatLng> _inferredHopPositions = {};
   // Endpoint position for the target contact (GPS or guessed).
   LatLng? _targetContactPosition;
   bool _targetContactIsGuessed = false;
@@ -97,6 +113,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   // Live path resolved at trace time; used by the response handler for
   // endpoint inference so it matches the path that was actually traced.
   Uint8List _tracedPath = Uint8List(0);
+  Uint8List? _sentTagBytes;
 
   // Packet-flow animation + multi-path view state.
   late final PathPlaybackController _playback;
@@ -109,12 +126,6 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   bool _panelCollapsed = false;
   bool _animationEnabled = true;
   bool _followPacket = false;
-
-  String _formatPathPrefixes(Uint8List pathBytes) {
-    return pathBytes
-        .map((b) => b.toRadixString(16).padLeft(2, '0').toUpperCase())
-        .join(',');
-  }
 
   @override
   void initState() {
@@ -233,47 +244,6 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
     );
   }
 
-  Uint8List buildPath(Uint8List pathBytes) {
-    Uint8List traceBytes;
-
-    if (pathBytes.isEmpty) {
-      final pk = widget.targetContact?.publicKey;
-      final n = widget.pathHashByteWidth.clamp(1, pubKeySize);
-      if (pk != null && pk.length >= n) {
-        return Uint8List.fromList(pk.sublist(0, n));
-      }
-      traceBytes = Uint8List(1);
-      traceBytes[0] = pk?[0] ?? 0;
-      return traceBytes;
-    }
-
-    if (widget.targetContact?.type == advTypeRepeater ||
-        widget.targetContact?.type == advTypeRoom) {
-      final len = (pathBytes.length + pathBytes.length + 1);
-      traceBytes = Uint8List(len);
-      traceBytes[pathBytes.length] = widget.targetContact?.publicKey[0] ?? 0;
-      for (int i = 0; i < pathBytes.length; i++) {
-        traceBytes[i] = pathBytes[i];
-        if (i < pathBytes.length) {
-          traceBytes[len - 1 - i] = pathBytes[i];
-        }
-      }
-    } else {
-      if (pathBytes.length < 2) {
-        return pathBytes[0] == 0 ? Uint8List(0) : pathBytes;
-      }
-      final len = (pathBytes.length + pathBytes.length - 1);
-      traceBytes = Uint8List(len);
-      for (int i = 0; i < pathBytes.length; i++) {
-        traceBytes[i] = pathBytes[i];
-        if (i < pathBytes.length - 1) {
-          traceBytes[len - 1 - i] = pathBytes[i];
-        }
-      }
-    }
-    return traceBytes;
-  }
-
   /// Resolves the path bytes to trace. When tracing a specific contact's
   /// route (flipPathAround), re-read that contact's live forced/auto path from
   /// the connector so a path the user just changed (force flood / set path /
@@ -305,24 +275,64 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
     _tracedPath = livePath;
 
     final pathTmp = widget.reversePathAround
-        ? Uint8List.fromList(livePath.reversed.toList())
+        ? reverseTraceSourcePath(livePath, widget.pathHashByteWidth)
         : livePath;
-
-    final path = widget.flipPathAround ? buildPath(pathTmp) : pathTmp;
+    final encoding = encodeTraceRequestPath(
+      pathTmp,
+      sourceHashByteWidth: widget.pathHashByteWidth,
+      targetPublicKey: widget.targetContact?.publicKey,
+      mirrorAroundTarget: widget.flipPathAround,
+    );
+    if (encoding == null) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _failed2Loaded = true;
+      });
+      return;
+    }
+    final path = encoding.payload;
 
     appLogger.info(
-      'Initiating path trace with path: ${_formatPathPrefixes(path)}',
+      'Initiating path trace with path: '
+      '${PathHelper.formatPathHex(path, encoding.hashByteWidth)}',
       tag: 'PathTraceMapScreen',
       noNotify: !mounted,
     );
 
+    final sentTag = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+    _sentTagBytes = Uint8List(4)
+      ..[0] = sentTag & 0xFF
+      ..[1] = (sentTag >> 8) & 0xFF
+      ..[2] = (sentTag >> 16) & 0xFF
+      ..[3] = (sentTag >> 24) & 0xFF;
+    _timeoutTimer?.cancel();
+    _timeoutTimer = Timer(const Duration(seconds: 30), _markTraceFailed);
+
     final frame = buildTraceReq(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      sentTag,
       0, //auth
-      0, //flag
-      payload: path,
+      encoding.flags,
+      payload: path.isEmpty ? Uint8List.fromList([0]) : path,
     );
-    connector.sendFrame(frame);
+    try {
+      await connector.sendFrame(frame);
+    } catch (error) {
+      _timeoutTimer?.cancel();
+      appLogger.error(
+        'Failed to send path trace request: $error',
+        tag: 'PathTraceMapScreen',
+      );
+      _markTraceFailed();
+    }
+  }
+
+  void _markTraceFailed() {
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+      _failed2Loaded = true;
+    });
   }
 
   void _setupFrameListener() {
@@ -344,13 +354,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
           _timeoutTimer?.cancel();
           _timeoutTimer = Timer(
             Duration(milliseconds: timeoutMilliseconds),
-            () {
-              if (!mounted) return;
-              setState(() {
-                _isLoading = false;
-                _failed2Loaded = true;
-              });
-            },
+            _markTraceFailed,
           );
         }
 
@@ -364,15 +368,16 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
         }
 
         // Check if it's a binary response
-        if (frame.length > 8 &&
+        if (frame.length >= 12 &&
             code == pushCodeTraceData &&
-            listEquals(frame.sublist(4, 8), tagData)) {
+            traceResponseMatchesTag(
+              frame,
+              sentTag: _sentTagBytes,
+              acknowledgedTag: tagData,
+            )) {
           _timeoutTimer?.cancel();
           if (!mounted) return;
-          frameBuffer.skipBytes(3); //reserved + path length + flag
-          if (listEquals(frameBuffer.readBytes(4), tagData)) {
-            _handleTraceResponse(frame);
-          }
+          _handleTraceResponse(frame);
         }
       } catch (e) {
         _timeoutTimer?.cancel();
@@ -390,24 +395,13 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   Future<void> _handleTraceResponse(Uint8List frame) async {
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
 
-    final buffer = BufferReader(frame);
     try {
-      buffer.skipBytes(2); // Skip push code and reserved byte
-      int pathLength = buffer.readUInt8();
-      final int flags = buffer
-          .readUInt8(); // path_sz = flags & 0x03 (path-hash mode, fw v1.11+)
-      buffer.skipBytes(4); // Skip tag data
-      buffer.skipBytes(4); // Skip auth code
-      final int pathSz = flags & 0x03;
-      Uint8List pathData = buffer.readBytes(pathLength);
-      // Firmware emits (path_len >> path_sz) hop SNRs plus 1 final SNR (to this node).
-      final int snrCount = (pathLength >> pathSz) + 1;
-      List<double> snrData = buffer
-          .readBytes(snrCount)
-          .map((snr) => snr.toSigned(8).toDouble() / 4)
-          .toList();
+      final decoded = decodeTraceResponse(frame);
+      final pathData = decoded.path;
+      final snrData = decoded.snr;
+      final traceWidth = decoded.hashByteWidth;
 
-      Map<int, Contact> pathContacts = {};
+      Map<String, Contact> pathContacts = {};
       Contact lastContact = Contact(
         path: Uint8List(0),
         pathLength: 0,
@@ -419,7 +413,11 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
         lastSeen: DateTime.now(),
       );
       if (widget.pathContacts != null) {
-        pathContacts = {for (var c in widget.pathContacts!) c.publicKey[0]: c};
+        pathContacts = {
+          for (final contact in widget.pathContacts!)
+            if (contact.publicKey.length >= traceWidth)
+              _hopKey(contact.publicKey.sublist(0, traceWidth)): contact,
+        };
       } else {
         final contacts = connector.allContactsUnfiltered;
         contacts.where((c) => c.type != advTypeChat).forEach((repeater) {
@@ -434,12 +432,13 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
                   _maxRepeaterMatchDistanceMeters) {
             return; //skip reapeaters that are far away from the last one with known GPS, to avoid false matches
           }
-          for (var repeaterData in pathData) {
-            if (listEquals(
-              repeater.publicKey.sublist(0, 1),
-              Uint8List.fromList([repeaterData]),
-            )) {
-              pathContacts[repeaterData] = repeater;
+          for (final repeaterData in pathData) {
+            if (repeater.publicKey.length >= repeaterData.length &&
+                listEquals(
+                  repeater.publicKey.sublist(0, repeaterData.length),
+                  repeaterData,
+                )) {
+              pathContacts[_hopKey(repeaterData)] = repeater;
               lastContact = repeater;
             }
           }
@@ -448,13 +447,20 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
 
       // For hops with no GPS contact, infer position from other contacts
       // with known GPS that share the same last-hop byte.
-      final Map<int, LatLng> inferredPositions = {};
+      final Map<String, LatLng> inferredPositions = {};
       for (final hop in pathData) {
-        final contact = pathContacts[hop];
+        final hopKey = _hopKey(hop);
+        final contact = pathContacts[hopKey];
         if (contact != null && contact.hasLocation) continue;
         final peers = connector.contacts
             .where(
-              (c) => c.hasLocation && c.path.isNotEmpty && c.path.last == hop,
+              (c) =>
+                  c.hasLocation &&
+                  c.path.isNotEmpty &&
+                  _matchesHopPrefix(
+                    _lastHopChunk(c.path, widget.pathHashByteWidth),
+                    hop,
+                  ),
             )
             .toList();
         if (peers.isNotEmpty) {
@@ -464,7 +470,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
           final lon =
               peers.map((c) => c.longitude!).reduce((a, b) => a + b) /
               peers.length;
-          inferredPositions[hop] = LatLng(lat, lon);
+          inferredPositions[hopKey] = LatLng(lat, lon);
         }
       }
 
@@ -490,16 +496,22 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
             // Infer from the last hop: average GPS contacts sharing that hop.
             // For a round-trip path (flipPathAround/reversePathAround), the target-side hop
             // sits in the middle of the symmetric sequence; .last is the local side.
-            final lastHop = widget.reversePathAround
-                ? _tracedPath.first
-                : _tracedPath.last;
+            final sourceLastHop = widget.reversePathAround
+                ? PathHelper.splitPathBytes(
+                    _tracedPath,
+                    widget.pathHashByteWidth,
+                  ).first
+                : _lastHopChunk(_tracedPath, widget.pathHashByteWidth);
 
             final peers = connector.allContacts
                 .where(
                   (c) =>
                       c.hasLocation &&
                       c.path.isNotEmpty &&
-                      c.path.last == lastHop,
+                      _matchesHopPrefix(
+                        _lastHopChunk(c.path, widget.pathHashByteWidth),
+                        sourceLastHop,
+                      ),
                 )
                 .toList();
             if (peers.isNotEmpty) {
@@ -516,9 +528,15 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
                 lon + offsetDeg * sin(angle),
               );
               targetGuessed = true;
-            } else if (inferredPositions.containsKey(lastHop)) {
-              final lat = inferredPositions[lastHop]!.latitude;
-              final lon = inferredPositions[lastHop]!.longitude;
+            } else if (inferredPositions.containsKey(
+              _hopKey(sourceLastHop.sublist(0, traceWidth)),
+            )) {
+              final inferred =
+                  inferredPositions[_hopKey(
+                    sourceLastHop.sublist(0, traceWidth),
+                  )]!;
+              final lat = inferred.latitude;
+              final lon = inferred.longitude;
               const offsetDeg = 0.003;
               final angle = (tc.publicKey[1] / 255.0) * 2 * pi;
               targetPos = LatLng(
@@ -528,7 +546,8 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
               targetGuessed = true;
             } else {
               // As a last resort, just place it at the same position as the last hop.
-              final contact = pathContacts[lastHop];
+              final contact =
+                  pathContacts[_hopKey(sourceLastHop.sublist(0, traceWidth))];
               if (contact != null && contact.hasLocation) {
                 const offsetDeg = 0.003;
                 final angle = (tc.publicKey[1] / 255.0) * 2 * pi;
@@ -546,21 +565,22 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
 
         _points = <LatLng>[];
         _points.add(LatLng(connector.selfLatitude!, connector.selfLongitude!));
-        int hopLast = 0;
-        int hopLastLast = 0;
+        String? hopLast;
+        String? hopLastLast;
         for (final hop in _traceData!.pathData) {
-          if (hop == hopLastLast && widget.flipPathAround) {
+          final hopKey = _hopKey(hop);
+          if (hopKey == hopLastLast && widget.flipPathAround) {
             break; //skip duplicate hops in round-trip paths
           }
-          final contact = _traceData!.pathContacts[hop];
+          final contact = _traceData!.pathContacts[hopKey];
           if (contact != null && contact.hasLocation) {
             _points.add(LatLng(contact.latitude!, contact.longitude!));
           } else {
-            final inferred = inferredPositions[hop];
+            final inferred = inferredPositions[hopKey];
             if (inferred != null) _points.add(inferred);
           }
           hopLastLast = hopLast;
-          hopLast = hop;
+          hopLast = hopKey;
         }
         if (targetPos != null) {
           if (_targetContact != null && _targetContact!.type == advTypeChat) {
@@ -583,7 +603,8 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
         _initialZoom = _points.isNotEmpty ? 13.0 : 2.0;
         _bounds = _points.length > 1 ? LatLngBounds.fromPoints(_points) : null;
         _mapKey = ValueKey(
-          '${context.l10n.pathTrace_you},${_formatPathPrefixes(_traceData!.pathData)}',
+          '${context.l10n.pathTrace_you},'
+          '${_traceData!.pathData.map(_hopKey).join(',')}',
         );
         _pathDistanceMeters = getPathDistanceMeters(_points);
         _primaryOutboundHops = _outboundHops(pathData);
@@ -605,22 +626,25 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
 
   /// Outbound hop bytes of the traced path, mirroring the round-trip
   /// dedup logic used when building [_points].
-  List<int> _outboundHops(Uint8List pathData) {
+  List<int> _outboundHops(List<Uint8List> pathData) {
     final hops = <int>[];
-    int hopLast = 0;
-    int hopLastLast = 0;
+    String? hopLast;
+    String? hopLastLast;
     for (final hop in pathData) {
-      if (hop == hopLastLast && widget.flipPathAround) break;
-      hops.add(hop);
+      final key = _hopKey(hop);
+      if (key == hopLastLast && widget.flipPathAround) break;
+      hops.add(hop.first);
       hopLastLast = hopLast;
-      hopLast = hop;
+      hopLast = key;
     }
     return hops;
   }
 
   Contact? _contactForHop(int hop, MeshCoreConnector connector) {
-    final traced = _traceData?.pathContacts[hop];
-    if (traced != null) return traced;
+    final traced = _traceData?.pathContacts.values.where(
+      (contact) => contact.publicKey.isNotEmpty && contact.publicKey[0] == hop,
+    );
+    if (traced != null && traced.isNotEmpty) return traced.first;
     for (final c in connector.allContactsUnfiltered) {
       if (c.type != advTypeChat &&
           c.publicKey.isNotEmpty &&
@@ -632,8 +656,13 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   }
 
   LatLng? _inferredPositionForHop(int hop, MeshCoreConnector connector) {
-    final cached = _inferredHopPositions[hop];
-    if (cached != null) return cached;
+    for (final entry in _inferredHopPositions.entries) {
+      if (entry.key.startsWith(
+        hop.toRadixString(16).padLeft(2, '0').toUpperCase(),
+      )) {
+        return entry.value;
+      }
+    }
     final peers = connector.contacts
         .where((c) => c.hasLocation && c.path.isNotEmpty && c.path.last == hop)
         .toList();
@@ -643,7 +672,6 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
     final lon =
         peers.map((c) => c.longitude!).reduce((a, b) => a + b) / peers.length;
     final pos = LatLng(lat, lon);
-    _inferredHopPositions[hop] = pos;
     return pos;
   }
 
@@ -934,29 +962,31 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   }
 
   List<Marker> _buildHopMarkers(
-    List<int> pathData, {
+    List<Uint8List> pathData, {
     required bool showLabels,
     required Contact? target,
   }) {
     final markers = <Marker>[];
-    int hopLast = 0;
-    int hopLastLast = 0;
+    String? hopLast;
+    String? hopLastLast;
     for (final hop in pathData) {
-      final contact = _traceData!.pathContacts[hop];
-      final inferred = _inferredHopPositions[hop];
+      final hopKey = _hopKey(hop);
+      final contact = _traceData!.pathContacts[hopKey];
+      final inferred = _inferredHopPositions[hopKey];
       final hasGps = contact != null && contact.hasLocation;
-      if (hop == hopLastLast && widget.flipPathAround) {
+      if (hopKey == hopLastLast && widget.flipPathAround) {
         continue; //skip duplicate hops in round-trip paths
       }
       if (!hasGps && inferred == null) {
         hopLastLast = hopLast;
-        hopLast = hop;
+        hopLast = hopKey;
         continue; //skip hops with no GPS and no inferred position
       }
       final point = hasGps
           ? LatLng(contact.latitude!, contact.longitude!)
           : inferred!;
-      final label = hop.toRadixString(16).padLeft(2, '0').toUpperCase();
+      final label = _hopKey(hop);
+      final shortLabel = label.length > 2 ? label.substring(0, 2) : label;
 
       markers.add(
         Marker(
@@ -989,7 +1019,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
               ),
               alignment: Alignment.center,
               child: Text(
-                hasGps ? label : '~$label',
+                hasGps ? shortLabel : '~$shortLabel',
                 style: MeshTheme.mono(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -1004,12 +1034,12 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
         markers.add(
           _buildNodeLabelMarker(
             point: point,
-            label: contact?.name ?? '~$label',
+            label: contact == null ? '~$label' : '$label: ${contact.name}',
           ),
         );
       }
       hopLastLast = hopLast;
-      hopLast = hop;
+      hopLast = hopKey;
     }
 
     _addEndpointMarkers(markers, showLabels: showLabels, target: target);
@@ -1295,25 +1325,17 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
       if (index == 0) {
         return context.l10n.pathTrace_you;
       } else {
-        final contactName = pathTraceData
-            .pathContacts[pathTraceData.pathData[pathTraceData.pathData.length -
-                1]]
-            ?.name;
-        final hex = pathTraceData.pathData[pathTraceData.pathData.length - 1]
-            .toRadixString(16)
-            .padLeft(2, '0')
-            .toUpperCase();
+        final hop = pathTraceData.pathData.last;
+        final hex = _hopKey(hop);
+        final contactName = pathTraceData.pathContacts[hex]?.name;
         return contactName != null
             ? "$hex: $contactName"
             : "$hex: ${context.l10n.channelPath_unknownRepeater}";
       }
     } else {
-      final contactName =
-          pathTraceData.pathContacts[pathTraceData.pathData[index - 1]]?.name;
-      final hex = pathTraceData.pathData[index - 1]
-          .toRadixString(16)
-          .padLeft(2, '0')
-          .toUpperCase();
+      final hop = pathTraceData.pathData[index - 1];
+      final hex = _hopKey(hop);
+      final contactName = pathTraceData.pathContacts[hex]?.name;
       return contactName != null
           ? "$hex: $contactName"
           : "$hex: ${context.l10n.channelPath_unknownRepeater}";
@@ -1323,12 +1345,9 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
   String formatDirectionSubText(PathTraceData pathTraceData, int index) {
     if (index == 0 || index == pathTraceData.snrData.length - 1) {
       if (index == 0) {
-        final contactName =
-            pathTraceData.pathContacts[pathTraceData.pathData[0]]?.name;
-        final hex = pathTraceData.pathData[0]
-            .toRadixString(16)
-            .padLeft(2, '0')
-            .toUpperCase();
+        final hop = pathTraceData.pathData.first;
+        final hex = _hopKey(hop);
+        final contactName = pathTraceData.pathContacts[hex]?.name;
         return contactName != null
             ? "$hex: $contactName"
             : "$hex: ${context.l10n.channelPath_unknownRepeater}";
@@ -1336,12 +1355,9 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
         return context.l10n.pathTrace_you;
       }
     } else {
-      final contactName =
-          pathTraceData.pathContacts[pathTraceData.pathData[index]]?.name;
-      final hex = pathTraceData.pathData[index]
-          .toRadixString(16)
-          .padLeft(2, '0')
-          .toUpperCase();
+      final hop = pathTraceData.pathData[index];
+      final hex = _hopKey(hop);
+      final contactName = pathTraceData.pathContacts[hex]?.name;
       return contactName != null
           ? "$hex: $contactName"
           : "$hex: ${context.l10n.channelPath_unknownRepeater}";
