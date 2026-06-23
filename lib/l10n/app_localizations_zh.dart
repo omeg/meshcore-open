@@ -1529,6 +1529,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get routing_modeAuto => '汽车';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => '洪水';
 
   @override
@@ -1536,6 +1539,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get routing_modeAutoHint => '自动选择已知最佳路径，当没有已知路径时，则进行“洪水”搜索。';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint => '通过所有中继站进行广播。 这种方式最可靠，但占用更多的时间。';

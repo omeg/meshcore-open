@@ -1624,6 +1624,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get routing_modeAuto => 'Автоматично';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Наводняване';
 
   @override
@@ -1632,6 +1635,10 @@ class AppLocalizationsBg extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Автоматично избира най-добрия известен път, а при липса на информация използва стратегия за наводняване.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

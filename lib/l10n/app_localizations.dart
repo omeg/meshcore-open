@@ -2956,6 +2956,12 @@ abstract class AppLocalizations {
   /// **'Auto'**
   String get routing_modeAuto;
 
+  /// No description provided for @routing_modeDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct'**
+  String get routing_modeDirect;
+
   /// No description provided for @routing_modeFlood.
   ///
   /// In en, this message translates to:
@@ -2973,6 +2979,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Picks the best known path automatically, flooding when none is known.'**
   String get routing_modeAutoHint;
+
+  /// No description provided for @routing_modeDirectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Always sends directly, without using any repeater hops.'**
+  String get routing_modeDirectHint;
 
   /// No description provided for @routing_modeFloodHint.
   ///

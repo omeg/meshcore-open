@@ -13,7 +13,14 @@ import '../screens/path_trace_map.dart';
 import '../services/path_history_service.dart';
 import 'path_editor_sheet.dart';
 
-enum _RoutingMode { auto, flood, manual }
+enum ContactRoutingMode { auto, direct, flood, manual }
+
+ContactRoutingMode contactRoutingMode(Contact contact) {
+  final override = contact.pathOverride;
+  if (override == null) return ContactRoutingMode.auto;
+  if (override < 0) return ContactRoutingMode.flood;
+  return override == 0 ? ContactRoutingMode.direct : ContactRoutingMode.manual;
+}
 
 enum _PathQuality { strong, good, fair, proven, flood, untested }
 
@@ -70,25 +77,26 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     return connector.contacts[_resolveContactIndex];
   }
 
-  _RoutingMode _modeOf(Contact contact) {
-    final override = contact.pathOverride;
-    if (override == null) return _RoutingMode.auto;
-    return override < 0 ? _RoutingMode.flood : _RoutingMode.manual;
-  }
-
   Future<void> _selectMode(
     MeshCoreConnector connector,
     Contact contact,
-    _RoutingMode mode,
+    ContactRoutingMode mode,
   ) async {
     switch (mode) {
-      case _RoutingMode.auto:
+      case ContactRoutingMode.auto:
         setState(() => _syncStatus = null);
         await connector.setPathOverride(contact, pathLen: null);
-      case _RoutingMode.flood:
+      case ContactRoutingMode.direct:
+        setState(() => _syncStatus = null);
+        await connector.setPathOverride(
+          contact,
+          pathLen: 0,
+          pathBytes: Uint8List(0),
+        );
+      case ContactRoutingMode.flood:
         setState(() => _syncStatus = null);
         await connector.setPathOverride(contact, pathLen: -1);
-      case _RoutingMode.manual:
+      case ContactRoutingMode.manual:
         await _editManualPath(connector, contact);
     }
   }
@@ -218,12 +226,13 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     return l10n.time_daysAgo(diff.inDays);
   }
 
-  String _modeHint(BuildContext context, _RoutingMode mode) {
+  String _modeHint(BuildContext context, ContactRoutingMode mode) {
     final l10n = context.l10n;
     return switch (mode) {
-      _RoutingMode.auto => l10n.routing_modeAutoHint,
-      _RoutingMode.flood => l10n.routing_modeFloodHint,
-      _RoutingMode.manual => l10n.routing_modeManualHint,
+      ContactRoutingMode.auto => l10n.routing_modeAutoHint,
+      ContactRoutingMode.direct => l10n.routing_modeDirectHint,
+      ContactRoutingMode.flood => l10n.routing_modeFloodHint,
+      ContactRoutingMode.manual => l10n.routing_modeManualHint,
     };
   }
 
@@ -231,13 +240,15 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     BuildContext context,
     MeshCoreConnector connector,
     Contact contact,
-    _RoutingMode mode,
+    ContactRoutingMode mode,
   ) {
     final l10n = context.l10n;
     switch (mode) {
-      case _RoutingMode.flood:
+      case ContactRoutingMode.direct:
+        return l10n.routing_directNoHops;
+      case ContactRoutingMode.flood:
         return l10n.routing_floodBroadcast;
-      case _RoutingMode.manual:
+      case ContactRoutingMode.manual:
         final bytes = contact.pathOverrideBytes ?? Uint8List(0);
         if (bytes.isEmpty) return l10n.routing_directNoHops;
         return PathHelper.resolvePathNames(
@@ -245,7 +256,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
           connector.allContacts,
           connector.pathHashByteWidth,
         );
-      case _RoutingMode.auto:
+      case ContactRoutingMode.auto:
         if (contact.pathLength < 0) return l10n.routing_noPathYet;
         if (contact.pathLength == 0) return l10n.routing_directNoHops;
         if (contact.path.isEmpty) {
@@ -259,11 +270,12 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     }
   }
 
-  Uint8List _displayBytes(Contact contact, _RoutingMode mode) {
+  Uint8List _displayBytes(Contact contact, ContactRoutingMode mode) {
     return switch (mode) {
-      _RoutingMode.flood => Uint8List(0),
-      _RoutingMode.manual => contact.pathOverrideBytes ?? Uint8List(0),
-      _RoutingMode.auto => contact.path,
+      ContactRoutingMode.direct => Uint8List(0),
+      ContactRoutingMode.flood => Uint8List(0),
+      ContactRoutingMode.manual => contact.pathOverrideBytes ?? Uint8List(0),
+      ContactRoutingMode.auto => contact.path,
     };
   }
 
@@ -342,7 +354,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     BuildContext context,
     MeshCoreConnector connector,
     Contact contact,
-    _RoutingMode mode,
+    ContactRoutingMode mode,
     ({
       int successCount,
       int failureCount,
@@ -366,7 +378,11 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
             Row(
               children: [
                 Icon(
-                  mode == _RoutingMode.flood ? Icons.waves : Icons.route,
+                  switch (mode) {
+                    ContactRoutingMode.direct => Icons.link,
+                    ContactRoutingMode.flood => Icons.waves,
+                    _ => Icons.route,
+                  },
                   size: 18,
                   color: scheme.primary,
                 ),
@@ -382,7 +398,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
               _routeText(context, connector, contact, mode),
               style: theme.textTheme.bodyMedium,
             ),
-            if (mode == _RoutingMode.flood &&
+            if (mode == ContactRoutingMode.flood &&
                 floodStats != null &&
                 (floodStats.successCount > 0 || floodStats.failureCount > 0))
               Padding(
@@ -418,13 +434,13 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
                       displayBytes,
                     ),
                   ),
-                if (mode == _RoutingMode.manual)
+                if (mode == ContactRoutingMode.manual)
                   TextButton.icon(
                     icon: const Icon(Icons.edit, size: 18),
                     label: Text(l10n.routing_editPath),
                     onPressed: () => _editManualPath(connector, contact),
                   ),
-                if (mode == _RoutingMode.auto && contact.pathLength >= 0)
+                if (mode == ContactRoutingMode.auto && contact.pathLength >= 0)
                   TextButton.icon(
                     icon: const Icon(Icons.restart_alt, size: 18),
                     label: Text(l10n.routing_forgetPath),
@@ -463,7 +479,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     BuildContext context,
     MeshCoreConnector connector,
     Contact contact,
-    _RoutingMode mode,
+    ContactRoutingMode mode,
     ({
       int successCount,
       int failureCount,
@@ -488,16 +504,16 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
           _floodStatsLine(context, stats),
           style: const TextStyle(fontSize: 11),
         ),
-        trailing: mode == _RoutingMode.flood
+        trailing: mode == ContactRoutingMode.flood
             ? Icon(
                 Icons.check_circle,
                 color: scheme.primary,
                 semanticLabel: l10n.routing_inUse,
               )
             : null,
-        onTap: mode == _RoutingMode.flood
+        onTap: mode == ContactRoutingMode.flood
             ? null
-            : () => _selectMode(connector, contact, _RoutingMode.flood),
+            : () => _selectMode(connector, contact, ContactRoutingMode.flood),
       ),
     );
   }
@@ -506,7 +522,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     BuildContext context,
     MeshCoreConnector connector,
     Contact contact,
-    _RoutingMode mode,
+    ContactRoutingMode mode,
     PathHistoryService pathService,
     PathRecord record,
     _PathQuality quality,
@@ -538,9 +554,9 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     final hasBytes = record.pathBytes.isNotEmpty;
     final inUse =
         hasBytes &&
-        ((mode == _RoutingMode.manual &&
+        ((mode == ContactRoutingMode.manual &&
                 listEquals(record.pathBytes, contact.pathOverrideBytes)) ||
-            (mode == _RoutingMode.auto &&
+            (mode == ContactRoutingMode.auto &&
                 listEquals(record.pathBytes, contact.path)));
 
     final title = hasBytes
@@ -636,7 +652,7 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
     return Consumer2<MeshCoreConnector, PathHistoryService>(
       builder: (context, connector, pathService, _) {
         final contact = _resolveContact(connector);
-        final mode = _modeOf(contact);
+        final mode = contactRoutingMode(contact);
         final floodStats = pathService.getFloodStats(contact.publicKeyHex);
         final hasFloodStats =
             floodStats != null &&
@@ -695,30 +711,38 @@ class _RoutingSheetBodyState extends State<_RoutingSheetBody> {
               ),
             ),
             const SizedBox(height: 16),
-            SegmentedButton<_RoutingMode>(
-              style: const ButtonStyle(
-                minimumSize: WidgetStatePropertyAll(Size.fromHeight(44)),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SegmentedButton<ContactRoutingMode>(
+                style: const ButtonStyle(
+                  minimumSize: WidgetStatePropertyAll(Size.fromHeight(44)),
+                ),
+                segments: [
+                  ButtonSegment(
+                    value: ContactRoutingMode.auto,
+                    icon: const Icon(Icons.auto_mode),
+                    label: Text(l10n.routing_modeAuto),
+                  ),
+                  ButtonSegment(
+                    value: ContactRoutingMode.direct,
+                    icon: const Icon(Icons.link),
+                    label: Text(l10n.routing_modeDirect),
+                  ),
+                  ButtonSegment(
+                    value: ContactRoutingMode.flood,
+                    icon: const Icon(Icons.waves),
+                    label: Text(l10n.routing_modeFlood),
+                  ),
+                  ButtonSegment(
+                    value: ContactRoutingMode.manual,
+                    icon: const Icon(Icons.edit_road),
+                    label: Text(l10n.routing_modeManual),
+                  ),
+                ],
+                selected: {mode},
+                onSelectionChanged: (selection) =>
+                    _selectMode(connector, contact, selection.first),
               ),
-              segments: [
-                ButtonSegment(
-                  value: _RoutingMode.auto,
-                  icon: const Icon(Icons.auto_mode),
-                  label: Text(l10n.routing_modeAuto),
-                ),
-                ButtonSegment(
-                  value: _RoutingMode.flood,
-                  icon: const Icon(Icons.waves),
-                  label: Text(l10n.routing_modeFlood),
-                ),
-                ButtonSegment(
-                  value: _RoutingMode.manual,
-                  icon: const Icon(Icons.edit_road),
-                  label: Text(l10n.routing_modeManual),
-                ),
-              ],
-              selected: {mode},
-              onSelectionChanged: (selection) =>
-                  _selectMode(connector, contact, selection.first),
             ),
             const SizedBox(height: 8),
             Text(

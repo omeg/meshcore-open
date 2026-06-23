@@ -1608,6 +1608,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get routing_modeAuto => 'Avto';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Poplavo';
 
   @override
@@ -1616,6 +1619,10 @@ class AppLocalizationsSl extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Samodejno izbere najbolj poznano pot, in sicer, ko ni na voljo nobena.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

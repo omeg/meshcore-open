@@ -1617,6 +1617,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get routing_modeAuto => 'Автомобіль';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Повені';
 
   @override
@@ -1625,6 +1628,10 @@ class AppLocalizationsUk extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Автоматично обирає найкращий відомий шлях, та у разі відсутності відомого шляху, використовує алгоритм \"занурення\".';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

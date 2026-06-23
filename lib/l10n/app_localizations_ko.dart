@@ -1551,6 +1551,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get routing_modeAuto => '자동';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => '플러드';
 
   @override
@@ -1559,6 +1562,10 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       '가장 잘 알려진 경로를 자동으로 선택하고, 경로가 없으면 플러드로 전환합니다.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

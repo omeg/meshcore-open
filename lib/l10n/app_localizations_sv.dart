@@ -1601,6 +1601,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get routing_modeAuto => 'Bil';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Översvämning';
 
   @override
@@ -1609,6 +1612,10 @@ class AppLocalizationsSv extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Väljer automatiskt den bästa kända vägen, och använder en \"flooding\"-strategi om ingen väg är känd.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

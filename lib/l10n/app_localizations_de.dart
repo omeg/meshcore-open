@@ -1624,6 +1624,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get routing_modeAuto => 'Automatisch';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Flut';
 
   @override
@@ -1632,6 +1635,10 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Wählt automatisch den besten bekannten Pfad und wechselt auf Flut, wenn keiner bekannt ist.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

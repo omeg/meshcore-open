@@ -1615,6 +1615,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get routing_modeAuto => 'Auto';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Árvíz';
 
   @override
@@ -1623,6 +1626,10 @@ class AppLocalizationsHu extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Automatikusan kiválasztja a legismertebb utat, és elárasztja, ha nem ismert.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

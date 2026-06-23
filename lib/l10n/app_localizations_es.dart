@@ -1620,6 +1620,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get routing_modeAuto => 'Automático';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Inundación';
 
   @override
@@ -1628,6 +1631,10 @@ class AppLocalizationsEs extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Selecciona automáticamente la mejor ruta conocida y, si no hay ninguna, usa el modo de inundación.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

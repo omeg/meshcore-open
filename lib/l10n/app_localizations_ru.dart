@@ -1622,6 +1622,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get routing_modeAuto => 'Авто';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Наводнение';
 
   @override
@@ -1630,6 +1633,10 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Автоматически выбирает наиболее известный путь, и если такой путь неизвестен, использует алгоритм поиска пути.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

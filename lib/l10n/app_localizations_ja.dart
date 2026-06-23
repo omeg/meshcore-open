@@ -1549,6 +1549,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get routing_modeAuto => '自動';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'フラッド';
 
   @override
@@ -1556,6 +1559,10 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get routing_modeAutoHint => '既知の最良経路を自動で選び、経路がないときはフラッドします。';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>

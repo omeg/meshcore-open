@@ -1609,6 +1609,9 @@ class AppLocalizationsNl extends AppLocalizations {
   String get routing_modeAuto => 'Auto';
 
   @override
+  String get routing_modeDirect => 'Direct';
+
+  @override
   String get routing_modeFlood => 'Overstroming';
 
   @override
@@ -1617,6 +1620,10 @@ class AppLocalizationsNl extends AppLocalizations {
   @override
   String get routing_modeAutoHint =>
       'Selecteert automatisch het bekendste pad, en gebruikt een flood-algoritme als er geen bekend pad is.';
+
+  @override
+  String get routing_modeDirectHint =>
+      'Always sends directly, without using any repeater hops.';
 
   @override
   String get routing_modeFloodHint =>
