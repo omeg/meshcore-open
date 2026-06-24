@@ -9,6 +9,7 @@ import '../connector/meshcore_protocol.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/debug_frame_viewer.dart';
 import '../services/repeater_command_service.dart';
+import '../services/storage_service.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../utils/desktop_text_input_focus.dart';
@@ -32,7 +33,9 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   final FocusNode _commandFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   late final DesktopTextInputFocusHelper _desktopTextInputFocus;
+  final StorageService _storage = StorageService();
   final List<Map<String, String>> _commandHistory = [];
+  final List<String> _commandRecallHistory = [];
   int _historyIndex = -1;
   StreamSubscription<Uint8List>? _frameSubscription;
   RepeaterCommandService? _commandService;
@@ -59,6 +62,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
     _commandFocusNode.onKeyEvent = _handleCommandKeyEvent;
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
     _commandService = RepeaterCommandService(connector);
+    _loadCommandHistory();
     _setupMessageListener();
   }
 
@@ -118,16 +122,116 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
     return true;
   }
 
+  Future<void> _loadCommandHistory() async {
+    final history = await _storage.loadRepeaterCliHistory(
+      widget.repeater.publicKeyHex,
+    );
+    if (!mounted) return;
+    final currentHistory = List<String>.of(_commandRecallHistory);
+    final mergedHistory = _normalizeCommandList([
+      ...history,
+      ...currentHistory,
+    ]);
+    setState(() {
+      _commandRecallHistory
+        ..clear()
+        ..addAll(mergedHistory);
+      if (_commandHistory.isEmpty) {
+        _commandHistory.addAll(history.map(_commandHistoryEntry));
+      }
+      _historyIndex = -1;
+    });
+    if (currentHistory.isNotEmpty) {
+      unawaited(
+        _storage.saveRepeaterCliHistory(
+          widget.repeater.publicKeyHex,
+          mergedHistory,
+        ),
+      );
+    }
+  }
+
+  Map<String, String> _commandHistoryEntry(String command) => {
+    'type': 'command',
+    'text': command,
+    'timestamp': DateTime.now().toString(),
+  };
+
+  List<String> _normalizeCommandList(Iterable<String> commands) {
+    final deduped = <String>[];
+    for (final command in commands) {
+      final trimmed = command.trim();
+      if (trimmed.isEmpty) continue;
+      deduped.remove(trimmed);
+      deduped.add(trimmed);
+    }
+    if (deduped.length <= StorageService.repeaterCliHistoryLimit) {
+      return deduped;
+    }
+    return deduped.sublist(
+      deduped.length - StorageService.repeaterCliHistoryLimit,
+    );
+  }
+
+  void _rememberCommand(String command) {
+    final updated = _normalizeCommandList([..._commandRecallHistory, command]);
+    _commandRecallHistory
+      ..clear()
+      ..addAll(updated);
+    unawaited(
+      _storage.saveRepeaterCliHistory(
+        widget.repeater.publicKeyHex,
+        _commandRecallHistory,
+      ),
+    );
+  }
+
+  void _removeCommandBlock(String command) {
+    var index = 0;
+    while (index < _commandHistory.length) {
+      final entry = _commandHistory[index];
+      if (entry['type'] != 'command' || entry['text'] != command) {
+        index++;
+        continue;
+      }
+
+      var end = index + 1;
+      while (end < _commandHistory.length &&
+          _commandHistory[end]['type'] != 'command') {
+        end++;
+      }
+      _commandHistory.removeRange(index, end);
+    }
+  }
+
+  void _trimCommandHistory() {
+    var commandCount = _commandHistory
+        .where((entry) => entry['type'] == 'command')
+        .length;
+    while (commandCount > StorageService.repeaterCliHistoryLimit) {
+      final index = _commandHistory.indexWhere(
+        (entry) => entry['type'] == 'command',
+      );
+      if (index < 0) return;
+      var end = index + 1;
+      while (end < _commandHistory.length &&
+          _commandHistory[end]['type'] != 'command') {
+        end++;
+      }
+      _commandHistory.removeRange(index, end);
+      commandCount--;
+    }
+  }
+
   void _sendCommand({bool showDebug = false}) async {
     final command = _commandController.text.trim();
     if (command.isEmpty) return;
 
     setState(() {
-      _commandHistory.add({
-        'type': 'command',
-        'text': command,
-        'timestamp': DateTime.now().toString(),
-      });
+      _removeCommandBlock(command);
+      _commandHistory.add(_commandHistoryEntry(command));
+      _trimCommandHistory();
+      _rememberCommand(command);
     });
 
     if (showDebug && mounted) {
@@ -212,11 +316,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   }
 
   void _navigateHistory(bool up) {
-    final commands = _commandHistory
-        .where((entry) => entry['type'] == 'command')
-        .toList()
-        .reversed
-        .toList();
+    final commands = _commandRecallHistory.reversed.toList();
 
     if (commands.isEmpty) return;
 
@@ -235,7 +335,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
     }
 
     if (_historyIndex >= 0 && _historyIndex < commands.length) {
-      _commandController.text = commands[_historyIndex]['text'] ?? '';
+      _commandController.text = commands[_historyIndex];
       _commandController.selection = TextSelection.fromPosition(
         TextPosition(offset: _commandController.text.length),
       );
@@ -245,8 +345,10 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   void _clearHistory() {
     setState(() {
       _commandHistory.clear();
+      _commandRecallHistory.clear();
       _historyIndex = -1;
     });
+    unawaited(_storage.clearRepeaterCliHistory(widget.repeater.publicKeyHex));
   }
 
   String _quickCommandLabel(String key) {
@@ -304,7 +406,9 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
           IconButton(
             icon: const Icon(Icons.clear_all),
             tooltip: l10n.repeater_clearHistory,
-            onPressed: _commandHistory.isEmpty ? null : _clearHistory,
+            onPressed: _commandHistory.isEmpty && _commandRecallHistory.isEmpty
+                ? null
+                : _clearHistory,
           ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert),

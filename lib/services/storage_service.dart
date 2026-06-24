@@ -5,11 +5,13 @@ import '../storage/prefs_manager.dart';
 
 class StorageService {
   static const String _pathHistoryPrefix = 'path_history_';
+  static const String _repeaterCliHistoryPrefix = 'repeater_cli_history_';
   static const String _pendingMessagesKey = 'pending_messages';
   static const String _repeaterPasswordsKey = 'repeater_passwords';
   static const String _repeaterAutoClockSyncAfterLoginKey =
       'repeater_auto_clock_sync_after_login';
   static const String _deliveryObservationsKey = 'delivery_observations';
+  static const int repeaterCliHistoryLimit = 100;
 
   Future<Map<String, bool>> _loadRepeaterAutoClockSyncAfterLogin() async {
     final prefs = PrefsManager.instance;
@@ -84,6 +86,46 @@ class StorageService {
     for (final key in pathHistoryKeys) {
       await prefs.remove(key);
     }
+  }
+
+  Future<List<String>> loadRepeaterCliHistory(String repeaterPubKeyHex) async {
+    final prefs = PrefsManager.instance;
+    final key = '$_repeaterCliHistoryPrefix$repeaterPubKeyHex';
+    final commands = prefs.getStringList(key);
+    if (commands == null) return [];
+    return _normalizeRepeaterCliHistory(commands);
+  }
+
+  Future<void> saveRepeaterCliHistory(
+    String repeaterPubKeyHex,
+    List<String> commands,
+  ) async {
+    final prefs = PrefsManager.instance;
+    final key = '$_repeaterCliHistoryPrefix$repeaterPubKeyHex';
+    final normalized = _normalizeRepeaterCliHistory(commands);
+    if (normalized.isEmpty) {
+      await prefs.remove(key);
+      return;
+    }
+    await prefs.setStringList(key, normalized);
+  }
+
+  Future<void> clearRepeaterCliHistory(String repeaterPubKeyHex) async {
+    final prefs = PrefsManager.instance;
+    final key = '$_repeaterCliHistoryPrefix$repeaterPubKeyHex';
+    await prefs.remove(key);
+  }
+
+  List<String> _normalizeRepeaterCliHistory(List<String> commands) {
+    final deduped = <String>[];
+    for (final command in commands) {
+      final trimmed = command.trim();
+      if (trimmed.isEmpty) continue;
+      deduped.remove(trimmed);
+      deduped.add(trimmed);
+    }
+    if (deduped.length <= repeaterCliHistoryLimit) return deduped;
+    return deduped.sublist(deduped.length - repeaterCliHistoryLimit);
   }
 
   Future<Map<String, String>> loadPendingMessages() async {
