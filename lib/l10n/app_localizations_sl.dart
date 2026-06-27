@@ -1412,6 +1412,9 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_sendMessageToStart => 'Pošlji sporočilo za začetek.';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Opozorilo: Sporočilo ni bilo najdeno';
 
@@ -1441,6 +1444,9 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Sporočilo izbrisano';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Ponovni poskus.';

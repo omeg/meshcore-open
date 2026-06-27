@@ -1343,6 +1343,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_sendMessageToStart => '发送消息开始对话';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => '找不到原始消息';
 
   @override
@@ -1371,6 +1374,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => '消息已删除';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => '正在重试消息';

@@ -1155,6 +1155,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   _markAsUnread(message);
                 },
               ),
+            if (message.isOutgoing && message.status != MessageStatus.failed)
+              ListTile(
+                leading: const Icon(Icons.replay),
+                title: Text(context.l10n.chat_resendMessage),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _resendMessage(message);
+                },
+              ),
             if (message.isOutgoing && message.status == MessageStatus.failed)
               ListTile(
                 leading: const Icon(Icons.refresh),
@@ -1210,6 +1219,21 @@ class _ChatScreenState extends State<ChatScreen> {
     showDismissibleSnackBar(
       context,
       content: Text(context.l10n.chat_messageDeleted),
+    );
+  }
+
+  void _resendMessage(Message message) {
+    final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    connector.sendMessage(
+      _resolveContact(connector),
+      message.text,
+      originalText: message.originalText,
+      translatedLanguageCode: message.translatedLanguageCode,
+      translationModelId: message.translationModelId,
+    );
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.chat_resendingMessage),
     );
   }
 

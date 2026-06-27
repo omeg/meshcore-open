@@ -2632,6 +2632,12 @@ abstract class AppLocalizations {
   /// **'Send a message to get started'**
   String get chat_sendMessageToStart;
 
+  /// No description provided for @chat_resendMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Resend message'**
+  String get chat_resendMessage;
+
   /// No description provided for @chat_originalMessageNotFound.
   ///
   /// In en, this message translates to:
@@ -2679,6 +2685,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Message deleted'**
   String get chat_messageDeleted;
+
+  /// No description provided for @chat_resendingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Resending message'**
+  String get chat_resendingMessage;
 
   /// No description provided for @chat_retryingMessage.
   ///

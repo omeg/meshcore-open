@@ -1414,6 +1414,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get chat_sendMessageToStart => 'Pošlite správu na začiatok';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => 'Neznámy pôvodný odkaz.';
 
   @override
@@ -1442,6 +1445,9 @@ class AppLocalizationsSk extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Posolstvo odstránené';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Pokus o obnovenie';

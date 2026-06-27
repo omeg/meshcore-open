@@ -1428,6 +1428,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get chat_sendMessageToStart => 'Изпрати съобщение, за да започнеш.';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => 'Съобщението не е намерено';
 
   @override
@@ -1456,6 +1459,9 @@ class AppLocalizationsBg extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Съобщението е изтрито';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Опитваме се отново.';

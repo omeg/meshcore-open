@@ -1424,6 +1424,9 @@ class AppLocalizationsPt extends AppLocalizations {
   String get chat_sendMessageToStart => 'Enviar uma mensagem para começar';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => 'Mensagem original não encontrada';
 
   @override
@@ -1452,6 +1455,9 @@ class AppLocalizationsPt extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Mensagem excluída';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Tentando novamente';

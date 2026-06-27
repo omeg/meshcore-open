@@ -1405,6 +1405,9 @@ class AppLocalizationsSv extends AppLocalizations {
       'Skicka ett meddelande för att komma igång';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Originalt meddelande hittades inte';
 
@@ -1434,6 +1437,9 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Meddelandet raderat';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Försöker igen';

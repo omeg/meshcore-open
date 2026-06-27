@@ -1533,6 +1533,15 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                   _markAsUnread(message);
                 },
               ),
+            if (message.isOutgoing)
+              ListTile(
+                leading: const Icon(Icons.replay),
+                title: Text(context.l10n.chat_resendMessage),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  _resendMessage(message);
+                },
+              ),
             const Divider(height: 1),
             ListTile(
               leading: Icon(
@@ -1552,6 +1561,24 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _resendMessage(ChannelMessage message) {
+    final connector = context.read<MeshCoreConnector>();
+    final text = message.replyToSenderName == null
+        ? message.text
+        : '@[${message.replyToSenderName}] ${message.text}';
+    connector.sendChannelMessage(
+      widget.channel,
+      text,
+      originalText: message.originalText,
+      translatedLanguageCode: message.translatedLanguageCode,
+      translationModelId: message.translationModelId,
+    );
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.chat_resendingMessage),
     );
   }
 

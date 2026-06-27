@@ -1359,6 +1359,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get chat_sendMessageToStart => '시작하려면 메시지를 보내세요.';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => '원래 메시지를 찾을 수 없음';
 
   @override
@@ -1387,6 +1390,9 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => '메시지가 삭제되었습니다.';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => '재시도 메시지';

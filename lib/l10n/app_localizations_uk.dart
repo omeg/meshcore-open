@@ -1418,6 +1418,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chat_sendMessageToStart => 'Надішліть повідомлення, щоб почати';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound =>
       'Оригінальне повідомлення не знайдено';
 
@@ -1447,6 +1450,9 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Повідомлення видалено';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Спроба відновлення.';

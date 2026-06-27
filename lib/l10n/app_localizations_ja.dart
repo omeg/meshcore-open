@@ -1357,6 +1357,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get chat_sendMessageToStart => '開始するためにメッセージを送信してください';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => '元のメッセージが見つかりませんでした';
 
   @override
@@ -1385,6 +1388,9 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'メッセージは削除されました';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'メッセージを再試行中';

@@ -1420,6 +1420,9 @@ class AppLocalizationsHu extends AppLocalizations {
   String get chat_sendMessageToStart => 'A kezdéshez küldjön üzenetet';
 
   @override
+  String get chat_resendMessage => 'Resend message';
+
+  @override
   String get chat_originalMessageNotFound => 'Az eredeti üzenet nem található';
 
   @override
@@ -1448,6 +1451,9 @@ class AppLocalizationsHu extends AppLocalizations {
 
   @override
   String get chat_messageDeleted => 'Üzenet törölve';
+
+  @override
+  String get chat_resendingMessage => 'Resending message';
 
   @override
   String get chat_retryingMessage => 'Üzenet újrapróbálkozása';
