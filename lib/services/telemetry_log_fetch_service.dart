@@ -146,10 +146,13 @@ class TelemetryLogFetchService extends ChangeNotifier {
   /// Fetch (or resume) [repeater]'s telemetry log. Set [forceRestart] to ignore
   /// stored resume state and pull from byte 0. [chunkSize] caps the bytes
   /// requested per round trip (clamped to 1..[telemLogMaxChunkLen]); lower it on
-  /// flaky links.
+  /// flaky links. Set [restartLogAfterFetch] to ask active telemetry logging to
+  /// discard the fetched device-side log and start a fresh one after a complete
+  /// pull.
   Future<void> fetch(
     Contact repeater, {
     bool forceRestart = false,
+    bool restartLogAfterFetch = false,
     int? chunkSize,
   }) async {
     if (_status == TelemetryLogFetchStatus.fetching) return;
@@ -180,6 +183,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
         repeater,
         selection,
         forceRestart,
+        restartLogAfterFetch,
         chunkSize,
       );
       if (_cancelled) {
@@ -319,6 +323,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
     Contact repeater,
     PathSelection selection,
     bool forceRestart,
+    bool restartLogAfterFetch,
     int? requestedChunkSize,
   ) async {
     final chunkSize = (requestedChunkSize ?? telemLogMaxChunkLen).clamp(
@@ -504,6 +509,7 @@ class TelemetryLogFetchService extends ChangeNotifier {
     }
 
     // 3. Pull the remaining tail.
+    var reachedEnd = fetchOffset >= first.totalSize;
     try {
       while (fetchOffset < first.totalSize && !_cancelled) {
         final chunk = await _requestChunkWithRetries(
@@ -524,13 +530,17 @@ class TelemetryLogFetchService extends ChangeNotifier {
         _loggingActive = chunk.loggingActive;
         _safeNotify();
         await persist();
-        if (chunk.remaining == 0) break;
+        if (chunk.remaining == 0) {
+          reachedEnd = true;
+          break;
+        }
         if (chunk.chunkLen == 0) {
           throw TelemetryLogProtocolError(
             'repeater reported remaining bytes but returned an empty chunk',
           );
         }
       }
+      reachedEnd = reachedEnd || fetchOffset >= first.totalSize;
     } finally {
       await persist(force: true);
       // Mirror the record-aligned prefix + resume state to the synced folder so
@@ -554,6 +564,12 @@ class TelemetryLogFetchService extends ChangeNotifier {
       // Even when nothing new was fetched (e.g. an already-complete resume),
       // surface the existing file so it can be shared/exported.
       _savedFilePath ??= await _store.currentFilePath(repeater.publicKeyHex);
+    }
+    if (restartLogAfterFetch && !_cancelled && reachedEnd) {
+      final restart = await _requestRestartWithRetries(repeater, selection);
+      _requireOk(restart);
+      _loggingActive = restart.loggingActive;
+      _safeNotify();
     }
     return buffer.toBytes();
   }
@@ -623,7 +639,13 @@ class TelemetryLogFetchService extends ChangeNotifier {
         throw const _TelemetryLogFetchCancelled();
       }
       try {
-        return await _requestChunk(repeater, selection, offset, chunkSize);
+        return await _requestLogCommand(
+          repeater,
+          selection,
+          command: telemLogCmdFetch,
+          offset: offset,
+          chunkSize: chunkSize,
+        );
       } on TimeoutException catch (e) {
         lastError = e;
         if (attempt < _chunkAttempts) {
@@ -640,17 +662,50 @@ class TelemetryLogFetchService extends ChangeNotifier {
     );
   }
 
-  Future<TelemetryLogChunk> _requestChunk(
+  Future<TelemetryLogChunk> _requestRestartWithRetries(
     Contact repeater,
     PathSelection selection,
-    int offset,
-    int chunkSize,
   ) async {
+    Object? lastError;
+    for (var attempt = 1; attempt <= _chunkAttempts; attempt++) {
+      if (_cancelled) {
+        throw const _TelemetryLogFetchCancelled();
+      }
+      try {
+        return await _requestLogCommand(
+          repeater,
+          selection,
+          command: telemLogCmdRestart,
+          offset: 0,
+          chunkSize: 0,
+        );
+      } on TimeoutException catch (e) {
+        lastError = e;
+        if (attempt < _chunkAttempts) {
+          appLogger.info(
+            'telemetry log restart attempt $attempt timed out; retrying',
+            tag: 'TelemLog',
+          );
+          await _cancelable(Future<void>.delayed(_retryDelay));
+        }
+      }
+    }
+    throw TimeoutException('no response for telemetry log restart: $lastError');
+  }
+
+  Future<TelemetryLogChunk> _requestLogCommand(
+    Contact repeater,
+    PathSelection selection, {
+    required int command,
+    required int offset,
+    required int chunkSize,
+  }) async {
     final nonce = _random.nextInt(0xFFFFFFFF);
     final payload = buildTelemetryLogReqPayload(
       chunkLen: chunkSize,
       offset: offset,
       nonce: nonce,
+      command: command,
     );
     final frame = buildSendBinaryReq(repeater.publicKey, payload: payload);
 

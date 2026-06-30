@@ -90,6 +90,50 @@ void main() {
     expect(safExport.writes.single.first.bytes, connector.logBytes);
   });
 
+  test(
+    'restart-after-fetch sends restart command after complete pull',
+    () async {
+      final repeater = _repeater();
+      final connector = _FakeTelemetryConnector()
+        ..logBytes = _sampleLog(sampleCount: 2);
+      final store = _MemoryTelemetryLogStore();
+      final service = TelemetryLogFetchService(connector, store: store);
+      service.addListener(() {});
+
+      await service.fetch(repeater, chunkSize: 35, restartLogAfterFetch: true);
+
+      expect(service.status, TelemetryLogFetchStatus.done);
+      expect(connector.requestedCommands, [
+        telemLogCmdFetch,
+        telemLogCmdFetch,
+        telemLogCmdRestart,
+      ]);
+      expect(connector.requestedOffsets.last, 0);
+      expect(connector.requestedLengths.last, 0);
+      expect(store.savedBytes, connector.logBytes);
+    },
+  );
+
+  test(
+    'restart-after-fetch failure surfaces telemetry restart status',
+    () async {
+      final repeater = _repeater();
+      final connector = _FakeTelemetryConnector()
+        ..logBytes = _sampleLog(sampleCount: 2)
+        ..restartStatus = respTelemLogNotActive;
+      final store = _MemoryTelemetryLogStore();
+      final service = TelemetryLogFetchService(connector, store: store);
+      service.addListener(() {});
+
+      await service.fetch(repeater, chunkSize: 35, restartLogAfterFetch: true);
+
+      expect(service.status, TelemetryLogFetchStatus.error);
+      expect(service.lastStatusCode, respTelemLogNotActive);
+      expect(service.errorMessage, contains('not active'));
+      expect(store.savedBytes, connector.logBytes);
+    },
+  );
+
   test('successful fetch auto-imports to configured InfluxDB', () async {
     final repeater = _repeater();
     final connector = _FakeTelemetryConnector()
@@ -240,8 +284,11 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
   final StreamController<Uint8List> _frames =
       StreamController<Uint8List>.broadcast();
   final List<int> requestedOffsets = [];
+  final List<int> requestedLengths = [];
+  final List<int> requestedCommands = [];
   Uint8List logBytes = Uint8List(0);
   bool respondToRequests = true;
+  int restartStatus = respTelemLogOk;
   int _tag = 0xAABB0000;
 
   @override
@@ -268,15 +315,21 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
     expect(reader.readByte(), reqTypeGetTelemetryLog);
     expect(reader.readByte(), telemLogReqVersion);
     final requestedLen = reader.readByte();
-    reader.skipBytes(1); // reserved
+    final command = reader.readByte();
     final offset = reader.readUInt32LE();
     reader.skipBytes(4); // nonce
     requestedOffsets.add(offset);
+    requestedLengths.add(requestedLen);
+    requestedCommands.add(command);
 
     final tag = _tag++;
     _frames.add(_sentFrame(tag));
     if (respondToRequests) {
-      _frames.add(_telemetryResponse(tag, offset, requestedLen));
+      _frames.add(
+        command == telemLogCmdRestart
+            ? _restartResponse(tag)
+            : _telemetryResponse(tag, offset, requestedLen),
+      );
     }
   }
 
@@ -307,6 +360,20 @@ class _FakeTelemetryConnector extends MeshCoreConnector {
         Uint8List.sublistView(logBytes, offset, offset + available),
       );
     }
+    return writer.toBytes();
+  }
+
+  Uint8List _restartResponse(int tag) {
+    final writer = BufferWriter()
+      ..writeByte(pushCodeBinaryResponse)
+      ..writeByte(0)
+      ..writeUInt32LE(tag)
+      ..writeByte(restartStatus | telemLogActiveFlag)
+      ..writeByte(telemLogRespVersion)
+      ..writeByte(0)
+      ..writeUInt32LE(0)
+      ..writeUInt32LE(0)
+      ..writeUInt32LE(0);
     return writer.toBytes();
   }
 }

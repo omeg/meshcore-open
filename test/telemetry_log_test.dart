@@ -139,8 +139,7 @@ void main() {
     // Truncating a partial pull to telemetryAlignedByteCount() must never cut a
     // record in half — it lands only on whole-sample boundaries.
     test('truncates body to whole telemetry records', () {
-      int aligned(int received) =>
-          telemetryAlignedByteCount(received, 0, 2, 5);
+      int aligned(int received) => telemetryAlignedByteCount(received, 0, 2, 5);
       expect(aligned(0), 0);
       expect(aligned(5), 0); // first sample needs its 4-byte anchor too
       expect(aligned(8), 0); // one byte short of sample 0
@@ -178,9 +177,14 @@ void main() {
     });
 
     test('unauthorized status surfaces a label', () {
+      expect(telemetryLogStatusLabel(respTelemLogUnauth), contains('admin'));
+    });
+
+    test('restart statuses surface labels', () {
+      expect(telemetryLogStatusLabel(respTelemLogNotActive), 'not active');
       expect(
-        telemetryLogStatusLabel(respTelemLogUnauth),
-        contains('admin'),
+        telemetryLogStatusLabel(respTelemLogRestartFail),
+        'restart failed',
       );
     });
   });

@@ -2294,6 +2294,10 @@ class AppLocalizationsSv extends AppLocalizations {
   String get telemetryLog_chunkSize => 'Chunk size (bytes)';
 
   @override
+  String get telemetryLog_restartAfterFetch =>
+      'Restart log after completed fetch';
+
+  @override
   String get telemetryLog_backgroundHint =>
       'You can leave this screen — the fetch continues and you\'ll be notified when it finishes.';
 

@@ -245,6 +245,12 @@ const int respTelemLogNoFile = 0x01;
 const int respTelemLogBadReq = 0x02;
 const int respTelemLogReadFail = 0x03;
 const int respTelemLogUnauth = 0x04;
+const int respTelemLogNotActive = 0x05;
+const int respTelemLogRestartFail = 0x06;
+
+// Request commands.
+const int telemLogCmdFetch = 0x00;
+const int telemLogCmdRestart = 0x01;
 
 // High bit of the status byte: telemetry logging is currently active on the
 // responder (it is still sampling), so more bytes may appear on a later pull.
@@ -258,17 +264,19 @@ const int telemLogMaxChunkLen = 136;
 /// Build the request body for `REQ_TYPE_GET_TELEMETRY_LOG` (0x08). The result is
 /// the application-defined payload passed to [buildSendBinaryReq].
 ///
-/// Body (12 bytes): `[reqType][version][chunkLen][reserved=0][offset LE32][nonce LE32]`
+/// Body (12 bytes):
+/// `[reqType][version][chunkLen][command][offset LE32][nonce LE32]`
 Uint8List buildTelemetryLogReqPayload({
   required int chunkLen,
   required int offset,
   required int nonce,
+  int command = telemLogCmdFetch,
 }) {
   final writer = BufferWriter();
   writer.writeByte(reqTypeGetTelemetryLog);
   writer.writeByte(telemLogReqVersion);
   writer.writeByte(chunkLen & 0xFF);
-  writer.writeByte(0); // reserved
+  writer.writeByte(command & 0xFF);
   writer.writeUInt32LE(offset);
   writer.writeUInt32LE(nonce);
   return writer.toBytes();

@@ -4203,6 +4203,12 @@ abstract class AppLocalizations {
   /// **'Chunk size (bytes)'**
   String get telemetryLog_chunkSize;
 
+  /// No description provided for @telemetryLog_restartAfterFetch.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart log after completed fetch'**
+  String get telemetryLog_restartAfterFetch;
+
   /// No description provided for @telemetryLog_backgroundHint.
   ///
   /// In en, this message translates to:

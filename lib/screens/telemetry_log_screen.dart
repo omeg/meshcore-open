@@ -56,7 +56,10 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   // Bytes requested per round trip (1..telemLogMaxChunkLen). Persisted so a
   // value that works on a given link is remembered.
   static const String _chunkPrefsKey = 'telemetry_log_chunk_size';
+  static const String _restartAfterFetchPrefsKey =
+      'telemetry_log_restart_after_fetch';
   int _chunkSize = telemLogMaxChunkLen;
+  bool _restartAfterFetch = false;
   final TextEditingController _chunkController = TextEditingController();
 
   @override
@@ -74,6 +77,8 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     _chunkSize =
         (PrefsManager.instance.getInt(_chunkPrefsKey) ?? telemLogMaxChunkLen)
             .clamp(1, telemLogMaxChunkLen);
+    _restartAfterFetch =
+        PrefsManager.instance.getBool(_restartAfterFetchPrefsKey) ?? false;
     _chunkController.text = _chunkSize.toString();
     // Don't auto-pull: a fetch is a deliberate, admin-only mesh operation, so
     // wait for the user to tap Fetch. Just surface any already-saved logs.
@@ -183,6 +188,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     await _service.fetch(
       widget.repeater,
       forceRestart: forceRestart,
+      restartLogAfterFetch: _restartAfterFetch,
       chunkSize: _chunkSize,
     );
     await _reloadSavedLogs();
@@ -285,6 +291,33 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
         Text(
           '/ $telemLogMaxChunkLen',
           style: TextStyle(color: Theme.of(context).hintColor),
+        ),
+      ],
+    );
+  }
+
+  Widget _fetchOptions(BuildContext context, {required bool enabled}) {
+    final l10n = context.l10n;
+    return Column(
+      children: [
+        _chunkSizeField(context),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          controlAffinity: ListTileControlAffinity.leading,
+          title: Text(l10n.telemetryLog_restartAfterFetch),
+          value: _restartAfterFetch,
+          onChanged: enabled
+              ? (value) {
+                  setState(() => _restartAfterFetch = value ?? false);
+                  unawaited(
+                    PrefsManager.instance.setBool(
+                      _restartAfterFetchPrefsKey,
+                      _restartAfterFetch,
+                    ),
+                  );
+                }
+              : null,
         ),
       ],
     );
@@ -620,7 +653,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            _chunkSizeField(context),
+            _fetchOptions(context, enabled: _statusLoading == false),
             const SizedBox(height: 12),
             Align(
               alignment: Alignment.centerLeft,
@@ -654,7 +687,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
           children: [
             statusContent,
             const SizedBox(height: 12),
-            _chunkSizeField(context),
+            _fetchOptions(context, enabled: _statusLoading == false),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,
@@ -684,7 +717,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
           children: [
             Text(l10n.telemetryLog_idleHint),
             const SizedBox(height: 8),
-            _chunkSizeField(context),
+            _fetchOptions(context, enabled: _statusLoading == false),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8,

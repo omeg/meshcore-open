@@ -234,7 +234,9 @@ String _cName(Uint8List raw) {
 /// the header are its u32 LE epoch timestamp.
 int? telemetryFirstAnchorTs(Uint8List data, int headerSize) {
   if (data.length < headerSize + 4) {
-    throw TelemetryLogProtocolError('data too short for first anchor timestamp');
+    throw TelemetryLogProtocolError(
+      'data too short for first anchor timestamp',
+    );
   }
   final ts = ByteData.sublistView(
     data,
@@ -464,6 +466,10 @@ String telemetryLogStatusLabel(int status) {
       return 'storage read failed';
     case respTelemLogUnauth:
       return 'unauthorized (admin login required)';
+    case respTelemLogNotActive:
+      return 'not active';
+    case respTelemLogRestartFail:
+      return 'restart failed';
     default:
       return 'unknown ($status)';
   }

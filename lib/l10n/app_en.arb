@@ -1219,6 +1219,7 @@
   "telemetryLog_restart": "Re-fetch from start",
   "telemetryLog_fetch": "Fetch telemetry log",
   "telemetryLog_chunkSize": "Chunk size (bytes)",
+  "telemetryLog_restartAfterFetch": "Restart log after completed fetch",
   "telemetryLog_backgroundHint": "You can leave this screen — the fetch continues and you'll be notified when it finishes.",
   "telemetryLog_busyElsewhere": "A telemetry log fetch is already running for {repeater}.",
   "@telemetryLog_busyElsewhere": {
