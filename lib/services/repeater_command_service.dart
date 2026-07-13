@@ -4,6 +4,30 @@ import '../models/path_selection.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 
+class RepeaterCommandCancelledException implements Exception {
+  const RepeaterCommandCancelledException();
+
+  @override
+  String toString() => 'Command retry cancelled';
+}
+
+class RepeaterCommandRetryController {
+  final Completer<void> _cancelled = Completer<void>();
+
+  bool get isCancelled => _cancelled.isCompleted;
+  Future<void> get cancelled => _cancelled.future;
+
+  void cancel() {
+    if (!_cancelled.isCompleted) {
+      _cancelled.complete();
+    }
+  }
+
+  void throwIfCancelled() {
+    if (isCancelled) throw const RepeaterCommandCancelledException();
+  }
+}
+
 class RepeaterCommandService {
   final MeshCoreConnector _connector;
   final Map<String, Completer<String>> _pendingCommands = {};
@@ -24,11 +48,13 @@ class RepeaterCommandService {
     Function(String)? onResponse,
     Function(int)? onAttempt,
     int retries = maxRetries,
+    RepeaterCommandRetryController? cancellation,
   }) async {
     final attemptCount = retries < 1 ? 1 : retries;
     final selection = await _connector.preparePathForContactSend(repeater);
 
     for (int attempt = 0; attempt < attemptCount; attempt++) {
+      cancellation?.throwIfCancelled();
       onAttempt?.call(attempt + 1);
       try {
         final response = await _sendCommandAttempt(
@@ -36,10 +62,12 @@ class RepeaterCommandService {
           command,
           selection,
           attempt,
+          cancellation: cancellation,
         );
         onResponse?.call(response);
         return response;
       } catch (e) {
+        cancellation?.throwIfCancelled();
         if (attempt == attemptCount - 1) rethrow;
       }
     }
@@ -47,12 +75,47 @@ class RepeaterCommandService {
     throw Exception('Command failed after $attemptCount attempts');
   }
 
+  Future<String> sendCommandUntilSuccessful(
+    Contact repeater,
+    String command, {
+    Function(String)? onResponse,
+    Function(int)? onAttempt,
+    Function(Object)? onRetryError,
+    RepeaterCommandRetryController? cancellation,
+  }) async {
+    var attempt = 0;
+    while (true) {
+      cancellation?.throwIfCancelled();
+      final selection = await _connector.preparePathForContactSend(repeater);
+      onAttempt?.call(attempt + 1);
+      try {
+        final response = await _sendCommandAttempt(
+          repeater,
+          command,
+          selection,
+          attempt,
+          cancellation: cancellation,
+        );
+        onResponse?.call(response);
+        return response;
+      } on RepeaterCommandCancelledException {
+        rethrow;
+      } catch (e) {
+        onRetryError?.call(e);
+        cancellation?.throwIfCancelled();
+        attempt++;
+      }
+    }
+  }
+
   Future<String> _sendCommandAttempt(
     Contact repeater,
     String command,
     PathSelection selection,
-    int attempt,
-  ) async {
+    int attempt, {
+    RepeaterCommandRetryController? cancellation,
+  }) async {
+    cancellation?.throwIfCancelled();
     final repeaterKey = repeater.publicKeyHex;
     final prefix = _nextPrefixToken();
     final commandId = '${repeaterKey}_$prefix';
@@ -70,12 +133,12 @@ class RepeaterCommandService {
         selection: selection,
         text: framedCommand,
         timestampSeconds: timestampSeconds,
-        attempt: attempt,
+        attempt: attempt & 0xFF,
       );
       final frame = buildSendCliCommandFrame(
         repeater.publicKey,
         framedCommand,
-        attempt: attempt,
+        attempt: attempt & 0xFF,
         timestampSeconds: timestampSeconds,
       );
       final responseBytes = frame.length > maxFrameSize
@@ -106,10 +169,23 @@ class RepeaterCommandService {
     }
 
     try {
-      return await completer.future;
+      if (cancellation == null) {
+        return await completer.future;
+      }
+      return await Future.any([
+        completer.future,
+        _cancelledResult(cancellation),
+      ]);
     } finally {
       _cleanup(commandId);
     }
+  }
+
+  Future<String> _cancelledResult(
+    RepeaterCommandRetryController cancellation,
+  ) async {
+    await cancellation.cancelled;
+    throw const RepeaterCommandCancelledException();
   }
 
   /// Call this when a text message response is received from a repeater

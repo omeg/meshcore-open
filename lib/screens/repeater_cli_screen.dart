@@ -39,6 +39,9 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   int _historyIndex = -1;
   StreamSubscription<Uint8List>? _frameSubscription;
   RepeaterCommandService? _commandService;
+  RepeaterCommandRetryController? _retryController;
+  bool _retryUntilSuccessful = false;
+  bool _isSendingCommand = false;
 
   late final List<Map<String, String>> _quickCommands = [
     {'labelKey': 'advertise', 'command': 'advert'},
@@ -68,6 +71,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
 
   @override
   void dispose() {
+    _retryController?.cancel();
     _desktopTextInputFocus.dispose();
     _frameSubscription?.cancel();
     _commandService?.dispose();
@@ -224,12 +228,28 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
   }
 
   void _sendCommand({bool showDebug = false}) async {
+    if (_isSendingCommand) return;
     final command = _commandController.text.trim();
     if (command.isEmpty) return;
 
+    final retryUntilSuccessful = _retryUntilSuccessful;
+    final retryController = retryUntilSuccessful
+        ? RepeaterCommandRetryController()
+        : null;
+    int? retryStatusIndex;
     setState(() {
+      _isSendingCommand = true;
+      _retryController = retryController;
       _removeCommandBlock(command);
       _commandHistory.add(_commandHistoryEntry(command));
+      if (retryUntilSuccessful) {
+        _commandHistory.add({
+          'type': 'response',
+          'text': 'Retrying until successful...',
+          'timestamp': DateTime.now().toString(),
+        });
+        retryStatusIndex = _commandHistory.length - 1;
+      }
       _trimCommandHistory();
       _rememberCommand(command);
     });
@@ -253,13 +273,27 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
           listen: false,
         );
         final repeater = _resolveRepeater(connector);
-        final response = await _commandService!.sendCommand(
-          repeater,
-          command,
-          retries: 1,
-        );
+        final String response;
+        if (retryUntilSuccessful) {
+          response = await _commandService!.sendCommandUntilSuccessful(
+            repeater,
+            command,
+            cancellation: retryController,
+            onAttempt: (attempt) => _updateRetryStatus(
+              retryStatusIndex,
+              'Retrying until successful (attempt $attempt)...',
+            ),
+          );
+        } else {
+          response = await _commandService!.sendCommand(
+            repeater,
+            command,
+            retries: 1,
+          );
+        }
         if (mounted) {
           setState(() {
+            _removeRetryStatus(retryStatusIndex);
             _commandHistory.add({
               'type': 'response',
               'text': response,
@@ -268,9 +302,21 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
           });
         }
       }
+    } on RepeaterCommandCancelledException {
+      if (mounted) {
+        setState(() {
+          _removeRetryStatus(retryStatusIndex);
+          _commandHistory.add({
+            'type': 'response',
+            'text': 'Retry cancelled',
+            'timestamp': DateTime.now().toString(),
+          });
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
+          _removeRetryStatus(retryStatusIndex);
           _commandHistory.add({
             'type': 'response',
             'text': context.l10n.repeater_cliCommandError(e.toString()),
@@ -280,6 +326,11 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
       }
     }
 
+    _retryController = null;
+    if (!mounted) return;
+    setState(() {
+      _isSendingCommand = false;
+    });
     _commandController.clear();
     _historyIndex = -1;
     _commandFocusNode.requestFocus();
@@ -295,7 +346,31 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
     });
   }
 
+  void _updateRetryStatus(int? index, String text) {
+    if (!mounted || index == null || index >= _commandHistory.length) return;
+    setState(() {
+      final entry = _commandHistory[index];
+      if (entry['type'] != 'response') return;
+      entry['text'] = text;
+      entry['timestamp'] = DateTime.now().toString();
+    });
+  }
+
+  void _removeRetryStatus(int? index) {
+    if (index == null || index >= _commandHistory.length) return;
+    final entry = _commandHistory[index];
+    if (entry['type'] == 'response' &&
+        entry['text']?.startsWith('Retrying until successful') == true) {
+      _commandHistory.removeAt(index);
+    }
+  }
+
+  void _cancelRetryUntilSuccessful() {
+    _retryController?.cancel();
+  }
+
   void _useQuickCommand(String command) {
+    if (_isSendingCommand) return;
     _commandController.text = command;
     _sendCommand();
   }
@@ -406,7 +481,9 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
           IconButton(
             icon: const Icon(Icons.clear_all),
             tooltip: l10n.repeater_clearHistory,
-            onPressed: _commandHistory.isEmpty && _commandRecallHistory.isEmpty
+            onPressed:
+                _isSendingCommand ||
+                    (_commandHistory.isEmpty && _commandRecallHistory.isEmpty)
                 ? null
                 : _clearHistory,
           ),
@@ -422,11 +499,28 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                     content: Text(l10n.repeater_enterCommandFirst),
                   );
                 }
+              } else if (value == 'retry_until_success') {
+                setState(() {
+                  _retryUntilSuccessful = !_retryUntilSuccessful;
+                });
               }
             },
             itemBuilder: (context) => [
+              CheckedPopupMenuItem(
+                value: 'retry_until_success',
+                checked: _retryUntilSuccessful,
+                enabled: !_isSendingCommand,
+                child: const Row(
+                  children: [
+                    Icon(Icons.all_inclusive),
+                    SizedBox(width: 8),
+                    Text('Retry until successful'),
+                  ],
+                ),
+              ),
               PopupMenuItem(
                 value: 'debug',
+                enabled: !_isSendingCommand,
                 child: Row(
                   children: [
                     const Icon(Icons.bug_report),
@@ -464,7 +558,9 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                       backgroundColor: MeshPalette.blueBg,
                       side: const BorderSide(color: MeshPalette.blueLine),
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => _useQuickCommand(cmd['command']!),
+                      onPressed: _isSendingCommand
+                          ? null
+                          : () => _useQuickCommand(cmd['command']!),
                     ),
                   );
                 }).toList(),
@@ -514,6 +610,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                     child: TextField(
                       controller: _commandController,
                       focusNode: _commandFocusNode,
+                      enabled: !_isSendingCommand,
                       style: MeshTheme.mono(
                         fontSize: 13,
                         color: MeshPalette.ink,
@@ -570,12 +667,16 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
                       customBorder: const CircleBorder(),
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        _sendCommand();
+                        if (_retryController != null) {
+                          _cancelRetryUntilSuccessful();
+                        } else {
+                          _sendCommand();
+                        }
                       },
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
                         child: Icon(
-                          Icons.send,
+                          _retryController != null ? Icons.stop : Icons.send,
                           size: 18,
                           color: MeshPalette.blue,
                         ),
