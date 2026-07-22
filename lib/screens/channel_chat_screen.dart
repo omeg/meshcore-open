@@ -828,7 +828,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ),
     );
 
-    if (!isOutgoing && !PlatformInfo.isDesktop) {
+    if (!isOutgoing && PlatformInfo.isWeb) {
       return _SwipeReplyBubble(
         maxSwipeOffset: maxSwipeOffset,
         replySwipeThreshold: replySwipeThreshold,
