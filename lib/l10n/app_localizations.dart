@@ -2596,6 +2596,12 @@ abstract class AppLocalizations {
   /// **'Region: none'**
   String get channels_regionNotSet;
 
+  /// No description provided for @channels_scopeTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope tag: {tag}'**
+  String channels_scopeTag(String tag);
+
   /// No description provided for @channels_regionSelect_Title.
   ///
   /// In en, this message translates to:

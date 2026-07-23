@@ -16,6 +16,7 @@ import '../models/contact.dart';
 import '../models/message.dart';
 import '../models/path_selection.dart';
 import '../models/translation_support.dart';
+import '../helpers/flood_scope.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/cyr2lat.dart';
@@ -3628,6 +3629,9 @@ class MeshCoreConnector extends ChangeNotifier {
       originalText: originalText,
       translatedLanguageCode: translatedLanguageCode,
       translationModelId: translationModelId,
+      floodScope: hasChannelRegion(channel.index)
+          ? getChannelRegion(channel.index)
+          : null,
     );
     _addChannelMessage(channel.index, message);
     _pendingChannelSentQueue.add(message.messageId);
@@ -5665,6 +5669,17 @@ class MeshCoreConnector extends ChangeNotifier {
             pathBytes: packet.pathBytes,
             channelIndex: channel.index,
             packetHash: pktHash,
+            floodScope: packet.hasTransportCodes
+                ? resolveFloodScopeRegion(
+                    packet.transportCodes[0],
+                    packet.payloadType,
+                    packet.payload,
+                    RegionStore().loadRegions(),
+                  )
+                : '',
+            floodScopeCode: packet.hasTransportCodes
+                ? packet.transportCodes[0]
+                : null,
           );
 
           _updateContactLastMessageAtByName(
@@ -6251,9 +6266,10 @@ class MeshCoreConnector extends ChangeNotifier {
       final hasTransport =
           routeType == _routeTransportFlood ||
           routeType == _routeTransportDirect;
+      final transportCodes = <int>[0, 0];
       if (hasTransport) {
-        // Skip reserved bytes in transport header made up of two u16 fields
-        reader.skipBytes(4);
+        transportCodes[0] = reader.readUInt16LE();
+        transportCodes[1] = reader.readUInt16LE();
       }
       final pathLenRaw = reader.readByte();
       if (!isValidPacketPathLen(pathLenRaw)) return null;
@@ -6277,6 +6293,7 @@ class MeshCoreConnector extends ChangeNotifier {
         pathHashWidth: pathHashWidth,
         pathBytes: pathBytes,
         payload: payload,
+        transportCodes: transportCodes,
       );
     } catch (e) {
       appLogger.warn('Error parsing raw packet: $e');
@@ -6428,6 +6445,8 @@ class MeshCoreConnector extends ChangeNotifier {
           pathVariants: message.pathVariants,
           channelIndex: message.channelIndex,
           messageId: message.messageId,
+          floodScope: message.floodScope,
+          floodScopeCode: message.floodScopeCode,
           replyToMessageId: originalMessage.messageId,
           replyToSenderName: originalMessage.senderName,
           replyToText: originalMessage.text,
@@ -6486,6 +6505,9 @@ class MeshCoreConnector extends ChangeNotifier {
         pathBytes: mergedPathBytes,
         pathVariants: mergedPathVariants,
         packetHash: existing.packetHash ?? processedMessage.packetHash,
+        floodScope: existing.floodScope ?? processedMessage.floodScope,
+        floodScopeCode:
+            existing.floodScopeCode ?? processedMessage.floodScopeCode,
         // Mark as sent when first repeat is heard
         status: promotedFromPending
             ? ChannelMessageStatus.sent
@@ -7413,6 +7435,7 @@ class _RawPacket {
   final int pathHashWidth;
   final Uint8List pathBytes;
   final Uint8List payload;
+  final List<int> transportCodes;
 
   _RawPacket({
     required this.header,
@@ -7423,7 +7446,11 @@ class _RawPacket {
     required this.pathHashWidth,
     required this.pathBytes,
     required this.payload,
+    required this.transportCodes,
   });
+
+  bool get hasTransportCodes =>
+      routeType == _routeTransportFlood || routeType == _routeTransportDirect;
 
   bool get isFlood =>
       routeType == _routeFlood || routeType == _routeTransportFlood;

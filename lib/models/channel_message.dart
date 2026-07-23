@@ -48,6 +48,13 @@ class ChannelMessage {
   final int? channelIndex;
   final String messageId;
   final String? packetHash;
+
+  /// Resolved flood region. Empty means an untagged packet; null means the
+  /// available frame data was insufficient to determine the scope.
+  final String? floodScope;
+
+  /// Packet-specific transport tag, retained when its region is unknown.
+  final int? floodScopeCode;
   final String? replyToMessageId;
   final String? replyToSenderName;
   final String? replyToText;
@@ -74,6 +81,8 @@ class ChannelMessage {
     this.channelIndex,
     String? messageId,
     this.packetHash,
+    this.floodScope,
+    this.floodScopeCode,
     this.replyToMessageId,
     this.replyToSenderName,
     this.replyToText,
@@ -159,6 +168,8 @@ class ChannelMessage {
     Uint8List? pathBytes,
     List<Uint8List>? pathVariants,
     String? packetHash,
+    Object? floodScope = _unset,
+    Object? floodScopeCode = _unset,
     String? replyToMessageId,
     String? replyToSenderName,
     String? replyToText,
@@ -198,6 +209,12 @@ class ChannelMessage {
       channelIndex: channelIndex,
       messageId: messageId,
       packetHash: packetHash ?? this.packetHash,
+      floodScope: floodScope == _unset
+          ? this.floodScope
+          : floodScope as String?,
+      floodScopeCode: floodScopeCode == _unset
+          ? this.floodScopeCode
+          : floodScopeCode as int?,
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       replyToText: replyToText ?? this.replyToText,
@@ -296,6 +313,7 @@ class ChannelMessage {
     String? originalText,
     String? translatedLanguageCode,
     String? translationModelId,
+    String? floodScope,
   }) {
     return ChannelMessage(
       senderKey: null,
@@ -312,6 +330,7 @@ class ChannelMessage {
       pathBytes: Uint8List(0),
       pathVariants: const [],
       channelIndex: channelIndex,
+      floodScope: floodScope,
     );
   }
 

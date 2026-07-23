@@ -78,6 +78,7 @@ Tap a channel card to open the channel chat screen.
 - Reverse-scrolling list (newest at bottom)
 - **Incoming messages**: Colored avatar with sender's initial (or first emoji if name starts with one; color is deterministic from sender name hash), sender name in primary color, message bubble
 - **Outgoing messages**: Primary container color bubble with a small status icon: pending (clock), sent (checkmark), or failed (red error circle)
+- **Flood scope**: Scoped messages show their saved region below the content. Incoming raw packets are matched against known regions; an unresolved scoped packet shows its raw transport tag instead
 - Automatic older-message loading on scroll-to-top
 - Jump-to-bottom button when scrolled up
 - **Pinch-to-zoom**: Two-finger zoom (0.8x–1.8x) and double-tap to reset text size

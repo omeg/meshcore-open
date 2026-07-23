@@ -1408,6 +1408,11 @@ class AppLocalizationsBg extends AppLocalizations {
   String get channels_regionNotSet => 'Region: none';
 
   @override
+  String channels_scopeTag(String tag) {
+    return 'Scope tag: $tag';
+  }
+
+  @override
   String get channels_regionSelect_Title => 'Select a region';
 
   @override

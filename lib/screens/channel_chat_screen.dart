@@ -544,6 +544,13 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final directRepeatCount = isOutgoing
         ? message.directRepeaterRepeatCount(displayPathHashWidth)
         : null;
+    final scopeLabel = message.floodScope?.isNotEmpty == true
+        ? context.l10n.channels_regionSetTo(message.floodScope!)
+        : message.floodScopeCode != null
+        ? context.l10n.channels_scopeTag(
+            '0x${message.floodScopeCode!.toRadixString(16).padLeft(4, '0').toUpperCase()}',
+          )
+        : null;
 
     // Bubble colors — outgoing uses MeshPalette.me / meBorder / meInk.
     final bubbleColor = isOutgoing
@@ -686,6 +693,34 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               ),
                             ],
                           ),
+                        if (scopeLabel != null) ...[
+                          const SizedBox(height: 3),
+                          Padding(
+                            padding: gifId != null
+                                ? const EdgeInsets.symmetric(horizontal: 8)
+                                : EdgeInsets.zero,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.landscape_outlined,
+                                  size: 11 * textScale,
+                                  color: metaColor,
+                                ),
+                                const SizedBox(width: 3),
+                                Flexible(
+                                  child: Text(
+                                    scopeLabel,
+                                    style: MeshTheme.mono(
+                                      fontSize: 9.5 * textScale,
+                                      color: metaColor,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                         if (enableTracing && displayPath.isNotEmpty) ...[
                           const SizedBox(height: 3),
                           Padding(

@@ -122,7 +122,7 @@ Path byte order is directional. Raw radio packet log data stores the flooded pat
 
 ### Channel Messages and Observed Paths
 
-Group text payloads do not contain sender identity. For channel messages, sender origin and path metadata come from `PUSH_CODE_LOG_RX_DATA` raw packet data when available. The app stores `ChannelMessage.pathHashByteWidth` with each message so historical messages continue to render correctly if the active device width later changes.
+Group text payloads do not contain sender identity. For channel messages, sender origin, path metadata, and flood-scope transport codes come from `PUSH_CODE_LOG_RX_DATA` raw packet data when available. The app resolves the packet-specific scope code against its known region names and stores both the result and raw tag on `ChannelMessage`. It also stores `ChannelMessage.pathHashByteWidth` so historical messages continue to render correctly if the active device width later changes.
 
 When duplicate channel messages arrive, merging should keep the preferred path bytes and carry the matching hash width. The first observed echo that promotes an outgoing pending message to sent should not increment the repeat counter; subsequent repeats should.
 

@@ -106,6 +106,28 @@ void main() {
   });
 
   group('ChannelMessage.fromFrame — encoded V3 pathLen', () {
+    test('copyWith preserves and can update flood scope metadata', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        floodScope: 'de-mitte',
+        floodScopeCode: 0x3878,
+      );
+
+      expect(
+        message.copyWith(status: ChannelMessageStatus.sent).floodScope,
+        'de-mitte',
+      );
+      final updated = message.copyWith(
+        floodScope: 'pl-central',
+        floodScopeCode: 0x1234,
+      );
+      expect(updated.floodScope, 'pl-central');
+      expect(updated.floodScopeCode, 0x1234);
+    });
+
     test('decodes 2-byte path hashes as hop count plus path bytes', () {
       final writer = BytesBuilder();
       writer.addByte(respCodeChannelMsgRecvV3);

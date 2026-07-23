@@ -680,6 +680,15 @@
     }
   },
   "channels_regionNotSet": "Region: none",
+  "channels_scopeTag": "Scope tag: {tag}",
+  "@channels_scopeTag": {
+    "placeholders": {
+      "tag": {
+        "type": "String",
+        "example": "0xA1B2"
+      }
+    }
+  },
   "channels_regionSelect_Title": "Select a region",
   "channels_clearRegion": "Clear region",
   "chat_noMessages": "No messages yet",
