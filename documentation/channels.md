@@ -97,7 +97,8 @@ Tap a channel card to open the channel chat screen.
 - **All platforms**: Long-press → "Reply"
 - Reply banner appears above the input bar with the quoted message (tap X to cancel)
 - Sent replies are prefixed `@[{senderName}] {text}`
-- Received replies show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
+- Replies sent on this device show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
+- The on-air prefix contains a sender name but no message identifier. Received replies therefore show the addressee and "Original message not found" instead of guessing from a companion's potentially incomplete history.
 
 ### Message Path Viewing
 

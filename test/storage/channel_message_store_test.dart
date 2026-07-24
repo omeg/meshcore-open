@@ -33,4 +33,44 @@ void main() {
     expect(loaded.single.floodScope, 'de-mitte');
     expect(loaded.single.floodScopeCode, 0x3878);
   });
+
+  test('persists verified channel reply metadata', () async {
+    final store = ChannelMessageStore()..setPublicKeyHex = '0123456789abcdef';
+    final message = ChannelMessage(
+      senderName: 'Me',
+      text: 'reply',
+      timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+      isOutgoing: true,
+      channelIndex: 2,
+      replyToMessageId: 'original-id',
+      replyToSenderName: 'Node',
+      replyToText: 'original text',
+      isReplyTargetVerified: true,
+    );
+
+    await store.saveChannelMessages(2, [message]);
+    final loaded = await store.loadChannelMessages(2);
+
+    expect(loaded.single.replyToMessageId, 'original-id');
+    expect(loaded.single.replyToSenderName, 'Node');
+    expect(loaded.single.replyToText, 'original text');
+    expect(loaded.single.isReplyTargetVerified, isTrue);
+  });
+
+  test('legacy channel reply metadata is unverified', () async {
+    SharedPreferences.setMockInitialValues({
+      'channel_messages_01234567892':
+          '[{"senderName":"Node","text":"reply","timestamp":1000,'
+          '"isOutgoing":false,"status":1,"channelIndex":2,'
+          '"replyToMessageId":"guessed-id","replyToSenderName":"Other",'
+          '"replyToText":"guessed text"}]',
+    });
+    PrefsManager.reset();
+    await PrefsManager.initialize();
+    final store = ChannelMessageStore()..setPublicKeyHex = '0123456789abcdef';
+
+    final loaded = await store.loadChannelMessages(2);
+
+    expect(loaded.single.isReplyTargetVerified, isFalse);
+  });
 }

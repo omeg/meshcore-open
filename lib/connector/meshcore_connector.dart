@@ -3576,6 +3576,9 @@ class MeshCoreConnector extends ChangeNotifier {
     String? originalText,
     String? translatedLanguageCode,
     String? translationModelId,
+    String? replyToMessageId,
+    String? replyToSenderName,
+    String? replyToText,
   }) async {
     if (!isConnected || text.isEmpty) return;
 
@@ -3632,6 +3635,13 @@ class MeshCoreConnector extends ChangeNotifier {
       floodScope: hasChannelRegion(channel.index)
           ? getChannelRegion(channel.index)
           : null,
+      replyToMessageId: replyToMessageId,
+      replyToSenderName: replyToSenderName,
+      replyToText: replyToText,
+      isReplyTargetVerified:
+          replyToMessageId != null &&
+          replyToSenderName != null &&
+          replyToText != null,
     );
     _addChannelMessage(channel.index, message);
     _pendingChannelSentQueue.add(message.messageId);
@@ -6412,47 +6422,10 @@ class MeshCoreConnector extends ChangeNotifier {
       return false; // Don't add reaction as a visible message
     }
 
-    // Parse reply info from message text
-    final replyInfo = ChannelMessage.parseReplyMention(message.text);
-    ChannelMessage processedMessage = message;
-
-    if (replyInfo != null) {
-      // Find original message by sender name (most recent match)
-      final originalMessage = _findMessageBySender(
-        messages,
-        replyInfo.mentionedNode,
-      );
-
-      if (originalMessage != null) {
-        // Create new message with reply metadata
-        processedMessage = ChannelMessage(
-          senderKey: message.senderKey,
-          senderName: message.senderName,
-          text: replyInfo.actualMessage,
-          originalText: message.originalText,
-          translatedText: message.translatedText,
-          translatedLanguageCode: message.translatedLanguageCode,
-          translationStatus: message.translationStatus,
-          translationModelId: message.translationModelId,
-          timestamp: message.timestamp,
-          isOutgoing: message.isOutgoing,
-          status: message.status,
-          repeats: message.repeats,
-          repeatCount: message.repeatCount,
-          pathLength: message.pathLength,
-          pathHashByteWidth: message.pathHashByteWidth,
-          pathBytes: message.pathBytes,
-          pathVariants: message.pathVariants,
-          channelIndex: message.channelIndex,
-          messageId: message.messageId,
-          floodScope: message.floodScope,
-          floodScopeCode: message.floodScopeCode,
-          replyToMessageId: originalMessage.messageId,
-          replyToSenderName: originalMessage.senderName,
-          replyToText: originalMessage.text,
-        );
-      }
-    }
+    // The wire prefix identifies only the addressee. Never guess a target
+    // message from the most recent local message by that sender: companions can
+    // have different or incomplete channel histories.
+    final processedMessage = message.withParsedReplyMention();
 
     final existingIndex = _findChannelRepeatIndex(messages, processedMessage);
     var isNew = true;
@@ -6523,19 +6496,6 @@ class MeshCoreConnector extends ChangeNotifier {
     // Save to persistent storage
     _channelMessageStore.saveChannelMessages(channelIndex, messages);
     return isNew;
-  }
-
-  ChannelMessage? _findMessageBySender(
-    List<ChannelMessage> messages,
-    String mentionedNode,
-  ) {
-    // Search backwards for most recent message from this sender
-    for (int i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].senderName == mentionedNode && !messages[i].isOutgoing) {
-        return messages[i];
-      }
-    }
-    return null;
   }
 
   void _processReaction(

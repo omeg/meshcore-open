@@ -58,6 +58,13 @@ class ChannelMessage {
   final String? replyToMessageId;
   final String? replyToSenderName;
   final String? replyToText;
+
+  /// Whether the reply target came from an exact local selection.
+  ///
+  /// The channel wire format only carries the mentioned sender name, so
+  /// received replies must not claim that an arbitrary message from that
+  /// sender is the original.
+  final bool isReplyTargetVerified;
   final Map<String, int> reactions;
 
   ChannelMessage({
@@ -86,6 +93,7 @@ class ChannelMessage {
     this.replyToMessageId,
     this.replyToSenderName,
     this.replyToText,
+    this.isReplyTargetVerified = false,
     Map<String, int>? reactions,
   }) : messageId =
            messageId ??
@@ -160,6 +168,7 @@ class ChannelMessage {
   }
 
   ChannelMessage copyWith({
+    String? text,
     ChannelMessageStatus? status,
     List<Repeat>? repeats,
     int? repeatCount,
@@ -173,6 +182,7 @@ class ChannelMessage {
     String? replyToMessageId,
     String? replyToSenderName,
     String? replyToText,
+    bool? isReplyTargetVerified,
     Object? originalText = _unset,
     Object? translatedText = _unset,
     Object? translatedLanguageCode = _unset,
@@ -183,7 +193,7 @@ class ChannelMessage {
     return ChannelMessage(
       senderKey: senderKey,
       senderName: senderName,
-      text: text,
+      text: text ?? this.text,
       originalText: originalText == _unset
           ? this.originalText
           : originalText as String?,
@@ -218,6 +228,8 @@ class ChannelMessage {
       replyToMessageId: replyToMessageId ?? this.replyToMessageId,
       replyToSenderName: replyToSenderName ?? this.replyToSenderName,
       replyToText: replyToText ?? this.replyToText,
+      isReplyTargetVerified:
+          isReplyTargetVerified ?? this.isReplyTargetVerified,
       reactions: reactions ?? this.reactions,
     );
   }
@@ -314,6 +326,10 @@ class ChannelMessage {
     String? translatedLanguageCode,
     String? translationModelId,
     String? floodScope,
+    String? replyToMessageId,
+    String? replyToSenderName,
+    String? replyToText,
+    bool isReplyTargetVerified = false,
   }) {
     return ChannelMessage(
       senderKey: null,
@@ -331,6 +347,10 @@ class ChannelMessage {
       pathVariants: const [],
       channelIndex: channelIndex,
       floodScope: floodScope,
+      replyToMessageId: replyToMessageId,
+      replyToSenderName: replyToSenderName,
+      replyToText: replyToText,
+      isReplyTargetVerified: isReplyTargetVerified,
     );
   }
 
@@ -373,6 +393,20 @@ class ChannelMessage {
     return ReplyInfo(
       mentionedNode: match.group(1)!,
       actualMessage: match.group(2)!,
+    );
+  }
+
+  /// Removes the on-air reply prefix while retaining only trustworthy target
+  /// metadata already attached by the sending UI.
+  ///
+  /// `@[name]` identifies an addressee, not a particular message. For received
+  /// messages we therefore keep the name but leave the target unresolved.
+  ChannelMessage withParsedReplyMention() {
+    final replyInfo = parseReplyMention(text);
+    if (replyInfo == null) return this;
+    return copyWith(
+      text: replyInfo.actualMessage,
+      replyToSenderName: replyToSenderName ?? replyInfo.mentionedNode,
     );
   }
 

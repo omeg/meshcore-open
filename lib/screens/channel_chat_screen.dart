@@ -640,8 +640,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           ),
                           if (gifId == null) const SizedBox(height: 2),
                         ],
-                        if (message.replyToMessageId != null) ...[
-                          _buildReplyPreview(message, textScale),
+                        if (message.replyToSenderName != null) ...[
+                          _buildReplyAttribution(message, textScale),
                           const SizedBox(height: 8),
                         ],
                         if (poi != null)
@@ -920,78 +920,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     );
   }
 
-  Widget _buildReplyPreview(ChannelMessage message, double textScale) {
-    final replyText = message.replyToText ?? '';
+  Widget _buildReplyAttribution(ChannelMessage message, double textScale) {
+    final hasResolvedTarget =
+        message.isReplyTargetVerified && message.replyToMessageId != null;
     final colorScheme = Theme.of(context).colorScheme;
     final replyLabelColor = colorScheme.onSurface.withValues(alpha: 0.6);
-    final previewTextColor = colorScheme.onSurface.withValues(alpha: 0.55);
-
-    final gifId = GifHelper.parseGif(replyText);
-    final poi = parseMarkerText(replyText);
-
-    Widget contentPreview;
-    if (gifId != null) {
-      contentPreview = ClipRRect(
-        borderRadius: BorderRadius.circular(4),
-        child: GifMessage(
-          url: 'https://media.giphy.com/media/$gifId/giphy.gif',
-          backgroundColor: colorScheme.surfaceContainerHighest,
-          fallbackTextColor: previewTextColor,
-          maxSize: 80,
-        ),
-      );
-    } else if (poi != null) {
-      contentPreview = Row(
-        children: [
-          Icon(Icons.location_on_outlined, size: 14, color: previewTextColor),
-          const SizedBox(width: 4),
-          Text(
-            context.l10n.chat_location,
-            style: TextStyle(fontSize: 12 * textScale, color: previewTextColor),
-          ),
-        ],
-      );
-    } else {
-      contentPreview = Text(
-        replyText,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          fontSize: 12 * textScale,
-          color: previewTextColor,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
 
     return GestureDetector(
-      onTap: () => _scrollToMessage(message.replyToMessageId!),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: colorScheme.onSurface.withValues(alpha: 0.035),
-          borderRadius: BorderRadius.circular(MeshRadii.sm),
-          border: Border(
-            left: BorderSide(
-              color: colorScheme.onSurface.withValues(alpha: 0.2),
-              width: 2,
-            ),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              context.l10n.chat_replyTo(message.replyToSenderName ?? ''),
-              style: TextStyle(
-                fontSize: 11 * textScale,
-                fontWeight: FontWeight.w600,
-                color: replyLabelColor,
-              ),
-            ),
-            const SizedBox(height: 2),
-            contentPreview,
-          ],
+      onTap: hasResolvedTarget
+          ? () => _scrollToMessage(message.replyToMessageId!)
+          : null,
+      child: Text(
+        context.l10n.chat_replyTo(message.replyToSenderName ?? ''),
+        style: TextStyle(
+          fontSize: 11 * textScale,
+          fontWeight: FontWeight.w600,
+          color: replyLabelColor,
         ),
       ),
     );
@@ -1377,6 +1321,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
+    final replyToMessage = _replyingToMessage;
 
     final now = DateTime.now();
     if (_lastChannelSendAt != null &&
@@ -1420,8 +1365,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         }
       }
     }
-    if (_replyingToMessage != null) {
-      messageText = '@[${_replyingToMessage!.senderName}] $messageText';
+    if (replyToMessage != null) {
+      messageText = '@[${replyToMessage.senderName}] $messageText';
     }
 
     final maxBytes = maxChannelMessageBytes(connector.selfName);
@@ -1455,6 +1400,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       originalText: originalText,
       translatedLanguageCode: translatedLanguageCode,
       translationModelId: translationModelId,
+      replyToMessageId: replyToMessage?.messageId,
+      replyToSenderName: replyToMessage?.senderName,
+      replyToText: replyToMessage?.text,
     );
   }
 
@@ -1610,6 +1558,9 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       originalText: message.originalText,
       translatedLanguageCode: message.translatedLanguageCode,
       translationModelId: message.translationModelId,
+      replyToMessageId: message.replyToMessageId,
+      replyToSenderName: message.replyToSenderName,
+      replyToText: message.replyToText,
     );
     showDismissibleSnackBar(
       context,

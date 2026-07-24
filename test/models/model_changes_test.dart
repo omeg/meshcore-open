@@ -44,6 +44,45 @@ Uint8List _buildContactFrame({
 }
 
 void main() {
+  group('ChannelMessage reply mentions', () {
+    test('does not invent a target for a received reply', () {
+      final message = ChannelMessage(
+        senderName: 'Sender',
+        text: '@[MarWoj] a reply',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+      );
+
+      final parsed = message.withParsedReplyMention();
+
+      expect(parsed.text, 'a reply');
+      expect(parsed.replyToSenderName, 'MarWoj');
+      expect(parsed.replyToMessageId, isNull);
+      expect(parsed.replyToText, isNull);
+      expect(parsed.isReplyTargetVerified, isFalse);
+    });
+
+    test('preserves an exact locally selected target', () {
+      final message = ChannelMessage(
+        senderName: 'Me',
+        text: '@[MarWoj] a reply',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: true,
+        replyToMessageId: 'original-id',
+        replyToSenderName: 'MarWoj',
+        replyToText: 'the selected message',
+        isReplyTargetVerified: true,
+      );
+
+      final parsed = message.withParsedReplyMention();
+
+      expect(parsed.text, 'a reply');
+      expect(parsed.replyToMessageId, 'original-id');
+      expect(parsed.replyToText, 'the selected message');
+      expect(parsed.isReplyTargetVerified, isTrue);
+    });
+  });
+
   group('Contact.fromFrame — pathLen mapping', () {
     test('pathLen == 0 → pathLength == 0 (direct, NOT flood)', () {
       final frame = _buildContactFrame(pathLen: 0);
