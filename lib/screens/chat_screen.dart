@@ -17,6 +17,7 @@ import '../widgets/message_status_icon.dart';
 import '../widgets/empty_state.dart';
 import '../helpers/chat_scroll_controller.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/message_text.dart';
 import '../helpers/path_helper.dart';
 import '../models/channel_message.dart';
 import '../models/contact.dart';
@@ -635,7 +636,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage(MeshCoreConnector connector) async {
-    final text = _textController.text.trim();
+    final text = normalizeOutgoingMessageText(_textController.text);
     if (text.isEmpty) return;
 
     final now = DateTime.now();
@@ -678,6 +679,8 @@ class _ChatScreenState extends State<ChatScreen> {
         }
       }
     }
+    outgoingText = normalizeOutgoingMessageText(outgoingText);
+    if (outgoingText.isEmpty) return;
     final maxBytes = maxContactMessageBytes();
     final outboundText = connector.prepareContactOutboundText(
       _resolveContact(connector),

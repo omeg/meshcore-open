@@ -16,6 +16,7 @@ import '../helpers/chat_scroll_controller.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/message_text.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/path_helper.dart';
 import '../helpers/reaction_helper.dart';
@@ -1319,7 +1320,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   Future<void> _sendMessage() async {
-    final text = _textController.text.trim();
+    final text = normalizeOutgoingMessageText(_textController.text);
     if (text.isEmpty) return;
     final replyToMessage = _replyingToMessage;
 
@@ -1365,6 +1366,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         }
       }
     }
+    messageText = normalizeOutgoingMessageText(messageText);
+    if (messageText.isEmpty) return;
     if (replyToMessage != null) {
       messageText = '@[${replyToMessage.senderName}] $messageText';
     }

@@ -17,6 +17,7 @@ import '../models/message.dart';
 import '../models/path_selection.dart';
 import '../models/translation_support.dart';
 import '../helpers/flood_scope.dart';
+import '../helpers/message_text.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/reaction_helper.dart';
 import '../helpers/cyr2lat.dart';
@@ -1283,10 +1284,11 @@ class MeshCoreConnector extends ChangeNotifier {
     int attempt,
     int timestampSeconds,
   ) async {
-    if (!isConnected || text.isEmpty) return;
+    final messageText = normalizeOutgoingMessageText(text);
+    if (!isConnected || messageText.isEmpty) return;
     try {
       await _waitForRadioQuiet(lastInboundRxTime: _lastContactMsgRxTime);
-      final outboundText = prepareContactOutboundText(contact, text);
+      final outboundText = prepareContactOutboundText(contact, messageText);
       await sendFrame(
         buildSendTextMsgFrame(
           contact.publicKey,
@@ -3185,10 +3187,14 @@ class MeshCoreConnector extends ChangeNotifier {
     String? translatedLanguageCode,
     String? translationModelId,
   }) async {
-    if (!isConnected || text.isEmpty) return;
+    final messageText = normalizeOutgoingMessageText(text);
+    final sourceText = originalText == null
+        ? null
+        : normalizeOutgoingMessageText(originalText);
+    if (!isConnected || messageText.isEmpty) return;
 
     final outboundBytes = utf8.encode(
-      prepareContactOutboundText(contact, text),
+      prepareContactOutboundText(contact, messageText),
     );
     if (outboundBytes.length > maxTextPayloadBytes) {
       debugPrint(
@@ -3199,7 +3205,7 @@ class MeshCoreConnector extends ChangeNotifier {
     }
 
     // Check if this is a reaction - apply locally with pending status and route through retry service
-    final reactionInfo = ReactionHelper.parseReaction(text);
+    final reactionInfo = ReactionHelper.parseReaction(messageText);
     if (reactionInfo != null) {
       _conversations.putIfAbsent(contact.publicKeyHex, () => []);
       final messages = _conversations[contact.publicKeyHex]!;
@@ -3217,9 +3223,12 @@ class MeshCoreConnector extends ChangeNotifier {
       // Route through retry service (same as normal messages)
       // Don't use auto-rotation for reactions — just send directly
       if (_retryService != null) {
-        _retryService!.sendMessageWithRetry(contact: contact, text: text);
+        _retryService!.sendMessageWithRetry(
+          contact: contact,
+          text: messageText,
+        );
       } else {
-        final outboundText = prepareContactOutboundText(contact, text);
+        final outboundText = prepareContactOutboundText(contact, messageText);
         await sendFrame(buildSendTextMsgFrame(contact.publicKey, outboundText));
       }
       return;
@@ -3228,8 +3237,8 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_retryService != null) {
       await _retryService!.sendMessageWithRetry(
         contact: contact,
-        text: text,
-        originalText: originalText,
+        text: messageText,
+        originalText: sourceText,
         translatedLanguageCode: translatedLanguageCode,
         translationModelId: translationModelId,
       );
@@ -3238,16 +3247,16 @@ class MeshCoreConnector extends ChangeNotifier {
       final resolved = resolvePathSelection(contact);
       final message = Message.outgoing(
         contact.publicKey,
-        text,
+        messageText,
         pathLength: resolved.useFlood ? -1 : resolved.hopCount,
         pathBytes: Uint8List.fromList(resolved.pathBytes),
-        originalText: originalText,
+        originalText: sourceText,
         translatedLanguageCode: translatedLanguageCode,
         translationModelId: translationModelId,
       );
       _addMessage(contact.publicKeyHex, message);
       notifyListeners();
-      final outboundText = prepareContactOutboundText(contact, text);
+      final outboundText = prepareContactOutboundText(contact, messageText);
       await sendFrame(buildSendTextMsgFrame(contact.publicKey, outboundText));
     }
   }
@@ -3580,10 +3589,14 @@ class MeshCoreConnector extends ChangeNotifier {
     String? replyToSenderName,
     String? replyToText,
   }) async {
-    if (!isConnected || text.isEmpty) return;
+    final messageText = normalizeOutgoingMessageText(text);
+    final sourceText = originalText == null
+        ? null
+        : normalizeOutgoingMessageText(originalText);
+    if (!isConnected || messageText.isEmpty) return;
 
     // Check if this is a reaction - if so, process it immediately instead of adding as a message
-    final reactionInfo = ReactionHelper.parseReaction(text);
+    final reactionInfo = ReactionHelper.parseReaction(messageText);
     if (reactionInfo != null) {
       // Check if we've already processed this reaction
       _processedChannelReactions.putIfAbsent(channel.index, () => {});
@@ -3616,7 +3629,7 @@ class MeshCoreConnector extends ChangeNotifier {
       await _runScopedChannelSend(() async {
         await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
         await _sendFrameAndWaitForCommandAck(
-          buildSendChannelTextMsgFrame(channel.index, text),
+          buildSendChannelTextMsgFrame(channel.index, messageText),
           channelSendQueueId: reactionQueueId,
           expectsGenericAck: true,
           successCode: respCodeSent,
@@ -3626,10 +3639,10 @@ class MeshCoreConnector extends ChangeNotifier {
     }
 
     final message = ChannelMessage.outgoing(
-      text,
+      messageText,
       _selfName ?? 'Me',
       channel.index,
-      originalText: originalText,
+      originalText: sourceText,
       translatedLanguageCode: translatedLanguageCode,
       translationModelId: translationModelId,
       floodScope: hasChannelRegion(channel.index)
@@ -3647,7 +3660,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _pendingChannelSentQueue.add(message.messageId);
     notifyListeners();
 
-    final outboundText = prepareChannelOutboundText(channel.index, text);
+    final outboundText = prepareChannelOutboundText(channel.index, messageText);
     await _runScopedChannelSend(() async {
       await _waitForRadioQuiet(lastInboundRxTime: _lastChannelMsgRxTime);
       await _sendFrameAndWaitForCommandAck(
