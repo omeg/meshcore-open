@@ -1378,6 +1378,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get chat_messageCopied => '消息已复制';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => '消息已删除';
 
   @override

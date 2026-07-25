@@ -55,6 +55,41 @@ void main() {
     );
   });
 
+  group('formatMessagePathHex', () {
+    test('formats the primary path with hop-width boundaries', () {
+      expect(
+        PathHelper.formatMessagePathHex([0xA6, 0xE7, 0xD1, 0x1E], 2),
+        equals('A6E7,D11E'),
+      );
+    });
+
+    test('falls back to the first non-empty observed path', () {
+      expect(
+        PathHelper.formatMessagePathHex(
+          const [],
+          2,
+          pathVariants: [
+            const [],
+            [0x04, 0xF9, 0xD1, 0xE5],
+            [0xAA, 0xBB],
+          ],
+        ),
+        equals('04F9,D1E5'),
+      );
+    });
+
+    test('reverses incoming paths by hop and trims partial hops', () {
+      expect(
+        PathHelper.formatMessagePathHex(
+          [0x2D, 0x71, 0xD1, 0xE5, 0xFF],
+          2,
+          reverse: true,
+        ),
+        equals('D1E5,2D71'),
+      );
+    });
+  });
+
   test(
     'normalizes stale byte-count path lengths when path bytes are known',
     () {

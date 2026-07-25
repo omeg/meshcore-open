@@ -1454,6 +1454,12 @@ class AppLocalizationsUk extends AppLocalizations {
   String get chat_messageCopied => 'Повідомлення скопійовано';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => 'Повідомлення видалено';
 
   @override

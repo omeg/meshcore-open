@@ -2686,6 +2686,18 @@ abstract class AppLocalizations {
   /// **'Message copied'**
   String get chat_messageCopied;
 
+  /// No description provided for @chat_copyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get chat_copyPath;
+
+  /// No description provided for @chat_pathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Path copied'**
+  String get chat_pathCopied;
+
   /// No description provided for @chat_messageDeleted.
   ///
   /// In en, this message translates to:

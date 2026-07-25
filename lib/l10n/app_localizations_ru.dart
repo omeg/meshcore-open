@@ -1460,6 +1460,12 @@ class AppLocalizationsRu extends AppLocalizations {
   String get chat_messageCopied => 'Сообщение скопировано';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => 'Сообщение удалено';
 
   @override

@@ -731,6 +731,8 @@
     }
   },
   "chat_messageCopied": "Message copied",
+  "chat_copyPath": "Copy path",
+  "chat_pathCopied": "Path copied",
   "chat_messageDeleted": "Message deleted",
   "chat_resendingMessage": "Resending message",
   "chat_retryingMessage": "Retrying message",

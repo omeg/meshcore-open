@@ -1448,6 +1448,12 @@ class AppLocalizationsSl extends AppLocalizations {
   String get chat_messageCopied => 'Sporočilo poslano';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => 'Sporočilo izbrisano';
 
   @override

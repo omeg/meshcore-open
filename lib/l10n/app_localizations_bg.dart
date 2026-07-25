@@ -1463,6 +1463,12 @@ class AppLocalizationsBg extends AppLocalizations {
   String get chat_messageCopied => 'Съобщението е копирано';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => 'Съобщението е изтрито';
 
   @override

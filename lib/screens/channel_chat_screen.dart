@@ -1474,6 +1474,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                 _showMessagePathInfo(message);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(context.l10n.chat_copyPath),
+              onTap:
+                  message.pathBytes.isEmpty &&
+                      !message.pathVariants.any((path) => path.isNotEmpty)
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      unawaited(_copyMessagePath(message));
+                    },
+            ),
             // Can't react to your own messages
             if (!message.isOutgoing)
               ListTile(
@@ -1599,6 +1611,22 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     showDismissibleSnackBar(
       context,
       content: Text(context.l10n.chat_messageCopied),
+    );
+  }
+
+  Future<void> _copyMessagePath(ChannelMessage message) async {
+    final path = PathHelper.formatMessagePathHex(
+      message.pathBytes,
+      message.pathHashByteWidth ??
+          context.read<MeshCoreConnector>().pathHashByteWidth,
+      pathVariants: message.pathVariants,
+    );
+    if (path.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: path));
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.chat_pathCopied),
     );
   }
 

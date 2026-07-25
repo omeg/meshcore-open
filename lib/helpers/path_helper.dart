@@ -28,6 +28,29 @@ class PathHelper {
     return splitPathBytes(pathBytes, hashByteWidth).map(formatHopHex).join(',');
   }
 
+  static String formatMessagePathHex(
+    List<int> pathBytes,
+    int hashByteWidth, {
+    Iterable<List<int>> pathVariants = const [],
+    bool reverse = false,
+  }) {
+    List<int> selectedPath = pathBytes;
+    if (selectedPath.isEmpty) {
+      for (final variant in pathVariants) {
+        if (variant.isNotEmpty) {
+          selectedPath = variant;
+          break;
+        }
+      }
+    }
+
+    final alignedPath = trimPathBytesToWidth(selectedPath, hashByteWidth);
+    final displayPath = reverse
+        ? reversePathByHop(alignedPath, hashByteWidth)
+        : alignedPath;
+    return formatPathHex(displayPath, hashByteWidth);
+  }
+
   static String hopHex(int byte) {
     return byte.toRadixString(16).padLeft(2, '0').toUpperCase();
   }

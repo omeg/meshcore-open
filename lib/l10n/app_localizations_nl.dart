@@ -1449,6 +1449,12 @@ class AppLocalizationsNl extends AppLocalizations {
   String get chat_messageCopied => 'Bericht gekopieerd';
 
   @override
+  String get chat_copyPath => 'Copy path';
+
+  @override
+  String get chat_pathCopied => 'Path copied';
+
+  @override
   String get chat_messageDeleted => 'Bericht verwijderd';
 
   @override

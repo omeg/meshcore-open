@@ -17,6 +17,7 @@ import '../widgets/message_status_icon.dart';
 import '../widgets/empty_state.dart';
 import '../helpers/chat_scroll_controller.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/path_helper.dart';
 import '../models/channel_message.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
@@ -1124,6 +1125,16 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.copy_outlined),
+              title: Text(context.l10n.chat_copyPath),
+              onTap: message.pathBytes.isEmpty
+                  ? null
+                  : () {
+                      Navigator.pop(sheetContext);
+                      unawaited(_copyMessagePath(message));
+                    },
+            ),
+            ListTile(
               leading: const Icon(Icons.copy),
               title: Text(context.l10n.common_copy),
               onTap: () {
@@ -1210,6 +1221,21 @@ class _ChatScreenState extends State<ChatScreen> {
     showDismissibleSnackBar(
       context,
       content: Text(context.l10n.chat_messageCopied),
+    );
+  }
+
+  Future<void> _copyMessagePath(Message message) async {
+    final path = PathHelper.formatMessagePathHex(
+      message.pathBytes,
+      context.read<MeshCoreConnector>().pathHashByteWidth,
+      reverse: !message.isOutgoing,
+    );
+    if (path.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: path));
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.chat_pathCopied),
     );
   }
 

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/screens/path_trace_map.dart';
@@ -11,6 +12,7 @@ import '../connector/meshcore_connector.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/path_hop_resolver.dart';
 import '../helpers/path_helper.dart';
+import '../helpers/snack_bar_builder.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/app_settings_service.dart';
 import '../l10n/app_localizations.dart';
@@ -139,6 +141,13 @@ class _ChannelMessagePathScreenState extends State<ChannelMessagePathScreen> {
                     ? () {
                         _openPathMap(context, channelMessage: channelMessage);
                       }
+                    : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.copy_outlined),
+                tooltip: l10n.chat_copyPath,
+                onPressed: hasHopDetails
+                    ? () => _copyPath(primaryPath, pathHashByteWidth)
                     : null,
               ),
             ],
@@ -562,6 +571,17 @@ class _ChannelMessagePathScreenState extends State<ChannelMessagePathScreen> {
           channelMessage: channelMessage,
         ),
       ),
+    );
+  }
+
+  Future<void> _copyPath(Uint8List pathBytes, int pathHashByteWidth) async {
+    final path = PathHelper.formatMessagePathHex(pathBytes, pathHashByteWidth);
+    if (path.isEmpty) return;
+    await Clipboard.setData(ClipboardData(text: path));
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.chat_pathCopied),
     );
   }
 }
