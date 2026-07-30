@@ -358,6 +358,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 subtitle: contact.typeLabel(l10n),
               ),
               ListTile(
+                leading: const Icon(Icons.person_add),
+                title: Text(l10n.discoveredContacts_addContact),
+                onTap: () => Navigator.of(sheetContext).pop('add_contact'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.copy),
                 title: Text(l10n.discoveredContacts_copyContact),
                 onTap: () => Navigator.of(sheetContext).pop('copy_contact'),
@@ -377,6 +382,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     if (!mounted || action == null) return;
 
     switch (action) {
+      case 'add_contact':
+        await _importContact(contact, connector);
+        break;
       case 'copy_contact':
         if (contact.rawPacket == null) return;
         final hexString = pubKeyToHex(contact.rawPacket!);
