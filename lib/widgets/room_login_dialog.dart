@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../models/remote_node_auth_session.dart';
 import '../l10n/contact_localization.dart';
 import '../services/storage_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -18,9 +19,8 @@ import 'routing_sheet.dart';
 
 class RoomLoginDialog extends StatefulWidget {
   final Contact room;
-  final Function(String password, bool isAdmin) onLogin;
 
-  const RoomLoginDialog({super.key, required this.room, required this.onLogin});
+  const RoomLoginDialog({super.key, required this.room});
 
   @override
   State<RoomLoginDialog> createState() => _RoomLoginDialogState();
@@ -170,8 +170,12 @@ class _RoomLoginDialogState extends State<RoomLoginDialog> {
       }
 
       if (mounted) {
-        Navigator.pop(context, password);
-        Future.microtask(() => widget.onLogin(password, isAdmin));
+        final session = _connector.rememberRemoteNodeAuthentication(
+          room,
+          password: password,
+          isAdmin: isAdmin,
+        );
+        Navigator.pop<RemoteNodeAuthSession>(context, session);
       }
     } catch (e) {
       final room = _resolveRepeater(_connector);

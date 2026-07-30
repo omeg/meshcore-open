@@ -4101,6 +4101,30 @@ abstract class AppLocalizations {
   /// **'Login failed. Either the password is incorrect or the repeater is unreachable.'**
   String get login_failedMessage;
 
+  /// No description provided for @login_reauthenticate.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-authenticate'**
+  String get login_reauthenticate;
+
+  /// No description provided for @login_forgetCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget credentials'**
+  String get login_forgetCredentials;
+
+  /// No description provided for @login_forgetCredentialsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget credentials?'**
+  String get login_forgetCredentialsTitle;
+
+  /// No description provided for @login_forgetCredentialsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes the saved password and ends the remembered login for {name}.'**
+  String login_forgetCredentialsMessage(String name);
+
   /// No description provided for @common_reload.
   ///
   /// In en, this message translates to:

@@ -1210,6 +1210,17 @@
     }
   },
   "login_failedMessage": "Login failed. Either the password is incorrect or the repeater is unreachable.",
+  "login_reauthenticate": "Re-authenticate",
+  "login_forgetCredentials": "Forget credentials",
+  "login_forgetCredentialsTitle": "Forget credentials?",
+  "login_forgetCredentialsMessage": "This removes the saved password and ends the remembered login for {name}.",
+  "@login_forgetCredentialsMessage": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "common_reload": "Reload",
   "common_clear": "Clear",
   "path_currentPathLabel": "Current path",

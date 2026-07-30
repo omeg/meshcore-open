@@ -2269,6 +2269,20 @@ class AppLocalizationsBg extends AppLocalizations {
       'Входът не беше успешен. Или паролата е грешна, или повторителят е недостъпен.';
 
   @override
+  String get login_reauthenticate => 'Re-authenticate';
+
+  @override
+  String get login_forgetCredentials => 'Forget credentials';
+
+  @override
+  String get login_forgetCredentialsTitle => 'Forget credentials?';
+
+  @override
+  String login_forgetCredentialsMessage(String name) {
+    return 'This removes the saved password and ends the remembered login for $name.';
+  }
+
+  @override
   String get common_reload => 'Презареди';
 
   @override

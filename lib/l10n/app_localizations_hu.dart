@@ -2262,6 +2262,20 @@ class AppLocalizationsHu extends AppLocalizations {
       'Sikertelen bejelentkezés. Vagy hibás a jelszó, vagy az átjátszó nem érhető el.';
 
   @override
+  String get login_reauthenticate => 'Re-authenticate';
+
+  @override
+  String get login_forgetCredentials => 'Forget credentials';
+
+  @override
+  String get login_forgetCredentialsTitle => 'Forget credentials?';
+
+  @override
+  String login_forgetCredentialsMessage(String name) {
+    return 'This removes the saved password and ends the remembered login for $name.';
+  }
+
+  @override
   String get common_reload => 'Újratöltés';
 
   @override

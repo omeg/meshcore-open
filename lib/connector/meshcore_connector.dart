@@ -15,6 +15,7 @@ import '../models/companion_radio_stats.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
 import '../models/path_selection.dart';
+import '../models/remote_node_auth_session.dart';
 import '../models/translation_support.dart';
 import '../helpers/flood_scope.dart';
 import '../helpers/message_text.dart';
@@ -377,6 +378,7 @@ class MeshCoreConnector extends ChangeNotifier {
   /// repeater's RTC clock at the moment of the most recent successful login.
   /// Reported by firmware in the login-success push frame at byte offset 8.
   final Map<String, DateTime> _repeaterLoginClocks = {};
+  final Map<String, RemoteNodeAuthSession> _remoteNodeAuthSessions = {};
 
   // Channel syncing state (sequential pattern)
   bool _isSyncingChannels = false;
@@ -574,6 +576,46 @@ class MeshCoreConnector extends ChangeNotifier {
     if (publicKey.length < 6) return null;
     final prefix = pubKeyToHex(publicKey.sublist(0, 6));
     return _repeaterLoginClocks[prefix];
+  }
+
+  RemoteNodeAuthSession? remoteNodeAuthSession(Contact contact) {
+    return _remoteNodeAuthSessions[contact.publicKeyHex];
+  }
+
+  bool isRemoteNodeAuthenticated(Contact contact) {
+    return remoteNodeAuthSession(contact) != null;
+  }
+
+  RemoteNodeAuthSession rememberRemoteNodeAuthentication(
+    Contact contact, {
+    required String password,
+    required bool isAdmin,
+  }) {
+    final session = RemoteNodeAuthSession(
+      contactKeyHex: contact.publicKeyHex,
+      password: password,
+      isAdmin: isAdmin,
+      authenticatedAt: DateTime.now(),
+    );
+    _remoteNodeAuthSessions[contact.publicKeyHex] = session;
+    notifyListeners();
+    return session;
+  }
+
+  void clearRemoteNodeAuthentication(Contact contact) {
+    final removed = _remoteNodeAuthSessions.remove(contact.publicKeyHex);
+    final prefix = contact.publicKey.length < 6
+        ? pubKeyToHex(contact.publicKey)
+        : pubKeyToHex(contact.publicKey.sublist(0, 6));
+    final clockRemoved = _repeaterLoginClocks.remove(prefix);
+    if (removed != null || clockRemoved != null) {
+      notifyListeners();
+    }
+  }
+
+  void _clearRemoteNodeAuthentications() {
+    _remoteNodeAuthSessions.clear();
+    _repeaterLoginClocks.clear();
   }
 
   void rememberNonRepeatRadioState(MeshCoreRadioStateSnapshot snapshot) {
@@ -4383,6 +4425,8 @@ class MeshCoreConnector extends ChangeNotifier {
         _handleLoginSuccess(frame);
         break;
       case pushCodeLoginFail:
+        _handleLoginFailure(frame);
+        break;
       case pushCodeStatusResponse:
         break;
       // Binary/telemetry responses are consumed by `receivedFrames` listeners
@@ -6809,22 +6853,64 @@ class MeshCoreConnector extends ChangeNotifier {
     return result;
   }
 
-  /// Parse PUSH_CODE_LOGIN_SUCCESS (0x85) frame and stash the repeater's
-  /// reported clock. Frame layout (firmware companion_radio/MyMesh.cpp:678+):
+  Contact? _contactMatchingLoginFrame(Uint8List frame) {
+    if (frame.length < 8) return null;
+    final prefix = frame.sublist(2, 8);
+    for (final contact in _contacts) {
+      if (contact.publicKey.length >= 6 &&
+          listEquals(contact.publicKey.sublist(0, 6), prefix)) {
+        return contact;
+      }
+    }
+    return null;
+  }
+
+  /// Parse PUSH_CODE_LOGIN_SUCCESS (0x85), remember the authenticated role,
+  /// and stash the repeater's reported clock when supplied.
+  ///
+  /// Frame layout (firmware companion_radio/MyMesh.cpp:678+):
   ///   [0]=0x85, [1]=permissions, [2..7]=pubkey prefix (6 bytes),
   ///   [8..11]=repeater RTC unix seconds (LE), [12]=ACL perms, [13]=fw level
-  /// The timestamp is only present in the v7+ "new login response" — older
-  /// firmware emits a shorter frame that we silently skip.
+  /// Older firmware emits only the first eight bytes.
   void _handleLoginSuccess(Uint8List frame) {
-    if (frame.length < 12) return;
+    if (frame.length < 8) return;
     final prefix = pubKeyToHex(frame.sublist(2, 8));
-    final ts = ByteData.sublistView(frame, 8, 12).getUint32(0, Endian.little);
-    if (ts == 0) return;
-    _repeaterLoginClocks[prefix] = DateTime.fromMillisecondsSinceEpoch(
-      ts * 1000,
-      isUtc: true,
-    );
+    final contact = _contactMatchingLoginFrame(frame);
+    if (contact != null) {
+      final existing = _remoteNodeAuthSessions[contact.publicKeyHex];
+      _remoteNodeAuthSessions[contact.publicKeyHex] =
+          existing?.copyWith(
+            isAdmin: frame[1] == 1,
+            authenticatedAt: DateTime.now(),
+          ) ??
+          RemoteNodeAuthSession(
+            contactKeyHex: contact.publicKeyHex,
+            password: '',
+            isAdmin: frame[1] == 1,
+            authenticatedAt: DateTime.now(),
+          );
+    }
+    if (frame.length >= 12) {
+      final ts = ByteData.sublistView(frame, 8, 12).getUint32(0, Endian.little);
+      if (ts != 0) {
+        _repeaterLoginClocks[prefix] = DateTime.fromMillisecondsSinceEpoch(
+          ts * 1000,
+          isUtc: true,
+        );
+      }
+    }
     notifyListeners();
+  }
+
+  void _handleLoginFailure(Uint8List frame) {
+    final contact = _contactMatchingLoginFrame(frame);
+    if (contact == null) return;
+    final removed = _remoteNodeAuthSessions.remove(contact.publicKeyHex);
+    final prefix = pubKeyToHex(frame.sublist(2, 8));
+    final clockRemoved = _repeaterLoginClocks.remove(prefix);
+    if (removed != null || clockRemoved != null) {
+      notifyListeners();
+    }
   }
 
   void _handleCustomVars(Uint8List frame) {
@@ -6845,6 +6931,10 @@ class MeshCoreConnector extends ChangeNotifier {
 
   void _setState(MeshCoreConnectionState newState) {
     if (_state != newState) {
+      if (_state == MeshCoreConnectionState.connected &&
+          newState != MeshCoreConnectionState.connected) {
+        _clearRemoteNodeAuthentications();
+      }
       _state = newState;
       notifyListeners();
     }

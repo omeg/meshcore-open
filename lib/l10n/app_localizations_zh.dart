@@ -2152,6 +2152,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get login_failedMessage => '登录失败。可能是密码错误或无法连接到服务器。';
 
   @override
+  String get login_reauthenticate => 'Re-authenticate';
+
+  @override
+  String get login_forgetCredentials => 'Forget credentials';
+
+  @override
+  String get login_forgetCredentialsTitle => 'Forget credentials?';
+
+  @override
+  String login_forgetCredentialsMessage(String name) {
+    return 'This removes the saved password and ends the remembered login for $name.';
+  }
+
+  @override
   String get common_reload => '重新加载';
 
   @override

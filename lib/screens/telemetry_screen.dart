@@ -14,6 +14,7 @@ import '../services/app_settings_service.dart';
 import '../services/repeater_command_service.dart';
 import '../utils/app_logger.dart';
 import '../widgets/routing_sheet.dart';
+import '../widgets/remote_node_auth.dart';
 import '../helpers/cayenne_lpp.dart';
 import '../utils/battery_utils.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -243,6 +244,30 @@ class _TelemetryScreenState extends State<TelemetryScreen> {
     }
   }
 
+  Future<void> _forceReauthenticate() async {
+    _statusTimeout?.cancel();
+    _autoRefreshTimer?.cancel();
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isLoaded = false;
+        _isAutoRefreshEnabled = false;
+        _activeTelemetryRequestIsAutoRefresh = false;
+      });
+    }
+    final session = await ensureRemoteNodeAuthenticated(
+      context,
+      contact: widget.contact,
+      forceLogin: true,
+    );
+    if (!mounted) return;
+    if (session == null) {
+      Navigator.pop(context);
+      return;
+    }
+    await _loadTelemetry();
+  }
+
   void _loadAutoRefreshSettings() {
     final prefs = PrefsManager.instance;
     final contactKey = widget.contact.publicKeyHex;
@@ -353,6 +378,12 @@ class _TelemetryScreenState extends State<TelemetryScreen> {
         centerTitle: false,
         bottom: const SyncProgressAppBarBottom(),
         actions: [
+          if (contactRequiresRemoteAuthentication(contact))
+            IconButton(
+              icon: const Icon(Icons.lock_reset),
+              tooltip: l10n.login_reauthenticate,
+              onPressed: _forceReauthenticate,
+            ),
           IconButton(
             icon: Icon(isFloodMode ? Icons.waves : Icons.route),
             tooltip: l10n.repeater_routingMode,

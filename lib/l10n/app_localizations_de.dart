@@ -2270,6 +2270,20 @@ class AppLocalizationsDe extends AppLocalizations {
       'Anmeldung fehlgeschlagen. Entweder ist das Passwort falsch oder der Repeater ist nicht erreichbar.';
 
   @override
+  String get login_reauthenticate => 'Re-authenticate';
+
+  @override
+  String get login_forgetCredentials => 'Forget credentials';
+
+  @override
+  String get login_forgetCredentialsTitle => 'Forget credentials?';
+
+  @override
+  String login_forgetCredentialsMessage(String name) {
+    return 'This removes the saved password and ends the remembered login for $name.';
+  }
+
+  @override
   String get common_reload => 'Neu laden';
 
   @override

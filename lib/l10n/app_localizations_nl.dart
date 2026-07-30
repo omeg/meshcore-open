@@ -2253,6 +2253,20 @@ class AppLocalizationsNl extends AppLocalizations {
       'Inloggen mislukt. Het wachtwoord is onjuist of de repeater is niet bereikbaar.';
 
   @override
+  String get login_reauthenticate => 'Re-authenticate';
+
+  @override
+  String get login_forgetCredentials => 'Forget credentials';
+
+  @override
+  String get login_forgetCredentialsTitle => 'Forget credentials?';
+
+  @override
+  String login_forgetCredentialsMessage(String name) {
+    return 'This removes the saved password and ends the remembered login for $name.';
+  }
+
+  @override
   String get common_reload => 'Opnieuw laden';
 
   @override

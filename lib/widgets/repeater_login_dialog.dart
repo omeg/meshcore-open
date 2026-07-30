@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../models/remote_node_auth_session.dart';
 import '../l10n/contact_localization.dart';
 import '../services/storage_service.dart';
 import '../connector/meshcore_connector.dart';
@@ -16,13 +17,8 @@ import 'routing_sheet.dart';
 
 class RepeaterLoginDialog extends StatefulWidget {
   final Contact repeater;
-  final Function(String password, bool isAdmin) onLogin;
 
-  const RepeaterLoginDialog({
-    super.key,
-    required this.repeater,
-    required this.onLogin,
-  });
+  const RepeaterLoginDialog({super.key, required this.repeater});
 
   @override
   State<RepeaterLoginDialog> createState() => _RepeaterLoginDialogState();
@@ -214,8 +210,12 @@ class _RepeaterLoginDialogState extends State<RepeaterLoginDialog> {
       }
 
       if (mounted) {
-        Navigator.pop(context, password);
-        Future.microtask(() => widget.onLogin(password, isAdmin));
+        final session = _connector.rememberRemoteNodeAuthentication(
+          repeater,
+          password: password,
+          isAdmin: isAdmin,
+        );
+        Navigator.pop<RemoteNodeAuthSession>(context, session);
       }
     } catch (e) {
       final repeater = _resolveRepeater(_connector);

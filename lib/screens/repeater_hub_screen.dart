@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:provider/provider.dart';
+import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/remote_node_auth.dart';
 import 'repeater_status_screen.dart';
 import 'repeater_cli_screen.dart';
 import 'repeater_settings_screen.dart';
@@ -32,6 +34,11 @@ class RepeaterHubScreen extends StatelessWidget {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final settingsService = context.watch<AppSettingsService>();
+    final authSession = context
+        .watch<MeshCoreConnector>()
+        .remoteNodeAuthSession(repeater);
+    final effectivePassword = authSession?.password ?? password;
+    final effectiveIsAdmin = authSession?.isAdmin ?? isAdmin;
     final chemistry = settingsService.batteryChemistryForRepeater(
       repeater.publicKeyHex,
     );
@@ -40,10 +47,57 @@ class RepeaterHubScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           repeater.type == advTypeRepeater
-              ? (isAdmin ? l10n.repeater_management : l10n.repeater_guest)
-              : (isAdmin ? l10n.room_management : l10n.room_guest),
+              ? (effectiveIsAdmin
+                    ? l10n.repeater_management
+                    : l10n.repeater_guest)
+              : (effectiveIsAdmin ? l10n.room_management : l10n.room_guest),
         ),
         centerTitle: true,
+        actions: [
+          PopupMenuButton<String>(
+            tooltip: l10n.contacts_moreOptions,
+            onSelected: (value) {
+              switch (value) {
+                case 'reauthenticate':
+                  _reauthenticate(context);
+                case 'forgetCredentials':
+                  _forgetCredentials(context);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'reauthenticate',
+                child: Row(
+                  children: [
+                    const Icon(Icons.lock_reset, size: 20),
+                    const SizedBox(width: 12),
+                    Text(l10n.login_reauthenticate),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'forgetCredentials',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.key_off,
+                      size: 20,
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      l10n.login_forgetCredentials,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
       body: SafeArea(
         top: false,
@@ -118,8 +172,8 @@ class RepeaterHubScreen extends StatelessWidget {
                       ),
                     ),
                     StatusChip(
-                      label: isAdmin ? 'ADMIN' : 'GUEST',
-                      color: isAdmin
+                      label: effectiveIsAdmin ? 'ADMIN' : 'GUEST',
+                      color: effectiveIsAdmin
                           ? MeshPalette.blue
                           : scheme.onSurfaceVariant,
                     ),
@@ -129,7 +183,7 @@ class RepeaterHubScreen extends StatelessWidget {
             ),
 
             // ── Battery chemistry (admin only) ─────────────────────────────
-            if (isAdmin) ...[
+            if (effectiveIsAdmin) ...[
               SectionHeader(l10n.appSettings_batteryChemistry),
               MeshCard(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -168,7 +222,7 @@ class RepeaterHubScreen extends StatelessWidget {
 
             // ── Tools ──────────────────────────────────────────────────────
             SectionHeader(
-              isAdmin
+              effectiveIsAdmin
                   ? l10n.repeater_managementTools
                   : l10n.repeater_guestTools,
             ),
@@ -186,7 +240,7 @@ class RepeaterHubScreen extends StatelessWidget {
                   MaterialPageRoute(
                     builder: (context) => RepeaterStatusScreen(
                       repeater: repeater,
-                      password: password,
+                      password: effectivePassword,
                     ),
                   ),
                 );
@@ -220,14 +274,16 @@ class RepeaterHubScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) =>
-                        NeighborsScreen(repeater: repeater, password: password),
+                    builder: (context) => NeighborsScreen(
+                      repeater: repeater,
+                      password: effectivePassword,
+                    ),
                   ),
                 );
               },
             ),
 
-            if (isAdmin) ...[
+            if (effectiveIsAdmin) ...[
               _HubActionTile(
                 index: 3,
                 icon: Icons.history,
@@ -258,7 +314,7 @@ class RepeaterHubScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) => RepeaterCliScreen(
                         repeater: repeater,
-                        password: password,
+                        password: effectivePassword,
                       ),
                     ),
                   );
@@ -277,7 +333,7 @@ class RepeaterHubScreen extends StatelessWidget {
                     MaterialPageRoute(
                       builder: (context) => RepeaterSettingsScreen(
                         repeater: repeater,
-                        password: password,
+                        password: effectivePassword,
                       ),
                     ),
                   );
@@ -288,6 +344,48 @@ class RepeaterHubScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _reauthenticate(BuildContext context) async {
+    final session = await ensureRemoteNodeAuthenticated(
+      context,
+      contact: repeater,
+      forceLogin: true,
+    );
+    if (!context.mounted) return;
+    if (session == null) {
+      Navigator.pop(context);
+    }
+  }
+
+  Future<void> _forgetCredentials(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.login_forgetCredentialsTitle),
+        content: Text(
+          context.l10n.login_forgetCredentialsMessage(repeater.name),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text(context.l10n.common_cancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: Text(
+              context.l10n.login_forgetCredentials,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await forgetRemoteNodeCredentials(context, contact: repeater);
+    if (context.mounted) {
+      Navigator.pop(context);
+    }
   }
 }
 

@@ -28,8 +28,7 @@ import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/quick_switch_bar.dart';
-import '../widgets/repeater_login_dialog.dart';
-import '../widgets/room_login_dialog.dart';
+import '../widgets/remote_node_auth.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/unread_badge.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -40,6 +39,7 @@ import 'map_screen.dart';
 import 'nearby_nodes_screen.dart';
 import 'repeater_hub_screen.dart';
 import 'settings_screen.dart';
+import 'telemetry_screen.dart';
 
 enum RoomLoginDestination { chat, management }
 
@@ -1103,57 +1103,67 @@ class _ContactsScreenState extends State<ContactsScreen>
     }
   }
 
-  void _showRepeaterLogin(BuildContext context, Contact repeater) {
-    showDialog(
-      context: context,
-      builder: (context) => RepeaterLoginDialog(
-        repeater: repeater,
-        onLogin: (password, isAdmin) {
-          // Navigate to repeater hub screen after successful login
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => RepeaterHubScreen(
-                repeater: repeater,
-                password: password,
-                isAdmin: isAdmin,
-              ),
-            ),
-          );
-        },
+  Future<void> _showRepeaterLogin(
+    BuildContext context,
+    Contact repeater,
+  ) async {
+    final session = await ensureRemoteNodeAuthenticated(
+      context,
+      contact: repeater,
+    );
+    if (!context.mounted || session == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RepeaterHubScreen(
+          repeater: repeater,
+          password: session.password,
+          isAdmin: session.isAdmin,
+        ),
       ),
     );
   }
 
-  void _showRoomLogin(
+  Future<void> _showRoomLogin(
     BuildContext context,
     Contact room,
     RoomLoginDestination destination,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => RoomLoginDialog(
-        room: room,
-        onLogin: (password, isAdmin) {
-          final connector = context.read<MeshCoreConnector>();
-          final unread = connector.getUnreadCountForContactKey(
-            room.publicKeyHex,
-          );
-          connector.markContactRead(room.publicKeyHex);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  destination == RoomLoginDestination.management
-                  ? RepeaterHubScreen(
-                      repeater: room,
-                      password: password,
-                      isAdmin: isAdmin,
-                    )
-                  : ChatScreen(contact: room, initialUnreadCount: unread),
-            ),
-          );
-        },
+  ) async {
+    final session = await ensureRemoteNodeAuthenticated(context, contact: room);
+    if (!context.mounted || session == null) return;
+    final connector = context.read<MeshCoreConnector>();
+    final unread = connector.getUnreadCountForContactKey(room.publicKeyHex);
+    connector.markContactRead(room.publicKeyHex);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => destination == RoomLoginDestination.management
+            ? RepeaterHubScreen(
+                repeater: room,
+                password: session.password,
+                isAdmin: session.isAdmin,
+              )
+            : ChatScreen(contact: room, initialUnreadCount: unread),
+      ),
+    );
+  }
+
+  Future<void> _showContactTelemetry(
+    BuildContext context,
+    Contact contact,
+  ) async {
+    if (contactRequiresRemoteAuthentication(contact)) {
+      final session = await ensureRemoteNodeAuthenticated(
+        context,
+        contact: contact,
+      );
+      if (!context.mounted || session == null) return;
+    }
+    if (!context.mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TelemetryScreen(contact: contact),
       ),
     );
   }
@@ -1500,6 +1510,14 @@ class _ContactsScreenState extends State<ContactsScreen>
                   },
                 ),
             ],
+            ListTile(
+              leading: const Icon(Icons.bar_chart),
+              title: Text(context.l10n.contact_telemetry),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showContactTelemetry(context, contact);
+              },
+            ),
             ListTile(
               leading: Icon(
                 isFavorite ? Icons.star : Icons.star_border,

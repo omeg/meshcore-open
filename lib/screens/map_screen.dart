@@ -33,8 +33,7 @@ import 'contacts_screen.dart';
 import 'discovery_screen.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
-import '../widgets/repeater_login_dialog.dart';
-import '../widgets/room_login_dialog.dart';
+import '../widgets/remote_node_auth.dart';
 import '../helpers/snack_bar_builder.dart';
 import 'repeater_hub_screen.dart';
 import 'settings_screen.dart';
@@ -2649,48 +2648,38 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  void _showRepeaterLogin(BuildContext context, Contact repeater) {
-    showDialog(
-      context: context,
-      builder: (context) => RepeaterLoginDialog(
-        repeater: repeater,
-        onLogin: (password, isAdmin) {
-          // Navigate to repeater hub screen after successful login
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => RepeaterHubScreen(
-                repeater: repeater,
-                password: password,
-                isAdmin: isAdmin,
-              ),
-            ),
-          );
-        },
+  Future<void> _showRepeaterLogin(
+    BuildContext context,
+    Contact repeater,
+  ) async {
+    final session = await ensureRemoteNodeAuthenticated(
+      context,
+      contact: repeater,
+    );
+    if (!context.mounted || session == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RepeaterHubScreen(
+          repeater: repeater,
+          password: session.password,
+          isAdmin: session.isAdmin,
+        ),
       ),
     );
   }
 
-  void _showRoomLogin(BuildContext context, Contact room) {
-    showDialog(
-      context: context,
-      builder: (context) => RoomLoginDialog(
-        room: room,
-        // onLogin(password, isAdmin) isAdmin not used for room caht screen
-        onLogin: (password, _) {
-          final connector = context.read<MeshCoreConnector>();
-          final unread = connector.getUnreadCountForContactKey(
-            room.publicKeyHex,
-          );
-          connector.markContactRead(room.publicKeyHex);
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) =>
-                  ChatScreen(contact: room, initialUnreadCount: unread),
-            ),
-          );
-        },
+  Future<void> _showRoomLogin(BuildContext context, Contact room) async {
+    final session = await ensureRemoteNodeAuthenticated(context, contact: room);
+    if (!context.mounted || session == null) return;
+    final connector = context.read<MeshCoreConnector>();
+    final unread = connector.getUnreadCountForContactKey(room.publicKeyHex);
+    connector.markContactRead(room.publicKeyHex);
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            ChatScreen(contact: room, initialUnreadCount: unread),
       ),
     );
   }

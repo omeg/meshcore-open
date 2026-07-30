@@ -39,6 +39,7 @@ import '../widgets/gif_picker.dart';
 import '../widgets/message_translation_button.dart';
 import '../widgets/routing_sheet.dart';
 import '../widgets/radio_stats_entry.dart';
+import '../widgets/remote_node_auth.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translated_message_content.dart';
 import '../utils/desktop_text_input_focus.dart';
@@ -234,13 +235,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     case 'settings':
                       _showContactSettings(context);
                     case 'telemetry':
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              TelemetryScreen(contact: widget.contact),
-                        ),
-                      );
+                      _showTelemetry(context, contact);
+                    case 'reauthenticate':
+                      _reauthenticate(context, contact);
                     case 'clearChat':
                       _confirmClearChat(context, connector);
                   }
@@ -276,6 +273,17 @@ class _ChatScreenState extends State<ChatScreen> {
                       ],
                     ),
                   ),
+                  if (contactRequiresRemoteAuthentication(contact))
+                    PopupMenuItem(
+                      value: 'reauthenticate',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.lock_reset, size: 20),
+                          const SizedBox(width: 12),
+                          Text(context.l10n.login_reauthenticate),
+                        ],
+                      ),
+                    ),
                   PopupMenuItem(
                     value: 'settings',
                     child: Row(
@@ -832,6 +840,35 @@ class _ChatScreenState extends State<ChatScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showTelemetry(BuildContext context, Contact contact) async {
+    if (contactRequiresRemoteAuthentication(contact)) {
+      final session = await ensureRemoteNodeAuthenticated(
+        context,
+        contact: contact,
+      );
+      if (!context.mounted || session == null) return;
+    }
+    if (!context.mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => TelemetryScreen(contact: contact),
+      ),
+    );
+  }
+
+  Future<void> _reauthenticate(BuildContext context, Contact contact) async {
+    final session = await ensureRemoteNodeAuthenticated(
+      context,
+      contact: contact,
+      forceLogin: true,
+    );
+    if (!context.mounted) return;
+    if (session == null) {
+      Navigator.pop(context);
+    }
   }
 
   void _showContactSettings(BuildContext context) {
