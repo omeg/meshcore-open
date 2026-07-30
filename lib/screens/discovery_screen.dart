@@ -331,6 +331,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           label: context.l10n.common_undo,
           onPressed: () => connector.removeContact(contact),
         ),
+        persist: false,
       );
     } catch (_) {
       if (!mounted) return;

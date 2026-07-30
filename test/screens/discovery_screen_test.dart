@@ -75,5 +75,13 @@ void main() {
 
     expect(connector.importedContact, same(contact));
     expect(find.text(l10n.discoveredContacts_contactAdded), findsOneWidget);
+
+    final snackBar = tester.widget<SnackBar>(find.byType(SnackBar));
+    expect(snackBar.persist, isFalse);
+
+    await tester.pump(const Duration(seconds: 4));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.discoveredContacts_contactAdded), findsNothing);
   });
 }
