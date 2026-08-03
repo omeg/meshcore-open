@@ -4357,7 +4357,7 @@ class MeshCoreConnector extends ChangeNotifier {
         notifyListeners();
         break;
       case pushCodeAdvert:
-        // Known contact was seen again - just a pub key, no action needed
+        _handleAdvertSeen(frame);
         break;
       case pushCodeNewAdvert:
         debugPrint('Got New CONTACT');
@@ -4462,6 +4462,30 @@ class MeshCoreConnector extends ChangeNotifier {
       default:
         debugPrint('Unknown frame code: $code');
     }
+  }
+
+  @visibleForTesting
+  void handleFrameForTesting(List<int> data) => _handleFrame(data);
+
+  void _handleAdvertSeen(Uint8List frame) {
+    if (frame.length < 1 + pubKeySize) return;
+
+    final publicKey = Uint8List.sublistView(frame, 1, 1 + pubKeySize);
+    final discoveredIndex = _discoveredContacts.indexWhere(
+      (contact) => listEquals(contact.publicKey, publicKey),
+    );
+    if (discoveredIndex < 0) return;
+
+    final existing = _discoveredContacts[discoveredIndex];
+    final lastAdvertAt = _lastRxTime;
+    _discoveredContacts[discoveredIndex] = existing.copyWith(
+      lastSeen: lastAdvertAt,
+      lastMessageAt: existing.lastMessageAt == existing.lastSeen
+          ? lastAdvertAt
+          : existing.lastMessageAt,
+    );
+    unawaited(_persistDiscoveredContacts());
+    notifyListeners();
   }
 
   void _handleErrorFrame(Uint8List frame) {
@@ -4935,7 +4959,13 @@ class MeshCoreConnector extends ChangeNotifier {
         return;
       }
       final contact = getFromDiscovered(contactTmp);
-      _handleDiscovery(contact, frame, noNotify: true, addActive: true);
+      _handleDiscovery(
+        contact,
+        frame,
+        noNotify: true,
+        addActive: true,
+        receivedAt: isContact ? null : _lastRxTime,
+      );
 
       if (contact.type == advTypeRepeater) {
         final removedCount = _contactUnreadCount[contact.publicKeyHex] ?? 0;
@@ -7217,9 +7247,10 @@ class MeshCoreConnector extends ChangeNotifier {
           rawPacket,
           noNotify: true,
           addActive: true,
+          receivedAt: _lastRxTime,
         );
       } else {
-        _handleDiscovery(newContact, rawPacket);
+        _handleDiscovery(newContact, rawPacket, receivedAt: _lastRxTime);
       }
       _updateDirectRepeater(newContact, snr, path);
       return;
@@ -7388,8 +7419,14 @@ class MeshCoreConnector extends ChangeNotifier {
     Uint8List rawPacket, {
     bool noNotify = false,
     bool addActive = false,
+    DateTime? receivedAt,
   }) {
     appLogger.info('Discovered new contact: ${contact.name}', tag: 'Connector');
+
+    // The timestamp inside an advert comes from the remote node and may be
+    // stale when that node's clock is wrong. Discovery recency is local: it
+    // records when this companion actually received the advert.
+    final lastAdvertAt = receivedAt ?? contact.lastSeen;
 
     final existingIndex = _discoveredContacts.indexWhere(
       (c) => c.publicKeyHex == contact.publicKeyHex,
@@ -7397,19 +7434,24 @@ class MeshCoreConnector extends ChangeNotifier {
 
     // Update existing contact
     if (existingIndex >= 0) {
-      _discoveredContacts[existingIndex] = _discoveredContacts[existingIndex]
-          .copyWith(
-            rawPacket: rawPacket,
-            name: contact.name,
-            type: contact.type,
-            pathLength: contact.pathLength,
-            path: contact.path,
-            latitude: contact.latitude,
-            longitude: contact.longitude,
-            lastSeen: contact.lastSeen,
-            flags: 0,
-            isActive: addActive,
-          );
+      final existing = _discoveredContacts[existingIndex];
+      final lastMessageAt =
+          receivedAt != null && existing.lastMessageAt == existing.lastSeen
+          ? lastAdvertAt
+          : existing.lastMessageAt;
+      _discoveredContacts[existingIndex] = existing.copyWith(
+        rawPacket: rawPacket,
+        name: contact.name,
+        type: contact.type,
+        pathLength: contact.pathLength,
+        path: contact.path,
+        latitude: contact.latitude,
+        longitude: contact.longitude,
+        lastSeen: lastAdvertAt,
+        lastMessageAt: lastMessageAt,
+        flags: 0,
+        isActive: addActive,
+      );
       notifyListeners();
       unawaited(_persistDiscoveredContacts());
       return;
@@ -7424,14 +7466,18 @@ class MeshCoreConnector extends ChangeNotifier {
       path: contact.path,
       latitude: contact.latitude,
       longitude: contact.longitude,
-      lastSeen: contact.lastSeen,
-      lastMessageAt: contact.lastMessageAt,
+      lastSeen: lastAdvertAt,
+      lastMessageAt:
+          receivedAt != null && contact.lastMessageAt == contact.lastSeen
+          ? lastAdvertAt
+          : contact.lastMessageAt,
       isActive: addActive,
       flags: 0,
     );
     _discoveredContacts.add(disContact);
 
     unawaited(_persistDiscoveredContacts());
+    notifyListeners();
 
     // Show notification for new contact (advertisement)
     if (_appSettingsService != null && !noNotify) {

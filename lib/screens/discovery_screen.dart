@@ -60,6 +60,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     return a.name.toLowerCase().compareTo(b.name.toLowerCase());
   }
 
+  int _compareByLastAdvert(Contact a, Contact b, DateTime now) {
+    final aIsFuture = a.lastSeen.isAfter(now);
+    final bIsFuture = b.lastSeen.isAfter(now);
+    if (aIsFuture != bIsFuture) return aIsFuture ? 1 : -1;
+
+    final lastAdvert = b.lastSeen.compareTo(a.lastSeen);
+    if (lastAdvert != 0) return lastAdvert;
+    return _compareByName(a, b);
+  }
+
   /// Node-type avatar color per design language.
   Color _avatarColor(int type) {
     switch (type) {
@@ -554,9 +564,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       filtered = filtered.where(_matchesTypeFilter).toList();
     }
 
+    final now = DateTime.now();
     switch (sortOption) {
       case ContactSortOption.lastSeen:
-        filtered.sort((a, b) => b.lastSeen.compareTo(a.lastSeen));
+        filtered.sort((a, b) => _compareByLastAdvert(a, b, now));
         break;
       case ContactSortOption.name:
         filtered.sort(_compareByName);

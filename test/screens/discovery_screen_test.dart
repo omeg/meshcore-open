@@ -12,13 +12,16 @@ import 'package:meshcore_open/screens/discovery_screen.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
 
 class _FakeMeshCoreConnector extends MeshCoreConnector {
-  _FakeMeshCoreConnector(this.contact);
+  _FakeMeshCoreConnector(Contact contact)
+    : discoveredContactsValue = <Contact>[contact];
 
-  final Contact contact;
+  _FakeMeshCoreConnector.withContacts(this.discoveredContactsValue);
+
+  final List<Contact> discoveredContactsValue;
   Contact? importedContact;
 
   @override
-  List<Contact> get discoveredContacts => <Contact>[contact];
+  List<Contact> get discoveredContacts => discoveredContactsValue;
 
   @override
   Future<bool> importDiscoveredContact(Contact contact) async {
@@ -45,6 +48,51 @@ Widget _buildTestApp(MeshCoreConnector connector) {
 }
 
 void main() {
+  testWidgets('discovered contacts default to newest advert first', (
+    tester,
+  ) async {
+    Contact contact(
+      String name,
+      int keyByte,
+      DateTime lastAdvertAt, {
+      DateTime? lastMessageAt,
+    }) => Contact(
+      publicKey: Uint8List(pubKeySize)..fillRange(0, pubKeySize, keyByte),
+      name: name,
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: lastAdvertAt,
+      lastMessageAt: lastMessageAt,
+    );
+
+    final connector = _FakeMeshCoreConnector.withContacts(<Contact>[
+      contact(
+        'Old advert',
+        1,
+        DateTime(2026, 1, 1),
+        lastMessageAt: DateTime(2026, 4, 1),
+      ),
+      contact('Newest advert', 2, DateTime(2026, 3, 1)),
+      contact('Middle advert', 3, DateTime(2026, 2, 1)),
+      contact('Invalid future advert', 4, DateTime(2035, 1, 1)),
+    ]);
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+
+    final newestY = tester.getTopLeft(find.text('Newest advert')).dy;
+    final middleY = tester.getTopLeft(find.text('Middle advert')).dy;
+    final oldestY = tester.getTopLeft(find.text('Old advert')).dy;
+    final invalidFutureY = tester
+        .getTopLeft(find.text('Invalid future advert'))
+        .dy;
+
+    expect(newestY, lessThan(middleY));
+    expect(middleY, lessThan(oldestY));
+    expect(oldestY, lessThan(invalidFutureY));
+  });
+
   testWidgets('discovered contact context menu can add the contact', (
     tester,
   ) async {
