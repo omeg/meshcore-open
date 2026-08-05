@@ -30,6 +30,7 @@ import '../services/chat_text_scale_service.dart';
 import '../services/translation_service.dart';
 import '../utils/desktop_text_input_focus.dart';
 import '../widgets/byte_count_input.dart';
+import '../widgets/desktop_emoji_picker_button.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/chat_zoom_wrapper.dart';
 import '../widgets/emoji_picker.dart';
@@ -1128,6 +1129,12 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     final maxBytes = maxChannelMessageBytes(connector.selfName);
     final settings = context.watch<AppSettingsService>().settings;
     final scheme = Theme.of(context).colorScheme;
+    final String Function(String)? encoder =
+        (connector.isChannelSmazEnabled(widget.channel.index) ||
+            connector.isChannelCyr2LatEnabled(widget.channel.index))
+        ? (text) =>
+              connector.prepareChannelOutboundText(widget.channel.index, text)
+        : null;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1217,18 +1224,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           focusNode: _textFieldFocusNode,
                           hintText: context.l10n.chat_typeMessage,
                           onSubmitted: (_) => _sendMessage(),
-                          encoder:
-                              (connector.isChannelSmazEnabled(
-                                    widget.channel.index,
-                                  ) ||
-                                  connector.isChannelCyr2LatEnabled(
-                                    widget.channel.index,
-                                  ))
-                              ? (text) => connector.prepareChannelOutboundText(
-                                  widget.channel.index,
-                                  text,
-                                )
-                              : null,
+                          encoder: encoder,
                           decoration: InputDecoration(
                             hintText: context.l10n.chat_typeMessage,
                             border: OutlineInputBorder(
@@ -1262,6 +1258,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               horizontal: 18,
                               vertical: 12,
                             ),
+                            suffixIcon: PlatformInfo.isDesktop
+                                ? DesktopEmojiPickerButton(
+                                    controller: _textController,
+                                    focusNode: _textFieldFocusNode,
+                                    maxBytes: maxBytes,
+                                    encoder: encoder,
+                                  )
+                                : null,
                           ),
                         );
                       },

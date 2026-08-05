@@ -197,7 +197,7 @@ class EmojiPicker extends StatelessWidget {
     '🚀',
   ];
 
-  Map<String, List<String>> _emojiCategories(AppLocalizations l10n) {
+  static Map<String, List<String>> categories(AppLocalizations l10n) {
     return {
       l10n.emojiCategorySmileys: smileys,
       l10n.emojiCategoryGestures: gestures,
@@ -209,7 +209,7 @@ class EmojiPicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final emojiCategories = _emojiCategories(l10n);
+    final emojiCategories = categories(l10n);
     return Container(
       height: MediaQuery.of(context).size.height * 0.5,
       decoration: BoxDecoration(

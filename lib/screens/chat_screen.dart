@@ -30,6 +30,7 @@ import '../services/path_history_service.dart';
 import '../services/translation_service.dart';
 import '../widgets/chat_zoom_wrapper.dart';
 import '../widgets/byte_count_input.dart';
+import '../widgets/desktop_emoji_picker_button.dart';
 import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import '../widgets/emoji_picker.dart';
@@ -465,6 +466,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final maxBytes = maxContactMessageBytes();
     final scheme = Theme.of(context).colorScheme;
     final settings = context.watch<AppSettingsService>().settings;
+    final String Function(String)? encoder =
+        (connector.isContactSmazEnabled(widget.contact.publicKeyHex) ||
+            connector.isContactCyr2LatEnabled(widget.contact.publicKeyHex))
+        ? (text) => connector.prepareContactOutboundText(widget.contact, text)
+        : null;
     return Container(
       decoration: BoxDecoration(
         color: scheme.surface,
@@ -539,18 +545,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       focusNode: _textFieldFocusNode,
                       hintText: context.l10n.chat_typeMessage,
                       onSubmitted: (_) => _sendMessage(connector),
-                      encoder:
-                          (connector.isContactSmazEnabled(
-                                widget.contact.publicKeyHex,
-                              ) ||
-                              connector.isContactCyr2LatEnabled(
-                                widget.contact.publicKeyHex,
-                              ))
-                          ? (text) => connector.prepareContactOutboundText(
-                              widget.contact,
-                              text,
-                            )
-                          : null,
+                      encoder: encoder,
                       decoration: InputDecoration(
                         hintText: context.l10n.chat_typeMessage,
                         border: OutlineInputBorder(
@@ -574,6 +569,14 @@ class _ChatScreenState extends State<ChatScreen> {
                           horizontal: 18,
                           vertical: 12,
                         ),
+                        suffixIcon: PlatformInfo.isDesktop
+                            ? DesktopEmojiPickerButton(
+                                controller: _textController,
+                                focusNode: _textFieldFocusNode,
+                                maxBytes: maxBytes,
+                                encoder: encoder,
+                              )
+                            : null,
                       ),
                     );
                   },
