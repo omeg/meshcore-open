@@ -159,6 +159,10 @@ class _CompanionTelemetryScreenState extends State<CompanionTelemetryScreen> {
   Widget _buildChannelCard(Map<String, dynamic> channel, bool isImperial) {
     final number = channel['channel'] as int;
     final values = channel['values'] as Map<String, dynamic>;
+    final rows = [
+      for (final value in values.entries)
+        _formatValue(value.key, value.value, number, isImperial),
+    ];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -169,50 +173,45 @@ class _CompanionTelemetryScreenState extends State<CompanionTelemetryScreen> {
         MeshCard(
           margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: Column(
-            children: [
-              for (final value in values.entries)
-                _buildValueRow(value.key, value.value, number, isImperial),
-            ],
+          child: Table(
+            columnWidths: const {
+              0: IntrinsicColumnWidth(),
+              1: FixedColumnWidth(8),
+              2: FlexColumnWidth(),
+            },
+            defaultVerticalAlignment: TableCellVerticalAlignment.top,
+            children: [for (final row in rows) _buildValueRow(row)],
           ),
         ),
       ],
     );
   }
 
-  Widget _buildValueRow(
-    String key,
-    dynamic value,
-    int channel,
-    bool isImperial,
-  ) {
-    final display = _formatValue(key, value, channel, isImperial);
+  TableRow _buildValueRow(({String label, String value}) display) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Text(
-              display.label,
-              style: TextStyle(
-                color: scheme.onSurfaceVariant,
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-              ),
+    return TableRow(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            display.label,
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              display.value,
-              textAlign: TextAlign.end,
-              style: MeshTheme.mono(fontSize: 13, color: scheme.onSurface),
-            ),
+        ),
+        const SizedBox.shrink(),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            display.value,
+            textAlign: TextAlign.end,
+            style: MeshTheme.mono(fontSize: 13, color: scheme.onSurface),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
