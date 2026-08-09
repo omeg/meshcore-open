@@ -290,8 +290,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _infoRow(
                           context,
                           label: l10n.settings_infoPublicKey,
-                          value:
-                              '${pubKeyToHex(connector.selfPublicKey!).substring(0, 16)}...',
+                          value: pubKeyToHex(connector.selfPublicKey!),
                           mono: true,
                         ),
                       _infoRow(
