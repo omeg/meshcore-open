@@ -10,6 +10,7 @@ import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/screens/discovery_screen.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
+import 'package:meshcore_open/widgets/mesh_ui.dart';
 
 class _FakeMeshCoreConnector extends MeshCoreConnector {
   _FakeMeshCoreConnector(Contact contact)
@@ -131,5 +132,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.discoveredContacts_contactAdded), findsNothing);
+  });
+
+  testWidgets('discovered contact uses compact metadata layout', (
+    tester,
+  ) async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Compact Repeater',
+      type: advTypeRepeater,
+      pathLength: 4,
+      path: Uint8List.fromList([1, 2, 3, 4]),
+      lastSeen: DateTime.now().subtract(
+        const Duration(minutes: 2, seconds: 30),
+      ),
+    );
+
+    await tester.pumpWidget(_buildTestApp(_FakeMeshCoreConnector(contact)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('REPEATER'), findsNothing);
+    expect(find.text('recently'), findsNothing);
+    expect(find.text('2 m'), findsOneWidget);
+    expect(find.text('4 HOPS'), findsOneWidget);
+    expect(find.byIcon(Icons.trending_flat), findsNothing);
+
+    final timeRight = tester.getTopRight(find.text('2 m')).dx;
+    final hopsRight = tester.getTopRight(find.byType(RouteChip)).dx;
+    expect(hopsRight, closeTo(timeRight, 1));
   });
 }

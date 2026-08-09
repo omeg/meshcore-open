@@ -347,8 +347,14 @@ class SignalBars extends StatelessWidget {
 class RouteChip extends StatelessWidget {
   final bool isDirect;
   final int? hops;
+  final bool showDirectIcon;
 
-  const RouteChip({super.key, required this.isDirect, this.hops});
+  const RouteChip({
+    super.key,
+    required this.isDirect,
+    this.hops,
+    this.showDirectIcon = true,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -368,12 +374,14 @@ class RouteChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            isDirect ? Icons.trending_flat : Icons.podcasts,
-            size: 11,
-            color: scheme.onSurfaceVariant,
-          ),
-          const SizedBox(width: 3),
+          if (!isDirect || showDirectIcon) ...[
+            Icon(
+              isDirect ? Icons.trending_flat : Icons.podcasts,
+              size: 11,
+              color: scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 3),
+          ],
           Text(
             label,
             style: MeshTheme.accentLabel(

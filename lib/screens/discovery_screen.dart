@@ -215,7 +215,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Name + type chip
+                  // Name + last seen time
                   Row(
                     children: [
                       Expanded(
@@ -229,11 +229,24 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      StatusChip(
-                        label: contact.typeLabel(context.l10n).toUpperCase(),
-                        color: _avatarColor(contact.type),
-                        icon: _avatarIcon(contact.type),
+                      const SizedBox(width: 10),
+                      MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          textScaler: TextScaler.linear(
+                            MediaQuery.textScalerOf(
+                              context,
+                            ).scale(1.0).clamp(1.0, 1.3),
+                          ),
+                        ),
+                        child: Text(
+                          _formatLastSeen(_resolveLastSeen(contact)),
+                          maxLines: 1,
+                          textAlign: TextAlign.right,
+                          style: MeshTheme.mono(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -251,11 +264,6 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             color: scheme.onSurfaceVariant,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 6),
-                      RouteChip(
-                        isDirect: isDirect,
-                        hops: isDirect ? routeHops : null,
                       ),
                       if (contact.hasLocation) ...[
                         const SizedBox(width: 6),
@@ -277,28 +285,15 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                           ),
                         ),
                       ],
+                      const SizedBox(width: 6),
+                      RouteChip(
+                        isDirect: isDirect,
+                        hops: isDirect ? routeHops : null,
+                        showDirectIcon: false,
+                      ),
                     ],
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Last seen time
-            MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(
-                  MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.3),
-                ),
-              ),
-              child: Text(
-                _formatLastSeen(context, _resolveLastSeen(contact)),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
-                style: MeshTheme.mono(
-                  fontSize: 11,
-                  color: scheme.onSurfaceVariant,
-                ),
               ),
             ),
           ],
@@ -606,25 +601,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     }
   }
 
-  String _formatLastSeen(BuildContext context, DateTime lastSeen) {
+  String _formatLastSeen(DateTime lastSeen) {
     final now = DateTime.now();
     final diff = now.difference(lastSeen);
+    final elapsed = diff.isNegative ? Duration.zero : diff;
 
-    if (diff.isNegative || diff.inMinutes < 5) {
-      return context.l10n.contacts_lastSeenNow;
-    }
-    if (diff.inMinutes < 60) {
-      return context.l10n.contacts_lastSeenMinsAgo(diff.inMinutes);
-    }
-    if (diff.inHours < 24) {
-      final hours = diff.inHours;
-      return hours == 1
-          ? context.l10n.contacts_lastSeenHourAgo
-          : context.l10n.contacts_lastSeenHoursAgo(hours);
-    }
-    final days = diff.inDays;
-    return days == 1
-        ? context.l10n.contacts_lastSeenDayAgo
-        : context.l10n.contacts_lastSeenDaysAgo(days);
+    if (elapsed.inMinutes < 60) return '${elapsed.inMinutes} m';
+    if (elapsed.inHours < 24) return '${elapsed.inHours} h';
+    return '${elapsed.inDays} d';
   }
 }
