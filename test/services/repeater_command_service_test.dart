@@ -93,11 +93,21 @@ String _cliTextFromFrame(Uint8List frame) {
 }
 
 void main() {
+  test('uses a ten-second command timeout by default', () {
+    expect(
+      RepeaterCommandService.defaultCommandTimeout,
+      const Duration(seconds: 10),
+    );
+  });
+
   test(
     'sendCommandUntilSuccessful retries until a prefixed response arrives',
     () async {
       final connector = _FakeMeshCoreConnector();
-      final service = RepeaterCommandService(connector);
+      final service = RepeaterCommandService(
+        connector,
+        commandTimeout: const Duration(milliseconds: 1),
+      );
       final contact = _makeContact();
       final attempts = <int>[];
 
@@ -125,7 +135,10 @@ void main() {
     'sendCommandUntilSuccessful can cancel the active command wait',
     () async {
       final connector = _FakeMeshCoreConnector();
-      final service = RepeaterCommandService(connector);
+      final service = RepeaterCommandService(
+        connector,
+        commandTimeout: const Duration(milliseconds: 1),
+      );
       final contact = _makeContact();
       final controller = RepeaterCommandRetryController();
 

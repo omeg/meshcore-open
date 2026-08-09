@@ -30,6 +30,7 @@ class RepeaterCommandRetryController {
 
 class RepeaterCommandService {
   final MeshCoreConnector _connector;
+  final Duration _commandTimeout;
   final Map<String, Completer<String>> _pendingCommands = {};
   final Map<String, Timer> _commandTimeouts = {};
   final Map<String, String> _commandPrefixes = {};
@@ -37,8 +38,12 @@ class RepeaterCommandService {
   int _prefixCounter = 0;
 
   static const int maxRetries = 5;
+  static const Duration defaultCommandTimeout = Duration(seconds: 10);
 
-  RepeaterCommandService(this._connector);
+  RepeaterCommandService(
+    this._connector, {
+    Duration commandTimeout = defaultCommandTimeout,
+  }) : _commandTimeout = commandTimeout;
 
   /// Send a CLI command to a repeater with automatic retries
   /// Returns a future that completes when a response is received or after max retries
@@ -126,7 +131,6 @@ class RepeaterCommandService {
 
     try {
       final framedCommand = '$prefix$command';
-      final pathLengthValue = selection.useFlood ? -1 : selection.hopCount;
       final timestampSeconds = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       _connector.trackRepeaterAck(
         contact: repeater,
@@ -141,28 +145,18 @@ class RepeaterCommandService {
         attempt: attempt & 0xFF,
         timestampSeconds: timestampSeconds,
       );
-      final responseBytes = frame.length > maxFrameSize
-          ? frame.length
-          : maxFrameSize;
-      final timeoutMs = _connector.calculateTimeout(
-        pathLength: pathLengthValue,
-        messageBytes: responseBytes,
-      );
-      final timeoutSeconds = (timeoutMs / 1000).ceil();
+      final timeoutSeconds = (_commandTimeout.inMilliseconds / 1000).ceil();
       await _connector.sendFrame(frame);
       _commandTimeouts[commandId]?.cancel();
-      _commandTimeouts[commandId] = Timer(
-        Duration(milliseconds: timeoutMs),
-        () {
-          final completer = _pendingCommands[commandId];
-          if (completer != null && !completer.isCompleted) {
-            completer.completeError(
-              'Command timeout after $timeoutSeconds seconds',
-            );
-            _cleanup(commandId);
-          }
-        },
-      );
+      _commandTimeouts[commandId] = Timer(_commandTimeout, () {
+        final completer = _pendingCommands[commandId];
+        if (completer != null && !completer.isCompleted) {
+          completer.completeError(
+            'Command timeout after $timeoutSeconds seconds',
+          );
+          _cleanup(commandId);
+        }
+      });
     } catch (e) {
       _cleanup(commandId);
       throw Exception('Failed to send command: $e');
