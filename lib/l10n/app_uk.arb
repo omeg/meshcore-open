@@ -141,6 +141,7 @@
   "settings_infoStatus": "Статус",
   "settings_infoBattery": "Батарея",
   "settings_infoPublicKey": "Відкритий ключ",
+  "settings_infoFirmwareVersion": "Версія прошивки",
   "settings_infoContactsCount": "Кількість контактів",
   "settings_infoChannelCount": "Кількість каналів",
   "settings_presets": "Попередні налаштування",

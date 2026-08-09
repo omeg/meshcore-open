@@ -613,6 +613,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get settings_infoPublicKey => 'Публичен ключ';
 
   @override
+  String get settings_infoFirmwareVersion => 'Версия на фърмуера';
+
+  @override
   String get settings_infoContactsCount => 'Брой контакти';
 
   @override

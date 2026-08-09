@@ -140,6 +140,7 @@
   "settings_infoStatus": "Estado",
   "settings_infoBattery": "Batería",
   "settings_infoPublicKey": "Clave pública",
+  "settings_infoFirmwareVersion": "Versión del firmware",
   "settings_infoContactsCount": "Número de contactos",
   "settings_infoChannelCount": "Número de canales",
   "settings_presets": "Preajustes",

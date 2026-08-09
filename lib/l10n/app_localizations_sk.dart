@@ -605,6 +605,9 @@ class AppLocalizationsSk extends AppLocalizations {
   String get settings_infoPublicKey => 'Verejný kľúč';
 
   @override
+  String get settings_infoFirmwareVersion => 'Verzia firmvéru';
+
+  @override
   String get settings_infoContactsCount => 'Počet kontaktov';
 
   @override

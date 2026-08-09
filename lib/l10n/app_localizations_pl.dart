@@ -613,6 +613,9 @@ class AppLocalizationsPl extends AppLocalizations {
   String get settings_infoPublicKey => 'Klucz Publiczny';
 
   @override
+  String get settings_infoFirmwareVersion => 'Wersja firmware';
+
+  @override
   String get settings_infoContactsCount => 'Liczba kontaktów';
 
   @override

@@ -210,6 +210,7 @@
   "settings_infoStatus": "ステータス",
   "settings_infoBattery": "バッテリー",
   "settings_infoPublicKey": "公開鍵",
+  "settings_infoFirmwareVersion": "ファームウェアバージョン",
   "settings_infoContactsCount": "連絡先数",
   "settings_infoChannelCount": "チャンネル数",
   "settings_presets": "プリセット",

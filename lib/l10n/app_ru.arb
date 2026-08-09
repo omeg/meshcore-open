@@ -110,6 +110,7 @@
   "settings_infoStatus": "Статус",
   "settings_infoBattery": "Батарея",
   "settings_infoPublicKey": "Публичный ключ",
+  "settings_infoFirmwareVersion": "Версия прошивки",
   "settings_infoContactsCount": "Количество контактов",
   "settings_infoChannelCount": "Количество каналов",
   "settings_presets": "Пресеты",

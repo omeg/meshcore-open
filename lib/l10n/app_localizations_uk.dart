@@ -608,6 +608,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settings_infoPublicKey => 'Відкритий ключ';
 
   @override
+  String get settings_infoFirmwareVersion => 'Версія прошивки';
+
+  @override
   String get settings_infoContactsCount => 'Кількість контактів';
 
   @override

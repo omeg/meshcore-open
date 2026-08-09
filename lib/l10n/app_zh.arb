@@ -145,6 +145,7 @@
   "settings_infoStatus": "状态",
   "settings_infoBattery": "电池",
   "settings_infoPublicKey": "公钥",
+  "settings_infoFirmwareVersion": "固件版本",
   "settings_infoContactsCount": "联系人数量",
   "settings_infoChannelCount": "频道数量",
   "settings_presets": "预设",

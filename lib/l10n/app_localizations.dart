@@ -1216,6 +1216,12 @@ abstract class AppLocalizations {
   /// **'Public Key'**
   String get settings_infoPublicKey;
 
+  /// No description provided for @settings_infoFirmwareVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Firmware Version'**
+  String get settings_infoFirmwareVersion;
+
   /// No description provided for @settings_infoContactsCount.
   ///
   /// In en, this message translates to:

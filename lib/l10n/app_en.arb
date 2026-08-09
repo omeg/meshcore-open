@@ -244,6 +244,7 @@
   "settings_infoStatus": "Status",
   "settings_infoBattery": "Battery",
   "settings_infoPublicKey": "Public Key",
+  "settings_infoFirmwareVersion": "Firmware Version",
   "settings_infoContactsCount": "Contacts Count",
   "settings_infoChannelCount": "Channel Count",
   "settings_presets": "Presets",

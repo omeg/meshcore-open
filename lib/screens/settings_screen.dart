@@ -279,6 +279,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         label: l10n.settings_infoId,
                         value: connector.deviceIdLabel,
                       ),
+                      if (connector.firmwareVersion != null)
+                        _infoRow(
+                          context,
+                          label: l10n.settings_infoFirmwareVersion,
+                          value: connector.firmwareVersion!,
+                        ),
                       _buildBatteryInfoRow(context, connector),
                       if (connector.selfName != null)
                         _infoRow(

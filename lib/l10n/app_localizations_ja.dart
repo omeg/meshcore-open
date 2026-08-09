@@ -582,6 +582,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings_infoPublicKey => '公開鍵';
 
   @override
+  String get settings_infoFirmwareVersion => 'ファームウェアバージョン';
+
+  @override
   String get settings_infoContactsCount => '連絡先数';
 
   @override

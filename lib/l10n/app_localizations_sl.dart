@@ -603,6 +603,10 @@ class AppLocalizationsSl extends AppLocalizations {
   String get settings_infoPublicKey => 'Javni ključ';
 
   @override
+  String get settings_infoFirmwareVersion =>
+      'Različica vdelane programske opreme';
+
+  @override
   String get settings_infoContactsCount => 'Število stikov';
 
   @override

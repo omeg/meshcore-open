@@ -140,6 +140,7 @@
   "settings_infoStatus": "Stav",
   "settings_infoBattery": "Batéria",
   "settings_infoPublicKey": "Verejný kľúč",
+  "settings_infoFirmwareVersion": "Verzia firmvéru",
   "settings_infoContactsCount": "Počet kontaktov",
   "settings_infoChannelCount": "Počet kanálov",
   "settings_presets": "Prednastavenia",

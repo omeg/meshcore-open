@@ -140,6 +140,7 @@
   "settings_infoStatus": "Status",
   "settings_infoBattery": "Batterij",
   "settings_infoPublicKey": "Openbare Sleutel",
+  "settings_infoFirmwareVersion": "Firmwareversie",
   "settings_infoContactsCount": "Aantal Contacten",
   "settings_infoChannelCount": "Aantal Kanalen",
   "settings_presets": "Voorgeprogrammeerde instellingen",

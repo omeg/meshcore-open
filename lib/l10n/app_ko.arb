@@ -204,6 +204,7 @@
   "settings_infoStatus": "상태",
   "settings_infoBattery": "배터리",
   "settings_infoPublicKey": "공개 키",
+  "settings_infoFirmwareVersion": "펌웨어 버전",
   "settings_infoContactsCount": "연락처 수",
   "settings_infoChannelCount": "채널 수",
   "settings_presets": "프리셋",

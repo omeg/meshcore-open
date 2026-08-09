@@ -610,6 +610,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settings_infoPublicKey => 'Публичный ключ';
 
   @override
+  String get settings_infoFirmwareVersion => 'Версия прошивки';
+
+  @override
   String get settings_infoContactsCount => 'Количество контактов';
 
   @override

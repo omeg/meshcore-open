@@ -292,6 +292,7 @@ class MeshCoreConnector extends ChangeNotifier {
   bool? _clientRepeat;
   MeshCoreRadioStateSnapshot? _rememberedNonRepeatRadioState;
   int? _firmwareVerCode;
+  String? _firmwareVersion;
   int _pathHashByteWidth = 1;
   CompanionRadioStats? _latestRadioStats;
   Stopwatch? _airtimeBumpStopwatch;
@@ -623,6 +624,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   int? get firmwareVerCode => _firmwareVerCode;
+  String? get firmwareVersion => _firmwareVersion;
   Map<String, String>? get currentCustomVars => _currentCustomVars;
   int? get batteryMillivolts => _batteryMillivolts;
   int? get storageUsedKb => _storageUsedKb;
@@ -2913,6 +2915,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _clientRepeat = null;
     _rememberedNonRepeatRadioState = null;
     _firmwareVerCode = null;
+    _firmwareVersion = null;
     _batteryMillivolts = null;
     _repeaterBatterySnapshots.clear();
     _batteryRequested = false;
@@ -4643,6 +4646,18 @@ class MeshCoreConnector extends ChangeNotifier {
       _hasReceivedDeviceInfo = true;
     }
     _firmwareVerCode = frame[1];
+
+    // Bytes 60-79 contain the null-terminated release string, for example
+    // "v1.17.0a-omeg". Byte 1 above is only the protocol capability code.
+    if (frame.length > 60) {
+      final reader = BufferReader(frame)..skipBytes(60);
+      final version = reader
+          .readCStringGreedy(math.min(20, reader.remaining))
+          .trim();
+      _firmwareVersion = version.isEmpty ? null : version;
+    } else {
+      _firmwareVersion = null;
+    }
 
     // Parse client_repeat from firmware v9+ (byte 80)
     if (frame.length >= 81) {

@@ -140,6 +140,7 @@
   "settings_infoStatus": "Статус",
   "settings_infoBattery": "Батерия",
   "settings_infoPublicKey": "Публичен ключ",
+  "settings_infoFirmwareVersion": "Версия на фърмуера",
   "settings_infoContactsCount": "Брой контакти",
   "settings_infoChannelCount": "Брой канали",
   "settings_presets": "Предварителни настройки",

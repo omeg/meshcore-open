@@ -140,6 +140,7 @@
   "settings_infoStatus": "Stanje",
   "settings_infoBattery": "Baterija",
   "settings_infoPublicKey": "Javni ključ",
+  "settings_infoFirmwareVersion": "Različica vdelane programske opreme",
   "settings_infoContactsCount": "Število stikov",
   "settings_infoChannelCount": "Število kanalov",
   "settings_presets": "Prednastavitve",

@@ -204,6 +204,7 @@
   "settings_infoStatus": "Állapot",
   "settings_infoBattery": "Akkumulátor",
   "settings_infoPublicKey": "Nyilvános kulcs",
+  "settings_infoFirmwareVersion": "Firmware-verzió",
   "settings_infoContactsCount": "Névjegyek száma",
   "settings_infoChannelCount": "Csatornaszám",
   "settings_presets": "Előbeállítások",

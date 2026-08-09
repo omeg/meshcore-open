@@ -610,6 +610,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_infoPublicKey => 'Öffentlicher Schlüssel';
 
   @override
+  String get settings_infoFirmwareVersion => 'Firmware-Version';
+
+  @override
   String get settings_infoContactsCount => 'Kontakte';
 
   @override

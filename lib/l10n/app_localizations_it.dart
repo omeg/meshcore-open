@@ -611,6 +611,9 @@ class AppLocalizationsIt extends AppLocalizations {
   String get settings_infoPublicKey => 'Chiave Pubblica';
 
   @override
+  String get settings_infoFirmwareVersion => 'Versione firmware';
+
+  @override
   String get settings_infoContactsCount => 'Numero di contatti';
 
   @override

@@ -582,6 +582,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settings_infoPublicKey => '공개 키';
 
   @override
+  String get settings_infoFirmwareVersion => '펌웨어 버전';
+
+  @override
   String get settings_infoContactsCount => '연락처 수';
 
   @override

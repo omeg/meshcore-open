@@ -575,6 +575,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_infoPublicKey => '公钥';
 
   @override
+  String get settings_infoFirmwareVersion => '固件版本';
+
+  @override
   String get settings_infoContactsCount => '联系人数量';
 
   @override
