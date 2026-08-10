@@ -333,7 +333,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
     });
     _commandController.clear();
     _historyIndex = -1;
-    _commandFocusNode.requestFocus();
+    _desktopTextInputFocus.requestFocus(delay: Duration.zero);
 
     Future.delayed(const Duration(milliseconds: 100), () {
       if (_scrollController.hasClients) {
