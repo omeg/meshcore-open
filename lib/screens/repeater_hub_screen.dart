@@ -131,12 +131,40 @@ class RepeaterHubScreen extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            repeater.shortPubKeyHex,
-                            style: MeshTheme.mono(
-                              fontSize: 11,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  repeater.publicKeyHex,
+                                  style: MeshTheme.mono(
+                                    fontSize: 11,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: l10n.common_copy,
+                                visualDensity: VisualDensity.compact,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(
+                                  minWidth: 32,
+                                  minHeight: 32,
+                                ),
+                                icon: const Icon(Icons.copy_outlined, size: 16),
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: repeater.publicKeyHex),
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(l10n.nearbyNodes_keyCopied),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           Text(
