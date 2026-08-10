@@ -1123,6 +1123,47 @@ class AppLocalizationsJa extends AppLocalizations {
   String get contact_teleEnvSubtitle => '環境センサーのデータを共有することを許可する';
 
   @override
+  String get shareLink_title => 'Shared MeshCore item';
+
+  @override
+  String get shareLink_contact => 'Contact';
+
+  @override
+  String get shareLink_channel => 'Channel';
+
+  @override
+  String get shareLink_addContact => 'Add contact';
+
+  @override
+  String get shareLink_addChannel => 'Add channel';
+
+  @override
+  String get shareLink_privateChannelNameHint =>
+      'Private channel names are local. You can change this name before adding the channel.';
+
+  @override
+  String get shareLink_channelSecret => 'Channel secret';
+
+  @override
+  String get shareLink_noChannelSlots => 'No free channel slots are available.';
+
+  @override
+  String get shareLink_channelAddFailed => 'Failed to add channel.';
+
+  @override
+  String get shareLink_copyShareLink => 'Copy share link';
+
+  @override
+  String get shareLink_copySelfShareLink => 'Copy self share link';
+
+  @override
+  String get shareLink_copied => 'Share link copied to Clipboard.';
+
+  @override
+  String get shareLink_unavailable =>
+      'Device contact details are not available.';
+
+  @override
   String get channels_title => 'チャンネル';
 
   @override

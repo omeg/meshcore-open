@@ -13,6 +13,7 @@ import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
 import '../connector/meshcore_protocol.dart';
 import '../models/contact.dart';
+import '../models/meshcore_share_link.dart';
 import '../l10n/contact_localization.dart';
 import '../models/contact_group.dart';
 import '../services/ui_view_state_service.dart';
@@ -43,7 +44,7 @@ import 'telemetry_screen.dart';
 
 enum RoomLoginDestination { chat, management }
 
-enum ContactOperationType { import, export, zeroHopShare }
+enum ContactOperationType { import, zeroHopShare }
 
 class ContactsScreen extends StatefulWidget {
   final bool hideBackButton;
@@ -172,23 +173,6 @@ class _ContactsScreenState extends State<ContactsScreen>
       try {
         final code = frameBuffer.readUInt8();
 
-        if (code == respCodeExportContact) {
-          final advertPacket = frameBuffer.readRemainingBytes();
-          // Validate packet has expected minimum size (98+ bytes per protocol)
-          if (advertPacket.length < 98) {
-            if (mounted) {
-              showDismissibleSnackBar(
-                context,
-                content: Text(context.l10n.contacts_invalidAdvertFormat),
-              );
-            }
-            _pendingOperations.remove(ContactOperationType.export);
-            return;
-          }
-          final hexString = pubKeyToHex(advertPacket);
-          Clipboard.setData(ClipboardData(text: "meshcore://$hexString"));
-        }
-
         // Generic OK/ERR acks carry no command correlation, so consume only
         // the oldest pending operation per ack instead of clearing all.
         if (code == respCodeOk) {
@@ -205,11 +189,6 @@ class _ContactsScreenState extends State<ContactsScreen>
               showDismissibleSnackBar(
                 context,
                 content: Text(context.l10n.contacts_zeroHopContactAdvertSent),
-              );
-            case ContactOperationType.export:
-              showDismissibleSnackBar(
-                context,
-                content: Text(context.l10n.contacts_contactAdvertCopied),
               );
           }
         }
@@ -229,11 +208,6 @@ class _ContactsScreenState extends State<ContactsScreen>
                 context,
                 content: Text(context.l10n.contacts_zeroHopContactAdvertFailed),
               );
-            case ContactOperationType.export:
-              showDismissibleSnackBar(
-                context,
-                content: Text(context.l10n.contacts_contactAdvertCopyFailed),
-              );
           }
         }
       } catch (e) {
@@ -243,23 +217,6 @@ class _ContactsScreenState extends State<ContactsScreen>
         );
       }
     });
-  }
-
-  Future<void> _contactExport(Uint8List pubKey) async {
-    final connector = Provider.of<MeshCoreConnector>(context, listen: false);
-    final exportContactFrame = buildExportContactFrame(pubKey);
-    _pendingOperations.add(ContactOperationType.export);
-    try {
-      await connector.sendFrame(exportContactFrame, expectsGenericAck: true);
-    } catch (e) {
-      _pendingOperations.remove(ContactOperationType.export);
-      if (mounted) {
-        showDismissibleSnackBar(
-          context,
-          content: Text(context.l10n.contacts_contactAdvertCopyFailed),
-        );
-      }
-    }
   }
 
   Future<void> _contactZeroHop(Uint8List pubKey) async {
@@ -303,7 +260,8 @@ class _ContactsScreenState extends State<ContactsScreen>
       return;
     }
     final text = clipboardData.text!.trim();
-    if (!text.startsWith('meshcore://')) {
+    final shareLink = MeshCoreShareLink.tryParse(text);
+    if (shareLink is! MeshCoreContactShareLink) {
       if (mounted) {
         showDismissibleSnackBar(
           context,
@@ -312,11 +270,38 @@ class _ContactsScreenState extends State<ContactsScreen>
       }
       return;
     }
-    final hexString = text.substring('meshcore://'.length);
+
+    if (shareLink.hasStructuredContact) {
+      try {
+        await connector.importDiscoveredContact(shareLink.toContact());
+        if (!mounted) return;
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.contacts_contactImported),
+        );
+      } catch (_) {
+        if (!mounted) return;
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.contacts_contactImportFailed),
+        );
+      }
+      return;
+    }
+
+    if (shareLink.advertData == null) {
+      if (mounted) {
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.contacts_invalidAdvertFormat),
+        );
+      }
+      return;
+    }
+
     final Uint8List importContactFrame;
     try {
-      final bytes = hex2Uint8List(hexString);
-      importContactFrame = buildImportContactFrame(bytes);
+      importContactFrame = buildImportContactFrame(shareLink.advertData!);
     } catch (e) {
       if (mounted) {
         showDismissibleSnackBar(
@@ -338,6 +323,40 @@ class _ContactsScreenState extends State<ContactsScreen>
         );
       }
     }
+  }
+
+  Future<void> _copyContactShareLink(Contact contact) async {
+    final link = MeshCoreContactShareLink.fromContact(contact).toUriString();
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.shareLink_copied),
+    );
+  }
+
+  Future<void> _copySelfShareLink(MeshCoreConnector connector) async {
+    final publicKey = connector.selfPublicKey;
+    final name = connector.selfName?.trim();
+    if (publicKey == null || name == null || name.isEmpty) {
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.shareLink_unavailable),
+      );
+      return;
+    }
+    final link = MeshCoreContactShareLink(
+      name: name,
+      publicKey: Uint8List.fromList(publicKey),
+      type: advTypeChat,
+    ).toUriString();
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.shareLink_copied),
+    );
   }
 
   @override
@@ -366,7 +385,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                     children: [
                       const Icon(Icons.wifi_find),
                       const SizedBox(width: 8),
-                      Text(context.l10n.nearbyNodes_menu),
+                      Expanded(
+                        child: Text(
+                          context.l10n.nearbyNodes_menu,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   onTap: () => Navigator.push(
@@ -381,7 +405,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                     children: [
                       const Icon(Icons.person_add_rounded),
                       const SizedBox(width: 8),
-                      Text(context.l10n.discoveredContacts_Title),
+                      Expanded(
+                        child: Text(
+                          context.l10n.discoveredContacts_Title,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   onTap: () => Navigator.push(
@@ -396,7 +425,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                     children: [
                       const Icon(Icons.paste),
                       const SizedBox(width: 8),
-                      Text(context.l10n.contacts_addContactFromClipboard),
+                      Expanded(
+                        child: Text(
+                          context.l10n.contacts_addContactFromClipboard,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   onTap: () => _contactImport(),
@@ -435,14 +469,22 @@ class _ContactsScreenState extends State<ContactsScreen>
                   },
                 ),
                 PopupMenuItem(
+                  enabled:
+                      connector.selfPublicKey != null &&
+                      (connector.selfName?.trim().isNotEmpty ?? false),
                   child: Row(
                     children: [
-                      const Icon(Icons.copy),
+                      const Icon(Icons.link),
                       const SizedBox(width: 8),
-                      Text(context.l10n.contacts_copyAdvertToClipboard),
+                      Expanded(
+                        child: Text(
+                          context.l10n.shareLink_copySelfShareLink,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
-                  onTap: () => _contactExport(Uint8List.fromList([])),
+                  onTap: () => _copySelfShareLink(connector),
                 ),
                 const PopupMenuDivider(),
                 PopupMenuItem(
@@ -1537,11 +1579,11 @@ class _ContactsScreenState extends State<ContactsScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.copy),
-              title: Text(context.l10n.contacts_ShareContact),
+              leading: const Icon(Icons.link),
+              title: Text(context.l10n.shareLink_copyShareLink),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _contactExport(contact.publicKey);
+                _copyContactShareLink(contact);
               },
             ),
             ListTile(

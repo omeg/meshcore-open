@@ -15,6 +15,7 @@ import '../services/app_settings_service.dart';
 import '../services/ui_view_state_service.dart';
 import '../models/channel.dart';
 import '../models/community.dart';
+import '../models/meshcore_share_link.dart';
 import '../storage/community_store.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/dialog_utils.dart';
@@ -642,6 +643,26 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                 if (parentContext.mounted) {
                   _showEditChannelDialog(parentContext, connector, channel);
                 }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.link),
+              title: Text(sheetContext.l10n.shareLink_copyShareLink),
+              onTap: () async {
+                Navigator.pop(sheetContext);
+                final regionScope = connector.hasChannelRegion(channel.index)
+                    ? connector.getChannelRegion(channel.index)
+                    : null;
+                final link = MeshCoreChannelShareLink.fromChannel(
+                  channel,
+                  regionScope: regionScope,
+                ).toUriString();
+                await Clipboard.setData(ClipboardData(text: link));
+                if (!parentContext.mounted) return;
+                showDismissibleSnackBar(
+                  parentContext,
+                  content: Text(parentContext.l10n.shareLink_copied),
+                );
               },
             ),
             ListTile(

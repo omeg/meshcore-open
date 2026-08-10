@@ -2212,6 +2212,84 @@ abstract class AppLocalizations {
   /// **'Allow sharing environment sensor data'**
   String get contact_teleEnvSubtitle;
 
+  /// No description provided for @shareLink_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Shared MeshCore item'**
+  String get shareLink_title;
+
+  /// No description provided for @shareLink_contact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get shareLink_contact;
+
+  /// No description provided for @shareLink_channel.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel'**
+  String get shareLink_channel;
+
+  /// No description provided for @shareLink_addContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Add contact'**
+  String get shareLink_addContact;
+
+  /// No description provided for @shareLink_addChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Add channel'**
+  String get shareLink_addChannel;
+
+  /// No description provided for @shareLink_privateChannelNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Private channel names are local. You can change this name before adding the channel.'**
+  String get shareLink_privateChannelNameHint;
+
+  /// No description provided for @shareLink_channelSecret.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel secret'**
+  String get shareLink_channelSecret;
+
+  /// No description provided for @shareLink_noChannelSlots.
+  ///
+  /// In en, this message translates to:
+  /// **'No free channel slots are available.'**
+  String get shareLink_noChannelSlots;
+
+  /// No description provided for @shareLink_channelAddFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add channel.'**
+  String get shareLink_channelAddFailed;
+
+  /// No description provided for @shareLink_copyShareLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy share link'**
+  String get shareLink_copyShareLink;
+
+  /// No description provided for @shareLink_copySelfShareLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy self share link'**
+  String get shareLink_copySelfShareLink;
+
+  /// No description provided for @shareLink_copied.
+  ///
+  /// In en, this message translates to:
+  /// **'Share link copied to Clipboard.'**
+  String get shareLink_copied;
+
+  /// No description provided for @shareLink_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Device contact details are not available.'**
+  String get shareLink_unavailable;
+
   /// No description provided for @channels_title.
   ///
   /// In en, this message translates to:

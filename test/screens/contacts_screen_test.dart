@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -10,6 +9,7 @@ import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/models/path_selection.dart';
+import 'package:meshcore_open/models/meshcore_share_link.dart';
 import 'package:meshcore_open/screens/contacts_screen.dart';
 import 'package:meshcore_open/screens/telemetry_screen.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
@@ -22,6 +22,9 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   final Contact contact;
   Uint8List? sentFrame;
+  final Uint8List _selfKey = Uint8List.fromList(
+    List<int>.filled(pubKeySize, 0xA5),
+  );
 
   @override
   List<Contact> get contacts => <Contact>[contact];
@@ -31,6 +34,12 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   @override
   bool get hasLoadedContacts => true;
+
+  @override
+  String? get selfName => 'My Companion';
+
+  @override
+  Uint8List? get selfPublicKey => _selfKey;
 
   @override
   Future<PathSelection> preparePathForContactSend(Contact contact) async {
@@ -80,6 +89,50 @@ void main() {
   });
 
   tearDown(PrefsManager.reset);
+
+  testWidgets('contacts menu copies the self contact URI', (tester) async {
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Contact',
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: DateTime.now(),
+    );
+
+    await tester.pumpWidget(_buildTestApp(_FakeMeshCoreConnector(contact)));
+    await tester.pumpAndSettle();
+    final screenContext = tester.element(find.byType(ContactsScreen));
+    final l10n = AppLocalizations.of(screenContext);
+
+    await tester.tap(find.byTooltip(l10n.contacts_moreOptions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.shareLink_copySelfShareLink));
+    await tester.pump();
+
+    final link = MeshCoreShareLink.tryParse(clipboardText!);
+    expect(link, isA<MeshCoreContactShareLink>());
+    expect((link! as MeshCoreContactShareLink).name, 'My Companion');
+  });
 
   testWidgets('contact menu opens telemetry and requests contact telemetry', (
     tester,

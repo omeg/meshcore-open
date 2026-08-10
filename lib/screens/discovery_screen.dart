@@ -10,6 +10,7 @@ import '../l10n/l10n.dart';
 import '../l10n/contact_localization.dart';
 import '../models/app_settings.dart';
 import '../models/contact.dart';
+import '../models/meshcore_share_link.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/contact_search.dart';
@@ -392,13 +393,14 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         await _importContact(contact, connector);
         break;
       case 'copy_contact':
-        if (contact.rawPacket == null) return;
-        final hexString = pubKeyToHex(contact.rawPacket!);
-        Clipboard.setData(ClipboardData(text: "meshcore://$hexString"));
+        final link = MeshCoreContactShareLink.fromContact(
+          contact,
+        ).toUriString();
+        await Clipboard.setData(ClipboardData(text: link));
         if (!mounted) return;
         showDismissibleSnackBar(
           context,
-          content: Text(context.l10n.contacts_contactAdvertCopied),
+          content: Text(context.l10n.shareLink_copied),
         );
         break;
       case 'delete_contact':

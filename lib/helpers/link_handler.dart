@@ -3,8 +3,41 @@ import 'package:flutter/material.dart';
 import 'package:flutter_linkify/flutter_linkify.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../l10n/l10n.dart';
+import '../models/meshcore_share_link.dart';
+import '../screens/share_link_screen.dart';
 import '../utils/platform_info.dart';
 import '../helpers/snack_bar_builder.dart';
+
+class MeshCoreLinkifier extends Linkifier {
+  const MeshCoreLinkifier();
+
+  @override
+  List<LinkifyElement> parse(
+    List<LinkifyElement> elements,
+    LinkifyOptions options,
+  ) {
+    final result = <LinkifyElement>[];
+    for (final element in elements) {
+      if (element is! TextElement) {
+        result.add(element);
+        continue;
+      }
+
+      var offset = 0;
+      for (final match in MeshCoreShareLink.findInText(element.text)) {
+        if (match.start > offset) {
+          result.add(TextElement(element.text.substring(offset, match.start)));
+        }
+        result.add(LinkableElement(match.text, match.text));
+        offset = match.end;
+      }
+      if (offset < element.text.length) {
+        result.add(TextElement(element.text.substring(offset)));
+      }
+    }
+    return result;
+  }
+}
 
 class LinkHandler {
   static TextStyle defaultLinkStyle(BuildContext context, TextStyle base) {
@@ -25,7 +58,7 @@ class LinkHandler {
   }) {
     final effectiveLinkStyle = linkStyle ?? defaultLinkStyle(context, style);
     const options = LinkifyOptions(humanize: false, defaultToHttps: false);
-    const linkifiers = [UrlLinkifier(), EmailLinkifier()];
+    const linkifiers = [MeshCoreLinkifier(), UrlLinkifier(), EmailLinkifier()];
     void onOpen(LinkableElement link) => handleLinkTap(context, link.url);
 
     if (PlatformInfo.isDesktop) {
@@ -57,6 +90,17 @@ class LinkHandler {
   }
 
   static Future<void> handleLinkTap(BuildContext context, String url) async {
+    final shareLink = MeshCoreShareLink.tryParse(url);
+    if (shareLink != null) {
+      await Navigator.push<void>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ShareLinkScreen(link: shareLink),
+        ),
+      );
+      return;
+    }
+
     // Show confirmation dialog
     final shouldOpen = await showDialog<bool>(
       context: context,

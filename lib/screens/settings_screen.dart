@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:meshcore_open/utils/gpx_export.dart';
 import 'package:meshcore_open/widgets/elements_ui.dart';
 import 'package:provider/provider.dart';
@@ -8,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../l10n/l10n.dart';
+import '../models/meshcore_share_link.dart';
 import '../models/radio_settings.dart';
 import '../services/app_debug_log_service.dart';
 import '../theme/mesh_theme.dart';
@@ -299,6 +301,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: pubKeyToHex(connector.selfPublicKey!),
                           mono: true,
                         ),
+                      if (connector.selfPublicKey != null &&
+                          (connector.selfName?.trim().isNotEmpty ?? false))
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            key: const ValueKey('copy_self_share_link'),
+                            onPressed: () =>
+                                _copySelfShareLink(context, connector),
+                            icon: const Icon(Icons.link, size: 18),
+                            label: Text(l10n.shareLink_copySelfShareLink),
+                          ),
+                        ),
                       _infoRow(
                         context,
                         label: l10n.settings_infoContactsCount,
@@ -315,6 +329,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
               : const SizedBox.shrink(),
         ),
       ],
+    );
+  }
+
+  Future<void> _copySelfShareLink(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) async {
+    final publicKey = connector.selfPublicKey;
+    final name = connector.selfName?.trim();
+    if (publicKey == null || name == null || name.isEmpty) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.shareLink_unavailable),
+      );
+      return;
+    }
+    final link = MeshCoreContactShareLink(
+      name: name,
+      publicKey: Uint8List.fromList(publicKey),
+      type: advTypeChat,
+    ).toUriString();
+    await Clipboard.setData(ClipboardData(text: link));
+    if (!context.mounted) return;
+    showDismissibleSnackBar(
+      context,
+      content: Text(context.l10n.shareLink_copied),
     );
   }
 
