@@ -544,6 +544,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
   int get pathHashByteWidth => _pathHashByteWidth;
 
+  bool get supportsPathHashMode => (_firmwareVerCode ?? 0) >= 10;
+
   CompanionRadioStats? get latestRadioStats => _latestRadioStats;
 
   bool get supportsCompanionRadioStats => (_firmwareVerCode ?? 0) >= 8;
@@ -3233,7 +3235,13 @@ class MeshCoreConnector extends ChangeNotifier {
 
   Future<void> setPathHashMode(int mode) async {
     if (!isConnected) return;
-    await sendFrame(buildSetPathHashModeFrame(mode.clamp(0, 2)));
+    final normalizedMode = mode.clamp(0, 2);
+    await sendFrame(
+      buildSetPathHashModeFrame(normalizedMode),
+      waitForGenericAck: true,
+    );
+    _setPathHashByteWidth(normalizedMode + 1);
+    notifyListeners();
   }
 
   Future<void> refreshDeviceInfo() async {

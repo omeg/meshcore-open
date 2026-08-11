@@ -15,6 +15,8 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
     List<int>.generate(32, (index) => index + 1),
   );
   Uint8List? importedPrivateKey;
+  int _pathHashWidth = 2;
+  int? selectedPathHashMode;
 
   @override
   bool get isConnected => true;
@@ -27,6 +29,12 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   @override
   String? get firmwareVersion => 'v1.17.0a-omeg';
+
+  @override
+  bool get supportsPathHashMode => true;
+
+  @override
+  int get pathHashByteWidth => _pathHashWidth;
 
   @override
   String? get selfName => 'My Companion';
@@ -43,6 +51,13 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   @override
   Future<void> importPrivateKey(Uint8List privateKey) async {
     importedPrivateKey = Uint8List.fromList(privateKey);
+  }
+
+  @override
+  Future<void> setPathHashMode(int mode) async {
+    selectedPathHashMode = mode;
+    _pathHashWidth = mode + 1;
+    notifyListeners();
   }
 }
 
@@ -161,6 +176,40 @@ void main() {
       find.descendant(of: deviceInfoCard, matching: find.text('Public Key')),
       findsNothing,
     );
+  });
+
+  testWidgets('node settings updates the companion path hash size', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: connector,
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    expect(find.text('2-byte hashes per hop (up to 32 hops)'), findsOneWidget);
+    await tester.tap(find.text('Path Hash Size'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const ValueKey('path_hash_size_dropdown')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('3-byte hashes per hop (up to 21 hops)').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('path_hash_size_save')));
+    await tester.pumpAndSettle();
+
+    expect(connector.selectedPathHashMode, 2);
+    expect(find.text('Path hash size updated'), findsOneWidget);
   });
 
   testWidgets('change identity validates and imports a 64-byte key', (

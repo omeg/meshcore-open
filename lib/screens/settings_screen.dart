@@ -9,6 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
 import '../models/meshcore_share_link.dart';
 import '../models/radio_settings.dart';
@@ -539,6 +540,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const Divider(height: 1, indent: 16),
         _tappableTile(
           context,
+          icon: Icons.route_outlined,
+          title: l10n.settings_pathHashSize,
+          subtitle: connector.supportsPathHashMode
+              ? _pathHashSizeLabel(l10n, connector.pathHashByteWidth)
+              : l10n.settings_pathHashSizeUnsupported,
+          onTap: connector.isConnected && connector.supportsPathHashMode
+              ? () => _showPathHashSizeDialog(context, connector)
+              : null,
+        ),
+        const Divider(height: 1, indent: 16),
+        _tappableTile(
+          context,
           icon: Icons.landscape,
           title: l10n.settings_regionSettings,
           subtitle: l10n.settings_regionSettingsSubtitle,
@@ -876,6 +889,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (context) => _RadioSettingsDialog(connector: connector),
     );
+  }
+
+  Future<void> _showPathHashSizeDialog(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _PathHashSizeDialog(connector: connector),
+    );
+    if (changed == true && context.mounted) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.settings_pathHashSizeUpdated),
+      );
+    }
   }
 
   void _editLocation(BuildContext context, MeshCoreConnector connector) {
@@ -1577,6 +1607,122 @@ class _ChangeIdentityDialogState extends State<_ChangeIdentityDialog> {
           ),
         ],
       ),
+    );
+  }
+}
+
+int _maxPathHopsForHashWidth(int width) => switch (width) {
+  2 => 32,
+  3 => 21,
+  _ => 64,
+};
+
+String _pathHashSizeLabel(AppLocalizations l10n, int width) {
+  final normalizedWidth = width.clamp(1, 3);
+  return l10n.settings_pathHashSizeValue(
+    normalizedWidth,
+    _maxPathHopsForHashWidth(normalizedWidth),
+  );
+}
+
+class _PathHashSizeDialog extends StatefulWidget {
+  final MeshCoreConnector connector;
+
+  const _PathHashSizeDialog({required this.connector});
+
+  @override
+  State<_PathHashSizeDialog> createState() => _PathHashSizeDialogState();
+}
+
+class _PathHashSizeDialogState extends State<_PathHashSizeDialog> {
+  late int _selectedMode;
+  bool _isSaving = false;
+  String? _errorText;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedMode = (widget.connector.pathHashByteWidth - 1).clamp(0, 2);
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _isSaving = true;
+      _errorText = null;
+    });
+    try {
+      await widget.connector.setPathHashMode(_selectedMode);
+      if (mounted) Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _errorText = context.l10n.settings_pathHashSizeUpdateFailed(
+          error.toString(),
+        );
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AlertDialog(
+      title: Text(l10n.settings_pathHashSize),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.settings_pathHashSizeDescription),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            key: const ValueKey('path_hash_size_dropdown'),
+            initialValue: _selectedMode,
+            isExpanded: true,
+            decoration: const InputDecoration(border: OutlineInputBorder()),
+            items: [
+              for (var mode = 0; mode <= 2; mode++)
+                DropdownMenuItem(
+                  value: mode,
+                  child: Text(
+                    _pathHashSizeLabel(l10n, mode + 1),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+            ],
+            onChanged: _isSaving
+                ? null
+                : (value) {
+                    if (value != null) {
+                      setState(() => _selectedMode = value);
+                    }
+                  },
+          ),
+          if (_errorText != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _errorText!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _isSaving ? null : () => Navigator.pop(context, false),
+          child: Text(l10n.common_cancel),
+        ),
+        FilledButton(
+          key: const ValueKey('path_hash_size_save'),
+          onPressed: _isSaving ? null : _save,
+          child: _isSaving
+              ? const SizedBox.square(
+                  dimension: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.common_save),
+        ),
+      ],
     );
   }
 }

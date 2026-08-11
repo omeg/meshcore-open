@@ -174,6 +174,29 @@
   "settings_radioSettings": "Radio Settings",
   "settings_radioSettingsSubtitle": "Frequency, power, spreading factor",
   "settings_radioSettingsUpdated": "Radio settings updated",
+  "settings_pathHashSize": "Path Hash Size",
+  "settings_pathHashSizeValue": "{bytes}-byte hashes per hop (up to {hops} hops)",
+  "@settings_pathHashSizeValue": {
+    "placeholders": {
+      "bytes": {
+        "type": "int"
+      },
+      "hops": {
+        "type": "int"
+      }
+    }
+  },
+  "settings_pathHashSizeDescription": "Larger path hashes reduce routing collisions but shorten the maximum path. Use more than 1 byte only after every node in the network is running firmware v1.14 or newer.",
+  "settings_pathHashSizeUnsupported": "Requires newer companion firmware",
+  "settings_pathHashSizeUpdated": "Path hash size updated",
+  "settings_pathHashSizeUpdateFailed": "Could not update path hash size: {message}",
+  "@settings_pathHashSizeUpdateFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "settings_regionSettings": "Regions",
   "settings_regionSettingsSubtitle": "Manage stored regions",
   "settings_regionManagement_screenTitle": "Region Management",

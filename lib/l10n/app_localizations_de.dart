@@ -403,6 +403,30 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_radioSettingsUpdated => 'Funkparameter aktualisiert';
 
   @override
+  String get settings_pathHashSize => 'Path Hash Size';
+
+  @override
+  String settings_pathHashSizeValue(int bytes, int hops) {
+    return '$bytes-byte hashes per hop (up to $hops hops)';
+  }
+
+  @override
+  String get settings_pathHashSizeDescription =>
+      'Larger path hashes reduce routing collisions but shorten the maximum path. Use more than 1 byte only after every node in the network is running firmware v1.14 or newer.';
+
+  @override
+  String get settings_pathHashSizeUnsupported =>
+      'Requires newer companion firmware';
+
+  @override
+  String get settings_pathHashSizeUpdated => 'Path hash size updated';
+
+  @override
+  String settings_pathHashSizeUpdateFailed(String message) {
+    return 'Could not update path hash size: $message';
+  }
+
+  @override
   String get settings_regionSettings => 'Regionen';
 
   @override

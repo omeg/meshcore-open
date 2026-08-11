@@ -838,6 +838,42 @@ abstract class AppLocalizations {
   /// **'Radio settings updated'**
   String get settings_radioSettingsUpdated;
 
+  /// No description provided for @settings_pathHashSize.
+  ///
+  /// In en, this message translates to:
+  /// **'Path Hash Size'**
+  String get settings_pathHashSize;
+
+  /// No description provided for @settings_pathHashSizeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'{bytes}-byte hashes per hop (up to {hops} hops)'**
+  String settings_pathHashSizeValue(int bytes, int hops);
+
+  /// No description provided for @settings_pathHashSizeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Larger path hashes reduce routing collisions but shorten the maximum path. Use more than 1 byte only after every node in the network is running firmware v1.14 or newer.'**
+  String get settings_pathHashSizeDescription;
+
+  /// No description provided for @settings_pathHashSizeUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Requires newer companion firmware'**
+  String get settings_pathHashSizeUnsupported;
+
+  /// No description provided for @settings_pathHashSizeUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Path hash size updated'**
+  String get settings_pathHashSizeUpdated;
+
+  /// No description provided for @settings_pathHashSizeUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update path hash size: {message}'**
+  String settings_pathHashSizeUpdateFailed(String message);
+
   /// No description provided for @settings_regionSettings.
   ///
   /// In en, this message translates to:
