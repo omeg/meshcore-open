@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -53,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _showBatteryVoltage = false;
   bool _deviceInfoExpanded = false;
   String _appVersion = '';
+  Timer? _uptimeTimer;
 
   @override
   void initState() {
@@ -66,6 +69,33 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _appVersion = packageInfo.version;
     });
+  }
+
+  @override
+  void dispose() {
+    _uptimeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _toggleDeviceInfo(MeshCoreConnector connector) {
+    final expanded = !_deviceInfoExpanded;
+    setState(() => _deviceInfoExpanded = expanded);
+    _uptimeTimer?.cancel();
+    _uptimeTimer = null;
+    if (!expanded || !connector.supportsCompanionCoreStats) return;
+
+    unawaited(connector.requestCoreStats());
+    _uptimeTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  String _formatUptime(BuildContext context, int seconds) {
+    final days = seconds ~/ 86400;
+    final hours = (seconds % 86400) ~/ 3600;
+    final minutes = (seconds % 3600) ~/ 60;
+    final secs = seconds % 60;
+    return context.l10n.repeater_daysHoursMinsSecs(days, hours, minutes, secs);
   }
 
   @override
@@ -229,11 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       children: [
         // Header row: device name + status chip + expand toggle
         InkWell(
-          onTap: () {
-            setState(() {
-              _deviceInfoExpanded = !_deviceInfoExpanded;
-            });
-          },
+          onTap: () => _toggleDeviceInfo(connector),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
             child: Row(
@@ -300,6 +326,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           value: connector.firmwareVersion!,
                         ),
                       _buildBatteryInfoRow(context, connector),
+                      if (connector.companionUptimeSecs case final uptime?)
+                        _infoRow(
+                          context,
+                          label: l10n.repeater_uptime,
+                          value: _formatUptime(context, uptime),
+                        ),
                       if (connector.selfName != null)
                         _infoRow(
                           context,

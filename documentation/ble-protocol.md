@@ -196,7 +196,7 @@ The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics(
 | 50 | CMD_SEND_BINARY_REQ | Send binary request |
 | 54 | CMD_SET_FLOOD_SCOPE | Set flood routing scope (v8+) |
 | 55 | CMD_SEND_CONTROL_DATA | Send control data (e.g. zero-hop discovery, v8+) |
-| 56 | CMD_GET_STATS | Request companion radio stats |
+| 56 | CMD_GET_STATS | Request companion core, radio, or packet stats |
 | 57 | CMD_SEND_ANON_REQ | Send anonymous request |
 | 58 | CMD_SET_AUTO_ADD_CONFIG | Set auto-add configuration |
 | 59 | CMD_GET_AUTO_ADD_CONFIG | Get auto-add configuration |
@@ -226,7 +226,7 @@ The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics(
 | 17 | RESP_CODE_CHANNEL_MSG_RECV_V3 | Incoming channel message (v3) |
 | 18 | RESP_CODE_CHANNEL_INFO | Channel definition |
 | 21 | RESP_CODE_CUSTOM_VARS | Custom variables |
-| 24 | RESP_CODE_STATS | Companion radio stats |
+| 24 | RESP_CODE_STATS | Companion core, radio, or packet stats |
 | 25 | RESP_CODE_AUTO_ADD_CONFIG | Auto-add flags |
 | 0x80 | PUSH_CODE_ADVERT | Known contact re-seen |
 | 0x81 | PUSH_CODE_PATH_UPDATED | Better path found; carries the 32-byte public key of the updated contact |

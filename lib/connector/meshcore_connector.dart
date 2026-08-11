@@ -11,6 +11,7 @@ import 'package:flutter_blue_plus_platform_interface/flutter_blue_plus_platform_
 
 import '../models/channel.dart';
 import '../models/channel_message.dart';
+import '../models/companion_core_stats.dart';
 import '../models/companion_radio_stats.dart';
 import '../models/contact.dart';
 import '../models/message.dart';
@@ -300,6 +301,7 @@ class MeshCoreConnector extends ChangeNotifier {
   int? _firmwareVerCode;
   String? _firmwareVersion;
   int _pathHashByteWidth = 1;
+  CompanionCoreStats? _latestCoreStats;
   CompanionRadioStats? _latestRadioStats;
   Stopwatch? _airtimeBumpStopwatch;
   int _prevTotalAirSecs = 0;
@@ -549,6 +551,20 @@ class MeshCoreConnector extends ChangeNotifier {
   CompanionRadioStats? get latestRadioStats => _latestRadioStats;
 
   bool get supportsCompanionRadioStats => (_firmwareVerCode ?? 0) >= 8;
+
+  bool get supportsCompanionCoreStats => (_firmwareVerCode ?? 0) >= 8;
+
+  CompanionCoreStats? get latestCoreStats => _latestCoreStats;
+
+  int? get companionUptimeSecs {
+    final stats = _latestCoreStats;
+    if (!isConnected || stats == null) return null;
+    final elapsed = math.max(
+      0,
+      DateTime.now().difference(stats.receivedAt).inSeconds,
+    );
+    return stats.uptimeSecs + elapsed;
+  }
 
   bool get radioStatsAirActivityPulse {
     final sw = _airtimeBumpStopwatch;
@@ -2849,6 +2865,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   void _resetConnectionHandshakeState() {
+    _latestCoreStats = null;
     _selfPublicKey = null;
     _selfName = null;
     _selfLatitude = null;
@@ -3053,6 +3070,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _rememberedNonRepeatRadioState = null;
     _firmwareVerCode = null;
     _firmwareVersion = null;
+    _latestCoreStats = null;
     _batteryMillivolts = null;
     _repeaterBatterySnapshots.clear();
     _batteryRequested = false;
@@ -3230,6 +3248,14 @@ class MeshCoreConnector extends ChangeNotifier {
     if (!supportsCompanionRadioStats) return;
     try {
       await sendFrame(buildGetStatsFrame(statsTypeRadio));
+    } catch (_) {}
+  }
+
+  Future<void> requestCoreStats() async {
+    if (!isConnected) return;
+    if (!supportsCompanionCoreStats) return;
+    try {
+      await sendFrame(buildGetStatsFrame(statsTypeCore));
     } catch (_) {}
   }
 
@@ -4975,6 +5001,9 @@ class MeshCoreConnector extends ChangeNotifier {
       _hasReceivedDeviceInfo = true;
     }
     _firmwareVerCode = frame[1];
+    if (supportsCompanionCoreStats) {
+      unawaited(requestCoreStats());
+    }
 
     // Bytes 60-79 contain the null-terminated release string, for example
     // "v1.17.0a-omeg". Byte 1 above is only the protocol capability code.
@@ -5122,6 +5151,15 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   void _handleStatsFrame(Uint8List frame) {
+    if (frame.length < 2) return;
+    if (frame[1] == statsTypeCore) {
+      final stats = CompanionCoreStats.tryParse(frame);
+      if (stats == null) return;
+      _latestCoreStats = stats;
+      notifyListeners();
+      return;
+    }
+
     final stats = CompanionRadioStats.tryParse(frame);
     if (stats == null) return;
     final total = stats.txAirSecs + stats.rxAirSecs;
@@ -7141,6 +7179,7 @@ class MeshCoreConnector extends ChangeNotifier {
     _stopBatteryPolling();
     _stopGpsLocationPolling();
     _stopRadioStatsPolling();
+    _latestCoreStats = null;
     _latestRadioStats = null;
     radioStatsNotifier.value = null;
     _prevTotalAirSecs = 0;

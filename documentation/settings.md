@@ -33,6 +33,7 @@ A collapsible card showing read-only device information. **Collapsed by default*
 | ID | Device identifier |
 | Status | Connected / Disconnected |
 | Battery | Percentage or voltage (tap to toggle) |
+| Uptime | Time since the companion was last booted (firmware v8+) |
 | Node Name | The node's mesh identity name |
 | Contacts Count | Number of known contacts |
 | Channel Count | Number of configured channels |

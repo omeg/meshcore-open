@@ -61,6 +61,17 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   }
 }
 
+class _FakeUptimeConnector extends _FakeMeshCoreConnector {
+  @override
+  bool get supportsCompanionCoreStats => true;
+
+  @override
+  int? get companionUptimeSecs => 93784;
+
+  @override
+  Future<void> requestCoreStats() async {}
+}
+
 class _RecordingNavigatorObserver extends NavigatorObserver {
   Route<dynamic>? lastPushedRoute;
 
@@ -104,6 +115,29 @@ void main() {
 
     expect(find.text('Firmware Version'), findsOneWidget);
     expect(find.text('v1.17.0a-omeg'), findsOneWidget);
+  });
+
+  testWidgets('device info shows companion uptime', (tester) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: _FakeUptimeConnector(),
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Test Companion'));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(find.text('Uptime'), findsOneWidget);
+    expect(find.text('1 days 2h 3m 4s'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets('device info copies the self contact URI', (tester) async {
