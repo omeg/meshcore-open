@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/meshcore_share_link.dart';
+import 'package:meshcore_open/screens/map_screen.dart';
 import 'package:meshcore_open/screens/settings_screen.dart';
 
 class _FakeMeshCoreConnector extends MeshCoreConnector {
@@ -34,8 +35,24 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   Uint8List? get selfPublicKey => _selfKey;
 
   @override
+  double? get selfLatitude => 51.1079;
+
+  @override
+  double? get selfLongitude => 17.0385;
+
+  @override
   Future<void> importPrivateKey(Uint8List privateKey) async {
     importedPrivateKey = Uint8List.fromList(privateKey);
+  }
+}
+
+class _RecordingNavigatorObserver extends NavigatorObserver {
+  Route<dynamic>? lastPushedRoute;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    lastPushedRoute = route;
+    super.didPush(route, previousRoute);
   }
 }
 
@@ -195,5 +212,47 @@ void main() {
       Uint8List.fromList(List.filled(64, 0xab)),
     );
     expect(find.text('Identity changed'), findsOneWidget);
+  });
+
+  testWidgets('location coordinates can be opened on the map', (tester) async {
+    final observer = _RecordingNavigatorObserver();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: _FakeMeshCoreConnector(),
+        child: MaterialApp(
+          locale: const Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          navigatorObservers: [observer],
+          home: const SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byIcon(Icons.location_on_outlined));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const ValueKey('location_latitude_input')),
+      '50.06143',
+    );
+    await tester.enterText(
+      find.byKey(const ValueKey('location_longitude_input')),
+      '19.93658',
+    );
+    await tester.tap(find.byKey(const ValueKey('location_show_on_map')));
+
+    final route = observer.lastPushedRoute as MaterialPageRoute<void>;
+    final mapScreen =
+        route.builder(tester.element(find.byType(SettingsScreen))) as MapScreen;
+    expect(mapScreen.highlightPosition?.latitude, 50.06143);
+    expect(mapScreen.highlightPosition?.longitude, 19.93658);
+    expect(mapScreen.hideBackButton, isFalse);
+
+    route.navigator?.pop();
+    await tester.pumpAndSettle();
   });
 }

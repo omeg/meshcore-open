@@ -940,6 +940,12 @@ abstract class AppLocalizations {
   /// **'Invalid latitude or longitude.'**
   String get settings_locationInvalid;
 
+  /// No description provided for @settings_locationShowOnMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Show on map'**
+  String get settings_locationShowOnMap;
+
   /// No description provided for @settings_locationGPSEnable.
   ///
   /// In en, this message translates to:

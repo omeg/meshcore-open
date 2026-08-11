@@ -455,6 +455,9 @@ class AppLocalizationsSl extends AppLocalizations {
       'Neveljavna zemeljska širina ali dolžina.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Omogoči GPS';
 
   @override

@@ -198,6 +198,7 @@
   "settings_locationUpdated": "Location and GPS settings updated",
   "settings_locationBothRequired": "Enter both latitude and longitude.",
   "settings_locationInvalid": "Invalid latitude or longitude.",
+  "settings_locationShowOnMap": "Show on map",
   "settings_locationGPSEnable": "GPS Enable",
   "settings_locationGPSEnableSubtitle": "Enables GPS to automatically update location.",
   "settings_locationIntervalSec": "Interval for GPS (Seconds)",

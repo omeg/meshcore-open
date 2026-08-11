@@ -441,6 +441,9 @@ class AppLocalizationsKo extends AppLocalizations {
   String get settings_locationInvalid => '유효하지 않은 위도 또는 경도.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS 활성화';
 
   @override

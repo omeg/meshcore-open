@@ -438,6 +438,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settings_locationInvalid => '无效的经度和纬度';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => '启用 GPS';
 
   @override

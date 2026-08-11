@@ -453,6 +453,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settings_locationInvalid => 'Ogiltig latitud eller longitud.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Aktivera GPS';
 
   @override

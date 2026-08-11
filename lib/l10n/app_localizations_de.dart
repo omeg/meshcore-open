@@ -460,6 +460,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_locationInvalid => 'Ungültiger Breiten- oder Längengrad.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS aktivieren';
 
   @override

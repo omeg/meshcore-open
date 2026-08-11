@@ -456,6 +456,9 @@ class AppLocalizationsBg extends AppLocalizations {
   String get settings_locationInvalid => 'Невалидна ширина или дължина.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Активиране на GPS';
 
   @override

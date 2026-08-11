@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/utils/gpx_export.dart';
 import 'package:meshcore_open/widgets/elements_ui.dart';
 import 'package:provider/provider.dart';
@@ -20,6 +21,7 @@ import 'app_settings_screen.dart';
 import 'app_debug_log_screen.dart';
 import 'ble_debug_log_screen.dart';
 import 'companion_telemetry_screen.dart';
+import 'map_screen.dart';
 import '../widgets/radio_stats_entry.dart';
 import '../widgets/sync_progress_overlay.dart';
 import 'region_management_screen.dart';
@@ -905,6 +907,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
+                key: const ValueKey('location_latitude_input'),
                 controller: latController,
                 decoration: InputDecoration(
                   labelText: l10n.settings_latitude,
@@ -917,6 +920,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               const SizedBox(height: 16),
               TextField(
+                key: const ValueKey('location_longitude_input'),
                 controller: lonController,
                 decoration: InputDecoration(
                   labelText: l10n.settings_longitude,
@@ -964,6 +968,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           actions: [
+            TextButton.icon(
+              key: const ValueKey('location_show_on_map'),
+              onPressed: () {
+                final latText = latController.text.trim();
+                final lonText = lonController.text.trim();
+                final lat = latText.isNotEmpty
+                    ? double.tryParse(latText)
+                    : connector.selfLatitude;
+                final lon = lonText.isNotEmpty
+                    ? double.tryParse(lonText)
+                    : connector.selfLongitude;
+                if (lat == null ||
+                    lon == null ||
+                    lat < -90 ||
+                    lat > 90 ||
+                    lon < -180 ||
+                    lon > 180) {
+                  showDismissibleSnackBar(
+                    context,
+                    content: Text(
+                      lat == null || lon == null
+                          ? l10n.settings_locationBothRequired
+                          : l10n.settings_locationInvalid,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.push(
+                  dialogContext,
+                  MaterialPageRoute<void>(
+                    builder: (_) => MapScreen(
+                      highlightPosition: LatLng(lat, lon),
+                      highlightLabel:
+                          connector.selfName ?? l10n.settings_location,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.map_outlined),
+              label: Text(l10n.settings_locationShowOnMap),
+            ),
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(l10n.common_cancel),

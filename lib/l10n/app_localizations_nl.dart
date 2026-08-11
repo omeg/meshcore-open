@@ -455,6 +455,9 @@ class AppLocalizationsNl extends AppLocalizations {
       'Ongeldige breedtegraad of lengtegraad.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS inschakelen';
 
   @override

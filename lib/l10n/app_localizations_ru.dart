@@ -456,6 +456,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get settings_locationInvalid => 'Неверная широта или долгота.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Включить GPS';
 
   @override

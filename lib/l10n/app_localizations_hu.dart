@@ -455,6 +455,9 @@ class AppLocalizationsHu extends AppLocalizations {
       'Érvénytelen szélesség vagy hosszúság.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS engedélyezése';
 
   @override

@@ -456,6 +456,9 @@ class AppLocalizationsEs extends AppLocalizations {
   String get settings_locationInvalid => 'Latitud o longitud inválidos.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Habilitar GPS';
 
   @override

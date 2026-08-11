@@ -461,6 +461,9 @@ class AppLocalizationsPl extends AppLocalizations {
       'Nieprawidłowa szerokość geograficzna lub długość geograficzna.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Włącz GPS';
 
   @override

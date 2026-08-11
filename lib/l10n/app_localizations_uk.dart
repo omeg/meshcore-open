@@ -455,6 +455,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get settings_locationInvalid => 'Некоректна широта або довгота.';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'Увімкнути GPS';
 
   @override

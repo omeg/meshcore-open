@@ -81,6 +81,7 @@ Opens the RF statistics screen (RSSI, SNR, packet counts) for the paired radio. 
 ### Location
 Opens a dialog pre-populated with the device's current coordinates (if known):
 - Latitude and longitude fields (decimal, 6 decimal places). If only one field is provided, the other uses the device's current value
+- **Show on map** opens the map centered on the entered coordinates, or the device's current coordinates when the fields are empty
 - If GPS-capable hardware (detected via `gps` custom variable):
   - GPS Update Interval (seconds, 60–86399, default 900 = 15 minutes). Validated and sent separately before lat/lon
   - Enable GPS toggle (takes effect immediately, not deferred to Save)

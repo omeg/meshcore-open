@@ -551,7 +551,7 @@ class _MapScreenState extends State<MapScreen> {
           }
         }
 
-        final allowBack = !connector.isConnected;
+        final allowBack = !widget.hideBackButton || !connector.isConnected;
 
         final visibleContacts = _filterContactsBySettings(
           contactsWithLocation,
@@ -583,7 +583,7 @@ class _MapScreenState extends State<MapScreen> {
               foregroundColor: MapPalette.textPrimary,
               title: AppBarTitle(context.l10n.map_title),
               centerTitle: true,
-              automaticallyImplyLeading: false,
+              automaticallyImplyLeading: !widget.hideBackButton,
               bottom: const SyncProgressAppBarBottom(),
               actions: [
                 PopupMenuButton(

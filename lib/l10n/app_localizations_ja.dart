@@ -441,6 +441,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings_locationInvalid => '無効な緯度または経度。';
 
   @override
+  String get settings_locationShowOnMap => 'Show on map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS を有効にする';
 
   @override
