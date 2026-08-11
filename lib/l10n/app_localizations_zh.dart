@@ -1019,6 +1019,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get contacts_deleteContact => '删除联系人';
 
   @override
+  String get contacts_deleteAllContacts => 'Delete All Contacts';
+
+  @override
+  String get contacts_deleteAllContactsConfirm =>
+      'Are you sure you want to delete all contacts? This cannot be undone.';
+
+  @override
   String contacts_removeConfirm(String contactName) {
     return '从联系人中移除 $contactName？';
   }

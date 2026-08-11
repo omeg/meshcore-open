@@ -16,6 +16,7 @@ import '../theme/mesh_theme.dart';
 import '../utils/contact_search.dart';
 import '../utils/platform_info.dart';
 import '../widgets/app_bar.dart';
+import '../widgets/desktop_delete_shortcut.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/mesh_ui.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -194,110 +195,117 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     final isDirect = routeHops >= 0;
 
     return ListEntrance(
+      key: ValueKey(
+        'discovered_contact_delete_shortcut_${contact.publicKeyHex}',
+      ),
       index: index,
-      child: MeshCard(
-        onTap: () => _handleContactTap(contact, connector, tapAction),
-        onLongPress: () => _showContactContextMenu(contact, connector),
-        onSecondaryTap: PlatformInfo.isDesktop
-            ? () => _showContactContextMenu(contact, connector)
-            : null,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        child: Row(
-          children: [
-            AvatarCircle(
-              name: contact.name,
-              size: 42,
-              color: isChat ? null : _avatarColor(contact.type),
-              icon: _avatarIcon(contact.type),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Name + last seen time
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          contact.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      MediaQuery(
-                        data: MediaQuery.of(context).copyWith(
-                          textScaler: TextScaler.linear(
-                            MediaQuery.textScalerOf(
-                              context,
-                            ).scale(1.0).clamp(1.0, 1.3),
-                          ),
-                        ),
-                        child: Text(
-                          _formatLastSeen(_resolveLastSeen(contact)),
-                          maxLines: 1,
-                          textAlign: TextAlign.right,
-                          style: MeshTheme.mono(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Short pub key
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          contact.shortPubKeyHex,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: MeshTheme.mono(
-                            fontSize: 11,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
-                      if (contact.hasLocation) ...[
-                        const SizedBox(width: 6),
-                        Icon(
-                          Icons.location_on,
-                          size: 13,
-                          color: scheme.onSurfaceVariant.withValues(
-                            alpha: 0.55,
-                          ),
-                        ),
-                      ],
-                      if (contact.rawPacket != null) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.cell_tower,
-                          size: 13,
-                          color: scheme.onSurfaceVariant.withValues(
-                            alpha: 0.55,
-                          ),
-                        ),
-                      ],
-                      const SizedBox(width: 6),
-                      RouteChip(
-                        isDirect: isDirect,
-                        hops: isDirect ? routeHops : null,
-                        showDirectIcon: false,
-                      ),
-                    ],
-                  ),
-                ],
+      child: DesktopDeleteShortcut(
+        onDelete: () => connector.removeDiscoveredContact(contact),
+        builder: (context, selected) => MeshCard(
+          borderColor: selected ? scheme.primary : null,
+          onTap: () => _handleContactTap(contact, connector, tapAction),
+          onLongPress: () => _showContactContextMenu(contact, connector),
+          onSecondaryTap: PlatformInfo.isDesktop
+              ? () => _showContactContextMenu(contact, connector)
+              : null,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              AvatarCircle(
+                name: contact.name,
+                size: 42,
+                color: isChat ? null : _avatarColor(contact.type),
+                icon: _avatarIcon(contact.type),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Name + last seen time
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            contact.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        MediaQuery(
+                          data: MediaQuery.of(context).copyWith(
+                            textScaler: TextScaler.linear(
+                              MediaQuery.textScalerOf(
+                                context,
+                              ).scale(1.0).clamp(1.0, 1.3),
+                            ),
+                          ),
+                          child: Text(
+                            _formatLastSeen(_resolveLastSeen(contact)),
+                            maxLines: 1,
+                            textAlign: TextAlign.right,
+                            style: MeshTheme.mono(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    // Short pub key
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            contact.shortPubKeyHex,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: MeshTheme.mono(
+                              fontSize: 11,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                        if (contact.hasLocation) ...[
+                          const SizedBox(width: 6),
+                          Icon(
+                            Icons.location_on,
+                            size: 13,
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.55,
+                            ),
+                          ),
+                        ],
+                        if (contact.rawPacket != null) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.cell_tower,
+                            size: 13,
+                            color: scheme.onSurfaceVariant.withValues(
+                              alpha: 0.55,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 6),
+                        RouteChip(
+                          isDirect: isDirect,
+                          hops: isDirect ? routeHops : null,
+                          showDirectIcon: false,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

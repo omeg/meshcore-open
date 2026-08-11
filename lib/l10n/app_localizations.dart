@@ -2038,6 +2038,18 @@ abstract class AppLocalizations {
   /// **'Delete Contact'**
   String get contacts_deleteContact;
 
+  /// No description provided for @contacts_deleteAllContacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete All Contacts'**
+  String get contacts_deleteAllContacts;
+
+  /// No description provided for @contacts_deleteAllContactsConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to delete all contacts? This cannot be undone.'**
+  String get contacts_deleteAllContactsConfirm;
+
   /// No description provided for @contacts_removeConfirm.
   ///
   /// In en, this message translates to:

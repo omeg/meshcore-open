@@ -486,6 +486,8 @@
   "contacts_noUnreadContacts": "No unread contacts",
   "contacts_noContactsFound": "No contacts or groups found",
   "contacts_deleteContact": "Delete Contact",
+  "contacts_deleteAllContacts": "Delete All Contacts",
+  "contacts_deleteAllContactsConfirm": "Are you sure you want to delete all contacts? This cannot be undone.",
   "contacts_removeConfirm": "Remove {contactName} from contacts?",
   "@contacts_removeConfirm": {
     "placeholders": {

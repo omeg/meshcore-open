@@ -27,6 +27,7 @@ import '../utils/route_transitions.dart';
 import '../helpers/path_hash.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/desktop_delete_shortcut.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/quick_switch_bar.dart';
 import '../widgets/remote_node_auth.dart';
@@ -485,6 +486,33 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ],
                   ),
                   onTap: () => _copySelfShareLink(connector),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  enabled: connector.contacts.isNotEmpty,
+                  onTap: () => _confirmDeleteAllContacts(context, connector),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.delete_sweep,
+                        color: connector.contacts.isNotEmpty
+                            ? Theme.of(context).colorScheme.error
+                            : null,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          context.l10n.contacts_deleteAllContacts,
+                          overflow: TextOverflow.ellipsis,
+                          style: connector.contacts.isNotEmpty
+                              ? TextStyle(
+                                  color: Theme.of(context).colorScheme.error,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const PopupMenuDivider(),
                 PopupMenuItem(
@@ -985,6 +1013,9 @@ class _ContactsScreenState extends State<ContactsScreen>
                         contact,
                       );
                       return _ContactTileEntrance(
+                        key: ValueKey(
+                          'contact_delete_shortcut_${contact.publicKeyHex}',
+                        ),
                         index: index,
                         contact: contact,
                         lastSeen: _resolveLastSeen(contact),
@@ -993,6 +1024,8 @@ class _ContactsScreenState extends State<ContactsScreen>
                         onTap: () => _openChat(context, contact),
                         onLongPress: () =>
                             _showContactOptions(context, connector, contact),
+                        onDelete: () =>
+                            _confirmDelete(context, connector, contact),
                       );
                     },
                   ),
@@ -1627,6 +1660,7 @@ class _ContactsScreenState extends State<ContactsScreen>
         content: Text(context.l10n.contacts_removeConfirm(contact.name)),
         actions: [
           TextButton(
+            autofocus: PlatformInfo.isDesktop,
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(context.l10n.common_cancel),
           ),
@@ -1644,6 +1678,36 @@ class _ContactsScreenState extends State<ContactsScreen>
       ),
     );
   }
+
+  void _confirmDeleteAllContacts(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(context.l10n.contacts_deleteAllContacts),
+        content: Text(context.l10n.contacts_deleteAllContactsConfirm),
+        actions: [
+          TextButton(
+            autofocus: PlatformInfo.isDesktop,
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(context.l10n.common_cancel),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              unawaited(connector.removeAllContacts());
+            },
+            child: Text(
+              context.l10n.common_deleteAll,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _ContactTile extends StatelessWidget {
@@ -1651,6 +1715,7 @@ class _ContactTile extends StatelessWidget {
   final DateTime lastSeen;
   final int unreadCount;
   final bool isFavorite;
+  final bool isSelected;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
 
@@ -1659,6 +1724,7 @@ class _ContactTile extends StatelessWidget {
     required this.lastSeen,
     required this.unreadCount,
     required this.isFavorite,
+    required this.isSelected,
     required this.onTap,
     required this.onLongPress,
   });
@@ -1703,6 +1769,7 @@ class _ContactTile extends StatelessWidget {
     return GestureDetector(
       onSecondaryTapUp: PlatformInfo.isDesktop ? (_) => onLongPress() : null,
       child: MeshCard(
+        borderColor: isSelected ? scheme.primary : null,
         onTap: onTap,
         onLongPress: onLongPress,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -1866,8 +1933,10 @@ class _ContactTileEntrance extends StatelessWidget {
   final bool isFavorite;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
+  final VoidCallback onDelete;
 
   const _ContactTileEntrance({
+    super.key,
     required this.index,
     required this.contact,
     required this.lastSeen,
@@ -1875,19 +1944,24 @@ class _ContactTileEntrance extends StatelessWidget {
     required this.isFavorite,
     required this.onTap,
     required this.onLongPress,
+    required this.onDelete,
   });
 
   @override
   Widget build(BuildContext context) {
     return ListEntrance(
       index: index,
-      child: _ContactTile(
-        contact: contact,
-        lastSeen: lastSeen,
-        unreadCount: unreadCount,
-        isFavorite: isFavorite,
-        onTap: onTap,
-        onLongPress: onLongPress,
+      child: DesktopDeleteShortcut(
+        onDelete: onDelete,
+        builder: (context, selected) => _ContactTile(
+          contact: contact,
+          lastSeen: lastSeen,
+          unreadCount: unreadCount,
+          isFavorite: isFavorite,
+          isSelected: selected,
+          onTap: onTap,
+          onLongPress: onLongPress,
+        ),
       ),
     );
   }

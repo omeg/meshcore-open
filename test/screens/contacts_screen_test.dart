@@ -22,6 +22,8 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   final Contact contact;
   Uint8List? sentFrame;
+  Contact? removedContact;
+  bool removeAllContactsCalled = false;
   final Uint8List _selfKey = Uint8List.fromList(
     List<int>.filled(pubKeySize, 0xA5),
   );
@@ -58,6 +60,16 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
     bool waitForGenericAck = false,
   }) async {
     sentFrame = Uint8List.fromList(data);
+  }
+
+  @override
+  Future<void> removeContact(Contact contact) async {
+    removedContact = contact;
+  }
+
+  @override
+  Future<void> removeAllContacts() async {
+    removeAllContactsCalled = true;
   }
 }
 
@@ -132,6 +144,109 @@ void main() {
     final link = MeshCoreShareLink.tryParse(clipboardText!);
     expect(link, isA<MeshCoreContactShareLink>());
     expect((link! as MeshCoreContactShareLink).name, 'My Companion');
+  });
+
+  testWidgets('Delete key confirms removal of the selected contact', (
+    tester,
+  ) async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Selected Contact',
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: DateTime.now(),
+    );
+    final connector = _FakeMeshCoreConnector(contact);
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+
+    final shortcut = find.byKey(
+      ValueKey('contact_delete_shortcut_${contact.publicKeyHex}'),
+    );
+    final focus = tester
+        .widgetList<Focus>(
+          find.descendant(of: shortcut, matching: find.byType(Focus)),
+        )
+        .firstWhere((widget) => widget.focusNode != null);
+    focus.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ContactsScreen)),
+    );
+    expect(
+      find.text(l10n.contacts_removeConfirm(contact.name)),
+      findsOneWidget,
+    );
+    expect(connector.removedContact, isNull);
+
+    final cancelButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, l10n.common_cancel),
+    );
+    expect(cancelButton.autofocus, isTrue);
+    expect(
+      FocusManager.instance.primaryFocus?.context
+          ?.findAncestorWidgetOfExactType<TextButton>(),
+      same(cancelButton),
+    );
+
+    await tester.tap(find.text(l10n.common_delete));
+    await tester.pumpAndSettle();
+
+    expect(connector.removedContact, same(contact));
+  });
+
+  testWidgets('contacts menu confirms before deleting all contacts', (
+    tester,
+  ) async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Contact',
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: DateTime.now(),
+    );
+    final connector = _FakeMeshCoreConnector(contact);
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+
+    final screenContext = tester.element(find.byType(ContactsScreen));
+    final l10n = AppLocalizations.of(screenContext);
+    await tester.tap(find.byTooltip(l10n.contacts_moreOptions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.contacts_deleteAllContacts));
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.contacts_deleteAllContactsConfirm), findsOneWidget);
+    expect(connector.removeAllContactsCalled, isFalse);
+
+    final cancelButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, l10n.common_cancel),
+    );
+    expect(cancelButton.autofocus, isTrue);
+
+    await tester.tap(find.text(l10n.common_cancel));
+    await tester.pumpAndSettle();
+    expect(connector.removeAllContactsCalled, isFalse);
+
+    await tester.tap(find.byTooltip(l10n.contacts_moreOptions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.contacts_deleteAllContacts));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.common_deleteAll));
+    await tester.pumpAndSettle();
+
+    expect(connector.removeAllContactsCalled, isTrue);
   });
 
   testWidgets('contact menu opens telemetry and requests contact telemetry', (

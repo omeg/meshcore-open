@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +19,7 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   final List<Contact> discoveredContactsValue;
   Contact? importedContact;
+  Contact? removedContact;
 
   @override
   List<Contact> get discoveredContacts => discoveredContactsValue;
@@ -28,6 +28,11 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   Future<bool> importDiscoveredContact(Contact contact) async {
     importedContact = contact;
     return true;
+  }
+
+  @override
+  Future<void> removeDiscoveredContact(Contact contact) async {
+    removedContact = contact;
   }
 }
 
@@ -92,6 +97,40 @@ void main() {
     expect(newestY, lessThan(middleY));
     expect(middleY, lessThan(oldestY));
     expect(oldestY, lessThan(invalidFutureY));
+  });
+
+  testWidgets('Delete key removes the selected discovered contact', (
+    tester,
+  ) async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Selected Discovery',
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: DateTime.now(),
+    );
+    final connector = _FakeMeshCoreConnector(contact);
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+
+    final shortcut = find.byKey(
+      ValueKey('discovered_contact_delete_shortcut_${contact.publicKeyHex}'),
+    );
+    final focus = tester
+        .widgetList<Focus>(
+          find.descendant(of: shortcut, matching: find.byType(Focus)),
+        )
+        .firstWhere((widget) => widget.focusNode != null);
+    focus.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pump();
+
+    expect(connector.removedContact, same(contact));
   });
 
   testWidgets('discovered contact context menu can add the contact', (

@@ -1088,6 +1088,13 @@ class AppLocalizationsPt extends AppLocalizations {
   String get contacts_deleteContact => 'Excluir Contato';
 
   @override
+  String get contacts_deleteAllContacts => 'Delete All Contacts';
+
+  @override
+  String get contacts_deleteAllContactsConfirm =>
+      'Are you sure you want to delete all contacts? This cannot be undone.';
+
+  @override
   String contacts_removeConfirm(String contactName) {
     return 'Remover $contactName dos contatos?';
   }

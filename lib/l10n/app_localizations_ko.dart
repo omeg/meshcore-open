@@ -1035,6 +1035,13 @@ class AppLocalizationsKo extends AppLocalizations {
   String get contacts_deleteContact => '연락처 삭제';
 
   @override
+  String get contacts_deleteAllContacts => 'Delete All Contacts';
+
+  @override
+  String get contacts_deleteAllContactsConfirm =>
+      'Are you sure you want to delete all contacts? This cannot be undone.';
+
+  @override
   String contacts_removeConfirm(String contactName) {
     return '$contactName를 연락처 목록에서 제거하시겠습니까?';
   }

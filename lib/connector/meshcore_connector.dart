@@ -3973,6 +3973,14 @@ class MeshCoreConnector extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeAllContacts() async {
+    for (final contact in List<Contact>.from(_contacts)) {
+      await removeContact(contact);
+    }
+    await _persistContacts();
+    await _persistDiscoveredContacts();
+  }
+
   Future<void> updateKnownDiscovered() async {
     if (!isConnected) return;
     for (int i = 0; i < _discoveredContacts.length; i++) {
