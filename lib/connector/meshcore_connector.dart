@@ -194,6 +194,10 @@ enum MeshCoreConnectionState {
 
 enum MeshCoreTransportType { bluetooth, usb, tcp }
 
+class _BleConnectCancelled implements Exception {
+  const _BleConnectCancelled();
+}
+
 class RepeaterBatterySnapshot {
   final int millivolts;
   final DateTime updatedAt;
@@ -267,6 +271,7 @@ class MeshCoreConnector extends ChangeNotifier {
   Timer? _notifyListenersTimer;
   Timer? _selfInfoRetryTimer;
   Timer? _reconnectTimer;
+  Completer<void>? _bleConnectCancellation;
   Timer? _batteryPollTimer;
   Timer? _gpsLocationPollTimer;
   static const _gpsLocationPollInterval = Duration(minutes: 1);
@@ -2050,6 +2055,30 @@ class MeshCoreConnector extends ChangeNotifier {
         activeTransport == MeshCoreTransportType.tcp;
   }
 
+  @visibleForTesting
+  static bool shouldIgnoreLateBleConnectError({
+    required bool manualDisconnect,
+    required MeshCoreConnectionState state,
+    required MeshCoreTransportType activeTransport,
+  }) {
+    return manualDisconnect &&
+        (state == MeshCoreConnectionState.disconnected ||
+            state == MeshCoreConnectionState.disconnecting ||
+            activeTransport != MeshCoreTransportType.bluetooth);
+  }
+
+  @visibleForTesting
+  static Future<T> withBleOperationHardTimeout<T>(
+    Future<T> operation, {
+    required Duration timeout,
+    required String timeoutMessage,
+  }) {
+    return operation.timeout(
+      timeout,
+      onTimeout: () => throw TimeoutException(timeoutMessage),
+    );
+  }
+
   /// Fast (non-timeout) connect failures are usually a stale link left over
   /// from a previous session and recover on an immediate retry. Timeouts mean
   /// the device is likely off or out of range, so retrying would only delay
@@ -2065,6 +2094,7 @@ class MeshCoreConnector extends ChangeNotifier {
     BluetoothDevice device, {
     String? displayName,
     Future<String?> Function()? linuxPairingPinProvider,
+    bool autoReconnectOnFailure = false,
   }) async {
     if (_state == MeshCoreConnectionState.connecting ||
         _state == MeshCoreConnectionState.connected) {
@@ -2089,6 +2119,29 @@ class MeshCoreConnector extends ChangeNotifier {
     _cancelReconnectTimer();
     _bleInitialSyncStarted = false;
     _resetConnectionHandshakeState();
+    final connectCancellation = Completer<void>();
+    _bleConnectCancellation = connectCancellation;
+
+    Future<T> cancellableConnectStage<T>(
+      Future<T> operation, {
+      Duration? desktopTimeout,
+      String? timeoutMessage,
+    }) {
+      final boundedOperation = PlatformInfo.isDesktop && desktopTimeout != null
+          ? withBleOperationHardTimeout(
+              operation,
+              timeout: desktopTimeout,
+              timeoutMessage: timeoutMessage ?? 'BLE operation timed out',
+            )
+          : operation;
+      return Future.any<T>([
+        boundedOperation,
+        connectCancellation.future.then<T>(
+          (_) => throw const _BleConnectCancelled(),
+        ),
+      ]);
+    }
+
     unawaited(_backgroundService?.start());
     notifyListeners();
 
@@ -2142,20 +2195,20 @@ class MeshCoreConnector extends ChangeNotifier {
       if (PlatformInfo.isLinux) {
         Future<void> attemptConnect() async {
           try {
-            await device
-                .connect(
+            await cancellableConnectStage(
+              withBleOperationHardTimeout(
+                device.connect(
                   timeout: connectTimeout,
                   mtu: null,
                   license: License.nonprofit,
-                )
-                .timeout(
-                  connectTimeout + const Duration(seconds: 2),
-                  onTimeout: () {
-                    throw TimeoutException(
-                      'Linux connect hard-timeout after ${connectTimeout.inSeconds + 2}s',
-                    );
-                  },
-                );
+                ),
+                timeout: connectTimeout + const Duration(seconds: 2),
+                timeoutMessage:
+                    'Linux connect hard-timeout after ${connectTimeout.inSeconds + 2}s',
+              ),
+            );
+          } on _BleConnectCancelled {
+            rethrow;
           } catch (_) {
             // The hard-timeout backstop (or BlueZ) abandoned device.connect(),
             // but the underlying BlueZ connect can still be pending. Cancel it
@@ -2176,6 +2229,7 @@ class MeshCoreConnector extends ChangeNotifier {
         try {
           await attemptConnect();
         } catch (error) {
+          if (error is _BleConnectCancelled) rethrow;
           _appDebugLogService?.error(
             'device.connect() failure: $error',
             tag: 'BLE Connect',
@@ -2199,6 +2253,7 @@ class MeshCoreConnector extends ChangeNotifier {
               tag: 'BLE Connect',
             );
           } catch (retryError, retryStackTrace) {
+            if (retryError is _BleConnectCancelled) rethrow;
             Object finalConnectError = retryError;
             StackTrace finalConnectStackTrace = retryStackTrace;
             final retryErrorText = retryError.toString().toLowerCase();
@@ -2220,6 +2275,7 @@ class MeshCoreConnector extends ChangeNotifier {
                 );
                 recoveredOnThirdAttempt = true;
               } catch (thirdError, thirdStackTrace) {
+                if (thirdError is _BleConnectCancelled) rethrow;
                 finalConnectError = thirdError;
                 finalConnectStackTrace = thirdStackTrace;
                 _appDebugLogService?.error(
@@ -2229,10 +2285,12 @@ class MeshCoreConnector extends ChangeNotifier {
               }
             }
             if (!recoveredOnThirdAttempt) {
-              final recoveredByPairing = await _recoverLinuxConnectFailure(
-                device,
-                attemptConnect: attemptConnect,
-                onRequestPin: linuxPairingPinProvider,
+              final recoveredByPairing = await cancellableConnectStage(
+                _recoverLinuxConnectFailure(
+                  device,
+                  attemptConnect: attemptConnect,
+                  onRequestPin: linuxPairingPinProvider,
+                ),
               );
               if (recoveredByPairing) {
                 _appDebugLogService?.info(
@@ -2253,12 +2311,21 @@ class MeshCoreConnector extends ChangeNotifier {
           }
         }
       } else {
-        Future<void> attemptConnect() {
-          return device.connect(
+        Future<void> attemptConnect() async {
+          final operation = device.connect(
             timeout: connectTimeout,
             mtu: null,
             license: License.nonprofit,
           );
+          final boundedOperation = PlatformInfo.isDesktop
+              ? withBleOperationHardTimeout(
+                  operation,
+                  timeout: connectTimeout + const Duration(seconds: 2),
+                  timeoutMessage:
+                      'BLE connect hard-timeout after ${connectTimeout.inSeconds + 2}s',
+                )
+              : operation;
+          await cancellableConnectStage(boundedOperation);
         }
 
         // A previous app session (e.g. killed from the iOS app switcher) can
@@ -2282,6 +2349,7 @@ class MeshCoreConnector extends ChangeNotifier {
         try {
           await attemptConnect();
         } catch (error) {
+          if (error is _BleConnectCancelled) rethrow;
           _appDebugLogService?.error(
             'device.connect() failure: $error',
             tag: 'BLE Connect',
@@ -2312,6 +2380,7 @@ class MeshCoreConnector extends ChangeNotifier {
               tag: 'BLE Connect',
             );
           } catch (retryError) {
+            if (retryError is _BleConnectCancelled) rethrow;
             _appDebugLogService?.error(
               'device.connect() retry failure: $retryError',
               tag: 'BLE Connect',
@@ -2322,17 +2391,22 @@ class MeshCoreConnector extends ChangeNotifier {
       }
 
       if (PlatformInfo.isLinux) {
-        await _ensureLinuxBleBond(
-          device,
-          onRequestPin: linuxPairingPinProvider,
+        await cancellableConnectStage(
+          _ensureLinuxBleBond(device, onRequestPin: linuxPairingPinProvider),
         );
       }
 
       // Request larger MTU only where the platform path supports it.
       if (!PlatformInfo.isWeb && !PlatformInfo.isLinux) {
         try {
-          final mtu = await device.requestMtu(185);
+          final mtu = await cancellableConnectStage(
+            device.requestMtu(185),
+            desktopTimeout: const Duration(seconds: 10),
+            timeoutMessage: 'BLE MTU request hard-timeout after 10s',
+          );
           _appDebugLogService?.info('MTU set to: $mtu', tag: 'BLE Connect');
+        } on _BleConnectCancelled {
+          rethrow;
         } catch (e) {
           _appDebugLogService?.warn(
             'MTU request failed: $e, using default',
@@ -2348,7 +2422,11 @@ class MeshCoreConnector extends ChangeNotifier {
 
       late final List<BluetoothService> services;
       try {
-        services = await device.discoverServices();
+        services = await cancellableConnectStage(
+          device.discoverServices(),
+          desktopTimeout: const Duration(seconds: 15),
+          timeoutMessage: 'BLE service discovery hard-timeout after 15s',
+        );
       } catch (error) {
         _appDebugLogService?.error(
           'service discovery failure: $error',
@@ -2368,7 +2446,7 @@ class MeshCoreConnector extends ChangeNotifier {
             mtu: null,
             license: License.nonprofit,
           );
-          services = await device.discoverServices();
+          services = await cancellableConnectStage(device.discoverServices());
         } else {
           rethrow;
         }
@@ -2433,8 +2511,14 @@ class MeshCoreConnector extends ChangeNotifier {
             if (attempt > 0) {
               await Future.delayed(Duration(milliseconds: 500 * attempt));
             }
-            await _txCharacteristic!.setNotifyValue(true);
+            await cancellableConnectStage(
+              _txCharacteristic!.setNotifyValue(true),
+              desktopTimeout: const Duration(seconds: 10),
+              timeoutMessage: 'BLE notification setup hard-timeout after 10s',
+            );
             notifySet = true;
+          } on _BleConnectCancelled {
+            rethrow;
           } catch (e) {
             _appDebugLogService?.warn('notify failure: $e', tag: 'BLE Connect');
             _appDebugLogService?.warn(
@@ -2449,6 +2533,9 @@ class MeshCoreConnector extends ChangeNotifier {
         _handleFrame,
       );
 
+      if (connectCancellation.isCompleted) {
+        throw const _BleConnectCancelled();
+      }
       _setState(MeshCoreConnectionState.connected);
       if (_shouldGateInitialChannelSync) {
         _hasReceivedDeviceInfo = false;
@@ -2457,6 +2544,20 @@ class MeshCoreConnector extends ChangeNotifier {
       await _startBleInitialSync();
     } catch (e) {
       _appDebugLogService?.error('Connection error: $e', tag: 'BLE Connect');
+      final connectWasCancelled =
+          e is _BleConnectCancelled ||
+          shouldIgnoreLateBleConnectError(
+            manualDisconnect: _manualDisconnect,
+            state: _state,
+            activeTransport: _activeTransport,
+          );
+      if (connectWasCancelled) {
+        _appDebugLogService?.info(
+          'BLE connection attempt cancelled by user',
+          tag: 'BLE Connect',
+        );
+        return;
+      }
       final errorText = e.toString();
       final lowerErrorText = errorText.toLowerCase();
       final isLinuxPairingFailure =
@@ -2494,11 +2595,18 @@ class MeshCoreConnector extends ChangeNotifier {
             },
           );
         }
-        await disconnect(manual: false, skipBleDeviceDisconnect: true);
+        await disconnect(
+          manual: !autoReconnectOnFailure,
+          skipBleDeviceDisconnect: true,
+        );
       } else {
-        await disconnect(manual: false);
+        await disconnect(manual: !autoReconnectOnFailure);
       }
       rethrow;
+    } finally {
+      if (identical(_bleConnectCancellation, connectCancellation)) {
+        _bleConnectCancellation = null;
+      }
     }
   }
 
@@ -2544,6 +2652,7 @@ class MeshCoreConnector extends ChangeNotifier {
     try {
       await attemptConnect();
     } catch (error, stackTrace) {
+      if (error is _BleConnectCancelled) rethrow;
       Error.throwWithStackTrace(_wrapLinuxConnectStageError(error), stackTrace);
     }
     return true;
@@ -2830,7 +2939,11 @@ class MeshCoreConnector extends ChangeNotifier {
       if (device == null) return;
 
       try {
-        await connect(device, displayName: _lastDeviceDisplayName);
+        await connect(
+          device,
+          displayName: _lastDeviceDisplayName,
+          autoReconnectOnFailure: true,
+        );
       } catch (_) {
         _scheduleReconnect();
       }
@@ -2843,6 +2956,11 @@ class MeshCoreConnector extends ChangeNotifier {
   }) async {
     if (_state == MeshCoreConnectionState.disconnecting) return;
     final transportAtDisconnect = _activeTransport;
+    if (transportAtDisconnect == MeshCoreTransportType.bluetooth &&
+        _state == MeshCoreConnectionState.connecting &&
+        !(_bleConnectCancellation?.isCompleted ?? true)) {
+      _bleConnectCancellation!.complete();
+    }
     final transportLabel = switch (transportAtDisconnect) {
       MeshCoreTransportType.bluetooth => 'BLE',
       MeshCoreTransportType.usb => 'USB',
@@ -2888,7 +3006,18 @@ class MeshCoreConnector extends ChangeNotifier {
     if (!skipBleDeviceDisconnect) {
       try {
         // Skip queued BLE operations so disconnect doesn't get stuck behind them.
-        await _device?.disconnect(queue: false);
+        final operation = _device?.disconnect(queue: false);
+        if (operation != null) {
+          if (PlatformInfo.isDesktop) {
+            await withBleOperationHardTimeout(
+              operation,
+              timeout: const Duration(seconds: 5),
+              timeoutMessage: 'BLE disconnect hard-timeout after 5s',
+            );
+          } else {
+            await operation;
+          }
+        }
       } catch (e) {
         _appDebugLogService?.warn('Disconnect error: $e', tag: 'BLE Connect');
       }

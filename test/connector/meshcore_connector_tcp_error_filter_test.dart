@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
@@ -232,6 +234,49 @@ void main() {
       );
 
       expect(result, isFalse);
+    });
+  });
+
+  group('BLE connect cancellation and hard timeout', () {
+    test('ignores a late BLE error after manual cancellation', () {
+      expect(
+        MeshCoreConnector.shouldIgnoreLateBleConnectError(
+          manualDisconnect: true,
+          state: MeshCoreConnectionState.disconnected,
+          activeTransport: MeshCoreTransportType.bluetooth,
+        ),
+        isTrue,
+      );
+    });
+
+    test('does not ignore a genuine BLE connection failure', () {
+      expect(
+        MeshCoreConnector.shouldIgnoreLateBleConnectError(
+          manualDisconnect: false,
+          state: MeshCoreConnectionState.connecting,
+          activeTransport: MeshCoreTransportType.bluetooth,
+        ),
+        isFalse,
+      );
+    });
+
+    test('hard timeout completes a stuck BLE operation with an error', () {
+      final stuckOperation = Completer<void>();
+
+      expect(
+        MeshCoreConnector.withBleOperationHardTimeout(
+          stuckOperation.future,
+          timeout: const Duration(milliseconds: 1),
+          timeoutMessage: 'BLE operation timed out',
+        ),
+        throwsA(
+          isA<TimeoutException>().having(
+            (error) => error.message,
+            'message',
+            'BLE operation timed out',
+          ),
+        ),
+      );
     });
   });
 }

@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../l10n/l10n.dart';
-import '../services/linux_ble_error_classifier.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/app_logger.dart';
 import '../widgets/adaptive_app_bar_title.dart';
@@ -106,22 +105,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
         BluetoothDevice.fromId(address),
         displayName: address,
         linuxPairingPinProvider: () async {
-          if (!mounted) return null;
+          if (!mounted ||
+              _connector.state != MeshCoreConnectionState.connecting ||
+              _connector.deviceId?.toLowerCase() != address.toLowerCase()) {
+            return null;
+          }
           return _promptLinuxPairingPin(context, address);
         },
       );
     } catch (e) {
       final errorText = e.toString();
-      final suppressTransientLinuxConnectError =
-          _connector.isAutoReconnectScheduled &&
-          isLinuxBleConnectFailureText(errorText);
-      if (suppressTransientLinuxConnectError) {
-        appLogger.info(
-          'Suppressing transient Linux direct-connect error while auto-reconnect is active: $e',
-          tag: 'ScannerScreen',
-        );
-        return;
-      }
       appLogger.warn(
         'BLE address command-line connect failed: $e',
         tag: 'ScannerScreen',
@@ -224,11 +217,20 @@ class _ScannerScreenState extends State<ScannerScreen> {
         builder: (context, connector, child) {
           final isScanning =
               connector.state == MeshCoreConnectionState.scanning;
+          final isConnecting =
+              connector.state == MeshCoreConnectionState.connecting;
+          final isDisconnecting =
+              connector.state == MeshCoreConnectionState.disconnecting;
           final isBluetoothOff = _bluetoothState == BluetoothAdapterState.off;
 
           return FloatingActionButton.extended(
             heroTag: 'scanner_ble_action',
-            onPressed: isBluetoothOff
+            onPressed: isConnecting
+                ? () {
+                    HapticFeedback.lightImpact();
+                    unawaited(_cancelConnection(connector));
+                  }
+                : isBluetoothOff || isDisconnecting
                 ? null
                 : () {
                     HapticFeedback.lightImpact();
@@ -238,7 +240,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
               duration: const Duration(milliseconds: 220),
               transitionBuilder: (child, anim) =>
                   ScaleTransition(scale: anim, child: child),
-              child: isScanning
+              child: isConnecting
+                  ? const Icon(Icons.close, key: ValueKey('cancel_connect'))
+                  : isScanning
                   ? SizedBox(
                       key: const ValueKey('scanning'),
                       width: 20,
@@ -256,12 +260,31 @@ class _ScannerScreenState extends State<ScannerScreen> {
             label: Text(
               isScanning
                   ? context.l10n.scanner_stop
+                  : isConnecting
+                  ? context.l10n.common_cancel
                   : context.l10n.scanner_scan,
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _cancelConnection(MeshCoreConnector connector) async {
+    try {
+      await connector.disconnect(manual: true);
+    } catch (error) {
+      appLogger.warn(
+        'Failed to cancel BLE connection attempt: $error',
+        tag: 'ScannerScreen',
+      );
+      if (!mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.scanner_connectionFailed(error.toString())),
+        backgroundColor: Theme.of(context).colorScheme.error,
+      );
+    }
   }
 
   void _toggleScan(MeshCoreConnector connector) {
@@ -350,24 +373,16 @@ class _ScannerScreenState extends State<ScannerScreen> {
         displayName: name,
         linuxPairingPinProvider: PlatformInfo.isLinux
             ? () async {
-                if (!context.mounted) return null;
+                if (!context.mounted ||
+                    connector.state != MeshCoreConnectionState.connecting ||
+                    connector.deviceId != result.device.remoteId.toString()) {
+                  return null;
+                }
                 return _promptLinuxPairingPin(context, name);
               }
             : null,
       );
     } catch (e) {
-      final errorText = e.toString();
-      final suppressTransientLinuxConnectError =
-          PlatformInfo.isLinux &&
-          connector.isAutoReconnectScheduled &&
-          isLinuxBleConnectFailureText(errorText);
-      if (suppressTransientLinuxConnectError) {
-        appLogger.info(
-          'Suppressing transient Linux connect error while auto-reconnect is active: $e',
-          tag: 'ScannerScreen',
-        );
-        return;
-      }
       if (context.mounted) {
         showDismissibleSnackBar(
           context,

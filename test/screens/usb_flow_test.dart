@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
@@ -25,6 +28,8 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   String? fakeActiveUsbPort;
   String? fakeActiveUsbPortDisplayLabel;
   bool fakeUsbTransportConnected = false;
+  int disconnectCalls = 0;
+  Object? bleConnectError;
   Future<List<String>> Function()? listUsbPortsImpl;
   Future<void> Function({required String portName})? connectUsbImpl;
 
@@ -62,6 +67,25 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
     }
     connectUsbCalls += 1;
     lastConnectPortName = portName;
+  }
+
+  @override
+  Future<void> connect(
+    BluetoothDevice device, {
+    String? displayName,
+    Future<String?> Function()? linuxPairingPinProvider,
+    bool autoReconnectOnFailure = false,
+  }) async {
+    final error = bleConnectError;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<void> disconnect({
+    bool manual = true,
+    bool skipBleDeviceDisconnect = false,
+  }) async {
+    disconnectCalls += 1;
   }
 
   @override
@@ -196,6 +220,59 @@ void main() {
     if (!PlatformInfo.isWeb) {
       expect(find.byTooltip(l10n.connectionChoiceTcpLabel), findsOneWidget);
     }
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 60));
+  });
+
+  testWidgets('ScannerScreen offers cancel while BLE is connecting', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector(
+      initialState: MeshCoreConnectionState.connecting,
+    );
+
+    await tester.pumpWidget(
+      _buildTestApp(connector: connector, child: const ScannerScreen()),
+    );
+    await tester.pump();
+
+    final context = tester.element(find.byType(ScannerScreen));
+    final l10n = AppLocalizations.of(context);
+    final cancelButton = find.widgetWithText(
+      FloatingActionButton,
+      l10n.common_cancel,
+    );
+    expect(cancelButton, findsOneWidget);
+
+    await tester.tap(cancelButton);
+    await tester.pump();
+
+    expect(connector.disconnectCalls, 1);
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(milliseconds: 60));
+  });
+
+  testWidgets('ScannerScreen reports a direct BLE connection timeout', (
+    tester,
+  ) async {
+    if (!PlatformInfo.isLinux) return;
+    final connector = _FakeMeshCoreConnector()
+      ..bleConnectError = TimeoutException(
+        'BLE connect hard-timeout after 17s',
+      );
+
+    await tester.pumpWidget(
+      _buildTestApp(
+        connector: connector,
+        child: const ScannerScreen(initialBleAddress: 'AA:BB:CC:DD:EE:FF'),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.textContaining('BLE connect hard-timeout'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(milliseconds: 60));
