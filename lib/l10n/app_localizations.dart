@@ -724,6 +724,60 @@ abstract class AppLocalizations {
   /// **'Device Info'**
   String get settings_deviceInfo;
 
+  /// No description provided for @settings_identity.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity'**
+  String get settings_identity;
+
+  /// No description provided for @settings_changeIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Change Identity'**
+  String get settings_changeIdentity;
+
+  /// No description provided for @settings_changeIdentitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the companion\'s private identity key'**
+  String get settings_changeIdentitySubtitle;
+
+  /// No description provided for @settings_changeIdentityWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing the identity also changes this node\'s public key. Other nodes must rediscover it. App data stored under the current identity will be copied to the new identity, while the old identity\'s copy is retained.'**
+  String get settings_changeIdentityWarning;
+
+  /// No description provided for @settings_privateKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Private Key'**
+  String get settings_privateKey;
+
+  /// No description provided for @settings_privateKeyHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'64 bytes (128 hexadecimal characters)'**
+  String get settings_privateKeyHelper;
+
+  /// No description provided for @settings_privateKeyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid 64-byte private key using 128 hexadecimal characters.'**
+  String get settings_privateKeyInvalid;
+
+  /// No description provided for @settings_identityChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity changed'**
+  String get settings_identityChanged;
+
+  /// No description provided for @settings_identityChangeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not change identity: {message}'**
+  String settings_identityChangeFailed(String message);
+
   /// No description provided for @settings_appSettings.
   ///
   /// In en, this message translates to:

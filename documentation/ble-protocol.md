@@ -181,6 +181,8 @@ The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics(
 | 19 | CMD_REBOOT | Reboot device |
 | 20 | CMD_GET_BATT_AND_STORAGE | Query battery and storage |
 | 22 | CMD_DEVICE_QUERY | Query device info |
+| 23 | CMD_EXPORT_PRIVATE_KEY | Export the companion's 64-byte private identity, when enabled by firmware |
+| 24 | CMD_IMPORT_PRIVATE_KEY | Replace the companion's private identity with a 64-byte key, when enabled by firmware |
 | 26 | CMD_SEND_LOGIN | Login to repeater/room |
 | 27 | CMD_SEND_STATUS_REQ | Request repeater status |
 | 30 | CMD_GET_CONTACT_BY_KEY | Get contact by public key |
@@ -218,6 +220,8 @@ The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics(
 | 9 | RESP_CODE_CURR_TIME | Current device time |
 | 12 | RESP_CODE_BATT_AND_STORAGE | Battery mV (uint16 LE) + storage used/total (uint32 LE each) |
 | 13 | RESP_CODE_DEVICE_INFO | Firmware info |
+| 14 | RESP_CODE_PRIVATE_KEY | Exported 64-byte private identity |
+| 15 | RESP_CODE_DISABLED | Requested command is disabled by the firmware |
 | 16 | RESP_CODE_CONTACT_MSG_RECV_V3 | Incoming direct message (v3) |
 | 17 | RESP_CODE_CHANNEL_MSG_RECV_V3 | Incoming channel message (v3) |
 | 18 | RESP_CODE_CHANNEL_INFO | Channel definition |

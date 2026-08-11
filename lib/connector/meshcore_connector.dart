@@ -46,6 +46,7 @@ import '../storage/channel_store.dart';
 import '../storage/contact_discovery_store.dart';
 import '../storage/contact_settings_store.dart';
 import '../storage/contact_store.dart';
+import '../storage/identity_scope_migration.dart';
 import '../storage/message_store.dart';
 import '../storage/unread_store.dart';
 import '../utils/app_logger.dart';
@@ -331,6 +332,9 @@ class MeshCoreConnector extends ChangeNotifier {
   int _pollingInterval = 30;
   bool _batteryRequested = false;
   bool _awaitingSelfInfo = false;
+  bool _refreshContactsAfterSelfInfo = false;
+  String? _identityMigrationSourcePublicKeyHex;
+  Completer<void>? _identityScopeReloadCompleter;
   bool _hasReceivedDeviceInfo = false;
   // Initial sync is serialized for predictable progress. Firmware exposes one
   // FIFO queued-message stream, so direct/room frames are buffered until after
@@ -2848,6 +2852,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _selfLatitude = null;
     _selfLongitude = null;
     _awaitingSelfInfo = false;
+    _refreshContactsAfterSelfInfo = false;
+    _resetPendingIdentityMigration();
     _webInitialHandshakeRequestSent = false;
     _selfInfoRetryTimer?.cancel();
     _selfInfoRetryTimer = null;
@@ -3049,6 +3055,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _repeaterBatterySnapshots.clear();
     _batteryRequested = false;
     _awaitingSelfInfo = false;
+    _refreshContactsAfterSelfInfo = false;
+    _resetPendingIdentityMigration();
     _hasReceivedDeviceInfo = false;
     _maxContacts = _defaultMaxContacts;
     _maxChannels = _defaultMaxChannels;
@@ -3908,6 +3916,8 @@ class MeshCoreConnector extends ChangeNotifier {
       } else if (frame[0] == respCodeErr) {
         final errCode = frame.length > 1 ? frame[1] : -1;
         completeError(Exception('Command failed with error code $errCode'));
+      } else if (frame[0] == respCodeDisabled) {
+        completeError(UnsupportedError('Command is disabled by the firmware'));
       }
     });
 
@@ -4175,6 +4185,50 @@ class MeshCoreConnector extends ChangeNotifier {
     await sendFrame(buildSetAdvertNameFrame(name));
   }
 
+  Future<void> importPrivateKey(Uint8List privateKey) async {
+    if (!isConnected) {
+      throw StateError('Not connected to a MeshCore device');
+    }
+    if (_identityMigrationSourcePublicKeyHex != null) {
+      throw StateError('An identity change is already being finalized');
+    }
+
+    final previousPublicKeyHex = selfPublicKeyHex;
+    await _sendFrameAndWaitForCommandAck(
+      buildImportPrivateKeyFrame(privateKey),
+    );
+
+    // The firmware applies the identity immediately. Request SELF_INFO so all
+    // identity-scoped app data can be copied before stores load the new
+    // public-key scope.
+    final scopeReloadCompleter = Completer<void>();
+    _identityMigrationSourcePublicKeyHex = previousPublicKeyHex;
+    _identityScopeReloadCompleter = scopeReloadCompleter;
+    _awaitingSelfInfo = true;
+    _refreshContactsAfterSelfInfo = true;
+    final selfInfo = receivedFrames.firstWhere(
+      (frame) => frame.isNotEmpty && frame[0] == respCodeSelfInfo,
+    );
+    await sendFrame(buildAppStartFrame());
+    try {
+      await selfInfo.timeout(_commandAckTimeout);
+      try {
+        await scopeReloadCompleter.future.timeout(_commandAckTimeout);
+      } on TimeoutException {
+        _appDebugLogService?.warn(
+          'Identity changed, but its app data is still being loaded',
+          tag: 'Storage',
+        );
+      }
+    } on TimeoutException {
+      _appDebugLogService?.warn(
+        'Identity changed, but refreshed SELF_INFO was not received in time',
+        tag: 'Protocol',
+      );
+      _scheduleSelfInfoRetry();
+    }
+  }
+
   Future<void> setNodeLocation({
     required double lat,
     required double lon,
@@ -4335,32 +4389,13 @@ class MeshCoreConnector extends ChangeNotifier {
       _channelSyncInFlight = false;
       unawaited(_requestNextChannel());
     } else {
-      // Max retries reached for this channel, restore from cache and move to next
+      // A device that does not answer channel requests would otherwise spend
+      // this timeout budget on every reported slot (many minutes on radios
+      // with 40 slots). Abort this sync and keep whatever cache is available.
       debugPrint(
-        '[ChannelSync] Max retries reached for channel $channelIndex, attempting cache restore',
+        '[ChannelSync] Max retries reached for channel $channelIndex, aborting sync',
       );
-
-      // Try to restore this channel from cache
-      try {
-        final cachedChannel = _previousChannelsCache.firstWhere(
-          (c) => c.index == channelIndex,
-        );
-        if (!cachedChannel.isEmpty) {
-          _channels.add(cachedChannel);
-          debugPrint(
-            '[ChannelSync] Restored channel $channelIndex (${cachedChannel.name}) from cache',
-          );
-        }
-      } catch (e) {
-        // No cached channel found, that's okay
-      }
-
-      // Move to next channel
-      _nextChannelIndexToRequest++;
-      _channelSyncRetries = 0;
-      _channelSyncInFlight = false;
-      notifyListeners();
-      unawaited(_requestNextChannel());
+      _cleanupChannelSync(completed: false);
     }
   }
 
@@ -4425,22 +4460,77 @@ class MeshCoreConnector extends ChangeNotifier {
   Future<void> setChannel(int index, String name, Uint8List psk) async {
     if (!isConnected) return;
 
-    await sendFrame(buildSetChannelFrame(index, name, psk));
-    // Refresh channels after setting
-    await getChannels(force: true);
+    final normalizedPsk = Uint8List(16);
+    normalizedPsk.setRange(0, math.min(psk.length, normalizedPsk.length), psk);
+
+    // The firmware persists the channel before returning RESP_CODE_OK. Wait for
+    // that acknowledgement so a rejected or dropped write is never presented
+    // as a successful channel addition. The acknowledged values are sufficient
+    // to update the local list; enumerating every channel slot here made a
+    // single edit unnecessarily slow on devices with many sparse slots.
+    await sendFrame(
+      buildSetChannelFrame(index, name, normalizedPsk),
+      waitForGenericAck: true,
+    );
+
+    final existingIndex = _channels.indexWhere(
+      (channel) => channel.index == index,
+    );
+    final cachedIndex = _cachedChannels.indexWhere(
+      (channel) => channel.index == index,
+    );
+    final unreadCount = existingIndex >= 0
+        ? _channels[existingIndex].unreadCount
+        : cachedIndex >= 0
+        ? _cachedChannels[cachedIndex].unreadCount
+        : 0;
+    final channel = Channel(
+      index: index,
+      name: name,
+      psk: normalizedPsk,
+      unreadCount: unreadCount,
+    );
+
+    if (channel.isEmpty) {
+      _channels.removeWhere((existing) => existing.index == index);
+      _cachedChannels.removeWhere((existing) => existing.index == index);
+    } else {
+      if (existingIndex >= 0) {
+        _channels[existingIndex] = channel;
+      } else {
+        _channels.add(channel);
+      }
+      if (cachedIndex >= 0) {
+        _cachedChannels[cachedIndex] = channel;
+      } else {
+        _cachedChannels.add(channel);
+      }
+    }
+
+    _applyChannelOrder();
+    _cachedChannels.sort((a, b) => a.index.compareTo(b.index));
+    _recalculateCachedChannelsUnreadTotal();
+    await _channelStore.saveChannels(_channels);
+    notifyListeners();
   }
 
   Future<void> deleteChannel(int index) async {
     if (!isConnected) return;
 
     // Delete by setting empty name and zero PSK
-    await sendFrame(buildSetChannelFrame(index, '', Uint8List(16)));
+    await sendFrame(
+      buildSetChannelFrame(index, '', Uint8List(16)),
+      waitForGenericAck: true,
+    );
     // Clear stored messages for this channel
     await _channelMessageStore.clearChannelMessages(index);
     // Clear in-memory messages for this channel
     _channelMessages.remove(index);
-    // Refresh channels after deleting
-    await getChannels(force: true);
+    _channels.removeWhere((channel) => channel.index == index);
+    _cachedChannels.removeWhere((channel) => channel.index == index);
+    _recalculateCachedChannelsUnreadTotal();
+    await _channelStore.saveChannels(_channels);
+    notifyListeners();
   }
 
   void _handleFrame(List<int> data) {
@@ -4461,6 +4551,11 @@ class MeshCoreConnector extends ChangeNotifier {
         break;
       case respCodeDeviceInfo:
         _handleDeviceInfo(frame);
+        break;
+      // These responses are consumed by command-specific receivedFrames
+      // listeners rather than the connector's central state handler.
+      case respCodePrivateKey:
+      case respCodeDisabled:
         break;
       case respCodeSelfInfo:
         debugPrint('Got SELF_INFO');
@@ -4599,6 +4694,20 @@ class MeshCoreConnector extends ChangeNotifier {
   @visibleForTesting
   void handleFrameForTesting(List<int> data) => _handleFrame(data);
 
+  @visibleForTesting
+  void startChannelSyncForTesting({
+    int channelIndex = 0,
+    int totalChannels = 1,
+  }) {
+    _state = MeshCoreConnectionState.connected;
+    _isLoadingChannels = true;
+    _isSyncingChannels = true;
+    _channelSyncInFlight = true;
+    _nextChannelIndexToRequest = channelIndex;
+    _totalChannelsToRequest = totalChannels;
+    _channelSyncRetries = 0;
+  }
+
   void _handleAdvertSeen(Uint8List frame) {
     if (frame.length < 1 + pubKeySize) return;
 
@@ -4622,6 +4731,25 @@ class MeshCoreConnector extends ChangeNotifier {
 
   void _handleErrorFrame(Uint8List frame) {
     final errCode = frame.length > 1 ? frame[1] : -1;
+
+    // Companion firmware reports an unused channel slot as NOT_FOUND rather
+    // than sending an empty CHANNEL_INFO frame. Treat that response as a
+    // completed slot so sparse channel sets do not wait for the retry timer.
+    if (errCode == errCodeNotFound &&
+        _pendingGenericAckQueue.isEmpty &&
+        _isSyncingChannels &&
+        _channelSyncInFlight) {
+      final channelIndex = _nextChannelIndexToRequest;
+      debugPrint('[ChannelSync] Channel $channelIndex is empty');
+      _channelSyncTimeout?.cancel();
+      _channelSyncInFlight = false;
+      _channelSyncRetries = 0;
+      _nextChannelIndexToRequest++;
+      notifyListeners();
+      unawaited(_requestNextChannel());
+      return;
+    }
+
     _appDebugLogService?.warn(
       'Firmware responded with error code: $errCode',
       tag: 'Protocol',
@@ -4737,25 +4865,81 @@ class MeshCoreConnector extends ChangeNotifier {
     _channelStore.setPublicKeyHex = selfPublicKeyHex;
     _unreadStore.setPublicKeyHex = selfPublicKeyHex;
 
-    unawaited(_loadPersistedNodeStateAfterSelfInfo());
+    unawaited(
+      _loadPersistedNodeStateAfterSelfInfo().whenComplete(
+        _completeIdentityScopeReload,
+      ),
+    );
+  }
+
+  void _completeIdentityScopeReload() {
+    final completer = _identityScopeReloadCompleter;
+    _identityScopeReloadCompleter = null;
+    if (completer != null && !completer.isCompleted) completer.complete();
+  }
+
+  void _resetPendingIdentityMigration() {
+    _identityMigrationSourcePublicKeyHex = null;
+    _completeIdentityScopeReload();
   }
 
   Future<void> _loadPersistedNodeStateAfterSelfInfo() async {
+    final migrationSourcePublicKeyHex = _identityMigrationSourcePublicKeyHex;
+    _identityMigrationSourcePublicKeyHex = null;
+    final identityChanged =
+        migrationSourcePublicKeyHex != null &&
+        migrationSourcePublicKeyHex != selfPublicKeyHex;
+    if (migrationSourcePublicKeyHex != null) {
+      try {
+        final copiedKeys = await IdentityScopeMigration.copy(
+          fromPublicKeyHex: migrationSourcePublicKeyHex,
+          toPublicKeyHex: selfPublicKeyHex,
+        );
+        _appDebugLogService?.info(
+          'Copied $copiedKeys identity-scoped app data entries to the new identity',
+          tag: 'Storage',
+        );
+      } catch (error) {
+        _appDebugLogService?.error(
+          'Could not migrate identity-scoped app data: $error',
+          tag: 'Storage',
+        );
+      }
+    }
+
     await _stateSyncService?.importForNode(selfPublicKeyHex);
 
-    await _reloadPersistedNodeState();
+    await _reloadPersistedNodeState(clearIdentityState: identityChanged);
 
+    final refreshContacts = _refreshContactsAfterSelfInfo;
+    _refreshContactsAfterSelfInfo = false;
     _awaitingSelfInfo = false;
     _selfInfoRetryTimer?.cancel();
     _selfInfoRetryTimer = null;
     notifyListeners();
 
+    if (refreshContacts && isConnected) {
+      unawaited(getContacts(preserveExisting: true));
+    }
+
     // Start the serialized initial sync pipeline after SELF_INFO.
     _maybeStartInitialChannelSync();
   }
 
-  Future<void> _reloadPersistedNodeState() async {
+  Future<void> _reloadPersistedNodeState({
+    bool clearIdentityState = false,
+  }) async {
     // Now that we have self info, load all persisted data for this node.
+    if (clearIdentityState) {
+      _conversations.clear();
+      _processedContactReactions.clear();
+      _processedChannelReactions.clear();
+      _contactSmazEnabled.clear();
+      _contactCyr2LatEnabled.clear();
+      _contactCyr2LatProfileId.clear();
+      _remoteNodeAuthSessions.clear();
+      _repeaterLoginClocks.clear();
+    }
     _loadedConversationKeys.clear();
     _channelMessages.clear();
     await _loadChannelOrder();

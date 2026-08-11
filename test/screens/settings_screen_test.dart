@@ -13,6 +13,7 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   final Uint8List _selfKey = Uint8List.fromList(
     List<int>.generate(32, (index) => index + 1),
   );
+  Uint8List? importedPrivateKey;
 
   @override
   bool get isConnected => true;
@@ -31,6 +32,11 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   @override
   Uint8List? get selfPublicKey => _selfKey;
+
+  @override
+  Future<void> importPrivateKey(Uint8List privateKey) async {
+    importedPrivateKey = Uint8List.fromList(privateKey);
+  }
 }
 
 void main() {
@@ -99,9 +105,6 @@ void main() {
       ),
     );
     await tester.pump();
-    await tester.tap(find.text('Test Companion'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
 
     await tester.tap(find.byKey(const ValueKey('copy_self_share_link')));
     await tester.pump();
@@ -109,5 +112,88 @@ void main() {
     final link = MeshCoreShareLink.tryParse(clipboardText!);
     expect(link, isA<MeshCoreContactShareLink>());
     expect((link! as MeshCoreContactShareLink).name, 'My Companion');
+  });
+
+  testWidgets('public key is in Identity rather than Device Info', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: _FakeMeshCoreConnector(),
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    final identityCard = find.byKey(const ValueKey('identity_card'));
+    final deviceInfoCard = find.byKey(const ValueKey('device_info_card'));
+    expect(
+      find.descendant(of: identityCard, matching: find.text('Public Key')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Test Companion'));
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(
+      find.descendant(of: deviceInfoCard, matching: find.text('Public Key')),
+      findsNothing,
+    );
+  });
+
+  testWidgets('change identity validates and imports a 64-byte key', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: connector,
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text('Change Identity'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    await tester.enterText(
+      find.byKey(const ValueKey('private_key_input')),
+      'abcd',
+    );
+    await tester.tap(find.byKey(const ValueKey('change_identity_confirm')));
+    await tester.pump();
+    expect(
+      find.text(
+        'Enter a valid 64-byte private key using 128 hexadecimal characters.',
+      ),
+      findsOneWidget,
+    );
+    expect(connector.importedPrivateKey, isNull);
+
+    final privateKeyHex = List<String>.filled(64, 'ab').join();
+    await tester.enterText(
+      find.byKey(const ValueKey('private_key_input')),
+      privateKeyHex,
+    );
+    await tester.tap(find.byKey(const ValueKey('change_identity_confirm')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+
+    expect(
+      connector.importedPrivateKey,
+      Uint8List.fromList(List.filled(64, 0xab)),
+    );
+    expect(find.text('Identity changed'), findsOneWidget);
   });
 }

@@ -148,6 +148,22 @@
   "device_meshcore": "MeshCore",
   "settings_title": "Settings",
   "settings_deviceInfo": "Device Info",
+  "settings_identity": "Identity",
+  "settings_changeIdentity": "Change Identity",
+  "settings_changeIdentitySubtitle": "Replace the companion's private identity key",
+  "settings_changeIdentityWarning": "Changing the identity also changes this node's public key. Other nodes must rediscover it. App data stored under the current identity will be copied to the new identity, while the old identity's copy is retained.",
+  "settings_privateKey": "Private Key",
+  "settings_privateKeyHelper": "64 bytes (128 hexadecimal characters)",
+  "settings_privateKeyInvalid": "Enter a valid 64-byte private key using 128 hexadecimal characters.",
+  "settings_identityChanged": "Identity changed",
+  "settings_identityChangeFailed": "Could not change identity: {message}",
+  "@settings_identityChangeFailed": {
+    "placeholders": {
+      "message": {
+        "type": "String"
+      }
+    }
+  },
   "settings_appSettings": "App Settings",
   "settings_appSettingsSubtitle": "Notifications, messaging, and map preferences",
   "settings_nodeSettings": "Node Settings",

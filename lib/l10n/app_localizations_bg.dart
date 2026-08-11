@@ -335,6 +335,39 @@ class AppLocalizationsBg extends AppLocalizations {
   String get settings_deviceInfo => 'Информация за устройството';
 
   @override
+  String get settings_identity => 'Identity';
+
+  @override
+  String get settings_changeIdentity => 'Change Identity';
+
+  @override
+  String get settings_changeIdentitySubtitle =>
+      'Replace the companion\'s private identity key';
+
+  @override
+  String get settings_changeIdentityWarning =>
+      'Changing the identity also changes this node\'s public key. Other nodes must rediscover it. App data stored under the current identity will be copied to the new identity, while the old identity\'s copy is retained.';
+
+  @override
+  String get settings_privateKey => 'Private Key';
+
+  @override
+  String get settings_privateKeyHelper =>
+      '64 bytes (128 hexadecimal characters)';
+
+  @override
+  String get settings_privateKeyInvalid =>
+      'Enter a valid 64-byte private key using 128 hexadecimal characters.';
+
+  @override
+  String get settings_identityChanged => 'Identity changed';
+
+  @override
+  String settings_identityChangeFailed(String message) {
+    return 'Could not change identity: $message';
+  }
+
+  @override
   String get settings_appSettings => 'Настройки на приложението';
 
   @override

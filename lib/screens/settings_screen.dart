@@ -85,9 +85,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
             return ListView(
               padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
               children: [
-                // IDENTITY section
+                // DEVICE INFO section
                 SectionHeader(l10n.settings_deviceInfo),
                 MeshCard(
+                  key: const ValueKey('device_info_card'),
+                  padding: EdgeInsets.zero,
+                  child: _buildDeviceInfoCardContent(context, connector),
+                ),
+
+                // IDENTITY section
+                SectionHeader(l10n.settings_identity),
+                MeshCard(
+                  key: const ValueKey('identity_card'),
                   padding: EdgeInsets.zero,
                   child: _buildIdentityCardContent(context, connector),
                 ),
@@ -205,7 +214,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildIdentityCardContent(
+  Widget _buildDeviceInfoCardContent(
     BuildContext context,
     MeshCoreConnector connector,
   ) {
@@ -294,25 +303,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           label: l10n.settings_nodeName,
                           value: connector.selfName!,
                         ),
-                      if (connector.selfPublicKey != null)
-                        _infoRow(
-                          context,
-                          label: l10n.settings_infoPublicKey,
-                          value: pubKeyToHex(connector.selfPublicKey!),
-                          mono: true,
-                        ),
-                      if (connector.selfPublicKey != null &&
-                          (connector.selfName?.trim().isNotEmpty ?? false))
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton.icon(
-                            key: const ValueKey('copy_self_share_link'),
-                            onPressed: () =>
-                                _copySelfShareLink(context, connector),
-                            icon: const Icon(Icons.link, size: 18),
-                            label: Text(l10n.shareLink_copySelfShareLink),
-                          ),
-                        ),
                       _infoRow(
                         context,
                         label: l10n.settings_infoContactsCount,
@@ -327,6 +317,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 )
               : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIdentityCardContent(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) {
+    final l10n = context.l10n;
+    final publicKey = connector.selfPublicKey;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: KeyedSubtree(
+            key: const ValueKey('identity_public_key'),
+            child: _infoRow(
+              context,
+              label: l10n.settings_infoPublicKey,
+              value: publicKey == null
+                  ? l10n.common_notAvailable
+                  : pubKeyToHex(publicKey),
+              mono: true,
+            ),
+          ),
+        ),
+        if (publicKey != null &&
+            (connector.selfName?.trim().isNotEmpty ?? false))
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: TextButton.icon(
+              key: const ValueKey('copy_self_share_link'),
+              onPressed: () => _copySelfShareLink(context, connector),
+              icon: const Icon(Icons.link, size: 18),
+              label: Text(l10n.shareLink_copySelfShareLink),
+            ),
+          ),
+        const Divider(height: 1, indent: 16),
+        _tappableTile(
+          context,
+          icon: Icons.key_outlined,
+          title: l10n.settings_changeIdentity,
+          subtitle: l10n.settings_changeIdentitySubtitle,
+          onTap: connector.isConnected
+              ? () => _showChangeIdentityDialog(context, connector)
+              : null,
         ),
       ],
     );
@@ -765,6 +804,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showChangeIdentityDialog(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) async {
+    final changed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _ChangeIdentityDialog(connector: connector),
+    );
+    if (changed == true && context.mounted) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.settings_identityChanged),
+      );
+    }
   }
 
   void _editNodeName(BuildContext context, MeshCoreConnector connector) {
@@ -1354,6 +1410,129 @@ void _privacySettings(BuildContext context, MeshCoreConnector connector) {
       ),
     ),
   );
+}
+
+class _ChangeIdentityDialog extends StatefulWidget {
+  final MeshCoreConnector connector;
+
+  const _ChangeIdentityDialog({required this.connector});
+
+  @override
+  State<_ChangeIdentityDialog> createState() => _ChangeIdentityDialogState();
+}
+
+class _ChangeIdentityDialogState extends State<_ChangeIdentityDialog> {
+  final _controller = TextEditingController();
+  bool _obscureKey = true;
+  bool _isSaving = false;
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final l10n = context.l10n;
+    final normalized = _controller.text.replaceAll(RegExp(r'\s+'), '');
+    if (normalized.length != privateKeySize * 2 ||
+        !RegExp(r'^[0-9a-fA-F]+$').hasMatch(normalized)) {
+      setState(() => _errorText = l10n.settings_privateKeyInvalid);
+      return;
+    }
+
+    setState(() {
+      _isSaving = true;
+      _errorText = null;
+    });
+    try {
+      await widget.connector.importPrivateKey(hex2Uint8List(normalized));
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isSaving = false;
+        _errorText = l10n.settings_identityChangeFailed(error.toString());
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return PopScope(
+      canPop: !_isSaving,
+      child: AlertDialog(
+        title: Text(l10n.settings_changeIdentity),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.settings_changeIdentityWarning),
+                const SizedBox(height: 16),
+                TextField(
+                  key: const ValueKey('private_key_input'),
+                  controller: _controller,
+                  enabled: !_isSaving,
+                  obscureText: _obscureKey,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  keyboardType: TextInputType.text,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'[0-9a-fA-F\s]')),
+                    LengthLimitingTextInputFormatter(192),
+                  ],
+                  style: MeshTheme.mono(fontSize: 13),
+                  decoration: InputDecoration(
+                    labelText: l10n.settings_privateKey,
+                    helperText: l10n.settings_privateKeyHelper,
+                    errorText: _errorText,
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      onPressed: _isSaving
+                          ? null
+                          : () => setState(() => _obscureKey = !_obscureKey),
+                      icon: Icon(
+                        _obscureKey ? Icons.visibility : Icons.visibility_off,
+                      ),
+                    ),
+                  ),
+                  onChanged: (_) {
+                    if (_errorText != null) {
+                      setState(() => _errorText = null);
+                    }
+                  },
+                  onSubmitted: _isSaving ? null : (_) => _submit(),
+                  autofocus: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: _isSaving ? null : () => Navigator.pop(context, false),
+            child: Text(l10n.common_cancel),
+          ),
+          FilledButton(
+            key: const ValueKey('change_identity_confirm'),
+            onPressed: _isSaving ? null : _submit,
+            child: _isSaving
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(l10n.settings_changeIdentity),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _RadioSettingsDialog extends StatefulWidget {

@@ -12,13 +12,14 @@ Settings are only accessible while a device is connected.
 The settings screen is a scrollable list of cards:
 
 1. [Device Info](#device-info)
-2. [Node Settings](#node-settings)
-3. [Location](#location)
-4. [App Settings](#app-settings) (link to sub-screen)
-5. [Actions](#actions)
-6. [Export](#export)
-7. [Debug](#debug)
-8. [About](#about)
+2. [Identity](#identity)
+3. [Node Settings](#node-settings)
+4. [Location](#location)
+5. [App Settings](#app-settings) (link to sub-screen)
+6. [Actions](#actions)
+7. [Export](#export)
+8. [Debug](#debug)
+9. [About](#about)
 
 ---
 
@@ -33,11 +34,21 @@ A collapsible card showing read-only device information. **Collapsed by default*
 | Status | Connected / Disconnected |
 | Battery | Percentage or voltage (tap to toggle) |
 | Node Name | The node's mesh identity name |
-| Public Key | First 16 hex characters + "..." |
 | Contacts Count | Number of known contacts |
 | Channel Count | Number of configured channels |
 
 Battery shows an alert icon and orange text when at 15% or below. The toggle only works when millivolt data is available from the firmware.
+
+---
+
+## Identity
+
+Shows the companion's full public key and provides two identity actions:
+
+- **Copy Self Share Link**: Copies a contact link for the current public identity
+- **Change Identity**: Imports a complete 64-byte MeshCore private identity key (128 hexadecimal characters). The firmware validates and persists the key, then the app copies identity-scoped data into the new public-key storage scope
+
+Changing the identity changes the node's public key, so other nodes must rediscover it. Messages, contacts, channels, groups, communities, unread state, and per-contact/channel preferences are copied into the new identity scope. The old identity's copy is retained, and data already stored for a previously used destination identity is not overwritten. Firmware builds with private-key import disabled reject the operation without changing the identity.
 
 ---
 

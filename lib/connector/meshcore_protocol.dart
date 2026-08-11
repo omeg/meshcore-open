@@ -196,6 +196,8 @@ const int cmdImportContact = 18;
 const int cmdReboot = 19;
 const int cmdGetBattAndStorage = 20;
 const int cmdDeviceQuery = 22;
+const int cmdExportPrivateKey = 23;
+const int cmdImportPrivateKey = 24;
 const int cmdSendLogin = 26;
 const int cmdSendStatusReq = 27;
 const int cmdGetContactByKey = 30;
@@ -306,12 +308,17 @@ const int respCodeNoMoreMessages = 10;
 const int respCodeExportContact = 11;
 const int respCodeBattAndStorage = 12;
 const int respCodeDeviceInfo = 13;
+const int respCodePrivateKey = 14;
+const int respCodeDisabled = 15;
 const int respCodeContactMsgRecvV3 = 16;
 const int respCodeChannelMsgRecvV3 = 17;
 const int respCodeChannelInfo = 18;
 const int respCodeCustomVars = 21;
 const int respCodeAutoAddConfig = 25;
 const int respCodeStats = 24;
+
+// Generic firmware error codes carried by RESP_CODE_ERR.
+const int errCodeNotFound = 2;
 
 const int statsTypeCore = 0;
 const int statsTypeRadio = 1;
@@ -380,6 +387,7 @@ const int autoAddSensorFlag =
 
 // Sizes
 const int pubKeySize = 32;
+const int privateKeySize = 64;
 const int signatureSize = 64;
 const int maxPathSize = 64;
 const int pathHashSize = 1;
@@ -619,6 +627,21 @@ Uint8List buildAppStartFrame({
 // Build CMD_DEVICE_QUERY frame
 Uint8List buildDeviceQueryFrame({int appVersion = appProtocolVersion}) {
   return Uint8List.fromList([cmdDeviceQuery, appVersion]);
+}
+
+/// Build a companion identity import frame.
+///
+/// The firmware expects the complete 64-byte MeshCore private identity after
+/// the command byte. It validates the key before replacing the active identity.
+Uint8List buildImportPrivateKeyFrame(Uint8List privateKey) {
+  if (privateKey.length != privateKeySize) {
+    throw ArgumentError.value(
+      privateKey.length,
+      'privateKey.length',
+      'Private key must be exactly $privateKeySize bytes',
+    );
+  }
+  return Uint8List.fromList([cmdImportPrivateKey, ...privateKey]);
 }
 
 // Build CMD_GET_DEVICE_TIME frame

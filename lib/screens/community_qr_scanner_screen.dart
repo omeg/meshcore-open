@@ -377,7 +377,20 @@ class _CommunityQrScannerScreenState extends State<CommunityQrScannerScreen> {
       if (nextIndex != null) {
         final psk = community.deriveCommunityPublicPsk();
         final channelName = '${community.name} Public';
-        connector.setChannel(nextIndex, channelName, psk);
+        try {
+          await connector.setChannel(nextIndex, channelName, psk);
+        } catch (error, stackTrace) {
+          debugPrint(
+            'Failed to add community Public channel: $error\n$stackTrace',
+          );
+          if (context.mounted) {
+            showDismissibleSnackBar(
+              context,
+              content: Text(context.l10n.shareLink_channelAddFailed),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            );
+          }
+        }
       }
     }
 

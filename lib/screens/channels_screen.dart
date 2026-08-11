@@ -53,6 +53,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
   final CommunityPskIndex _communityIndex = CommunityPskIndex();
   List<Community> _communities = [];
   Timer? _searchDebounce;
+  bool _isAddingPublicChannel = false;
 
   ChannelMessageStore get _channelMessageStore => ChannelMessageStore();
 
@@ -223,7 +224,9 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                       icon: Icons.tag,
                       title: context.l10n.channels_noChannelsConfigured,
                       action: FilledButton.icon(
-                        onPressed: () => _addPublicChannel(context, connector),
+                        onPressed: _isAddingPublicChannel
+                            ? null
+                            : () => _addPublicChannel(context, connector),
                         icon: const Icon(Icons.public),
                         label: Text(context.l10n.channels_addPublicChannel),
                       ),
@@ -986,11 +989,14 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                                   psk[i] = random.nextInt(256);
                                 }
                                 Navigator.pop(sheetContext);
-                                await connector.setChannel(
+                                final added = await _setChannelWithError(
+                                  context,
+                                  connector,
                                   nextIndex,
                                   name,
                                   psk,
                                 );
+                                if (!added) return;
                                 await channelMessageStore.clearChannelMessages(
                                   nextIndex,
                                 );
@@ -1049,7 +1055,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                         children: [
                           Expanded(
                             child: FilledButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 final name = nameController.text.trim();
                                 final pskHex = pskController.text.trim();
                                 if (name.isEmpty) {
@@ -1076,7 +1082,14 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                                   return;
                                 }
                                 Navigator.pop(sheetContext);
-                                connector.setChannel(nextIndex, name, psk);
+                                final added = await _setChannelWithError(
+                                  context,
+                                  connector,
+                                  nextIndex,
+                                  name,
+                                  psk,
+                                );
+                                if (!added) return;
                                 if (context.mounted) {
                                   showDismissibleSnackBar(
                                     context,
@@ -1106,16 +1119,19 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                     children: [
                       Expanded(
                         child: FilledButton(
-                          onPressed: () {
+                          onPressed: () async {
                             final psk = Channel.parsePskHex(
                               Channel.publicChannelPsk,
                             );
                             Navigator.pop(sheetContext);
-                            connector.setChannel(
+                            final added = await _setChannelWithError(
+                              context,
+                              connector,
                               nextIndex,
                               context.l10n.channels_public,
                               psk,
                             );
+                            if (!added) return;
                             if (context.mounted) {
                               showDismissibleSnackBar(
                                 context,
@@ -1298,11 +1314,15 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                                 if (sheetContext.mounted) {
                                   Navigator.pop(sheetContext);
                                 }
-                                connector.setChannel(
+                                if (!context.mounted) return;
+                                final added = await _setChannelWithError(
+                                  context,
+                                  connector,
                                   nextIndex,
                                   channelName,
                                   psk,
                                 );
+                                if (!added) return;
                                 if (context.mounted) {
                                   showDismissibleSnackBar(
                                     context,
@@ -1420,6 +1440,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
 
                                 // Save to store
                                 await _communityStore.addCommunity(community);
+                                if (!context.mounted) return;
 
                                 // Optionally add the community public channel to the device
                                 if (addPublicChannel) {
@@ -1427,7 +1448,9 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                                       .deriveCommunityPublicPsk();
                                   final channelName =
                                       '${community.name} $publicLabel';
-                                  connector.setChannel(
+                                  await _setChannelWithError(
+                                    context,
+                                    connector,
                                     nextIndex,
                                     channelName,
                                     psk,
@@ -1820,13 +1843,53 @@ class _ChannelsScreenState extends State<ChannelsScreen>
     );
   }
 
-  void _addPublicChannel(BuildContext context, MeshCoreConnector connector) {
+  Future<void> _addPublicChannel(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) async {
+    if (_isAddingPublicChannel) return;
+    setState(() => _isAddingPublicChannel = true);
     final psk = Channel.parsePskHex(Channel.publicChannelPsk);
-    connector.setChannel(0, context.l10n.channels_public, psk);
-    showDismissibleSnackBar(
-      context,
-      content: Text(context.l10n.channels_publicChannelAdded),
-    );
+    try {
+      final added = await _setChannelWithError(
+        context,
+        connector,
+        0,
+        context.l10n.channels_public,
+        psk,
+      );
+      if (!added) return;
+      if (!context.mounted) return;
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.channels_publicChannelAdded),
+      );
+    } finally {
+      if (mounted) setState(() => _isAddingPublicChannel = false);
+    }
+  }
+
+  Future<bool> _setChannelWithError(
+    BuildContext context,
+    MeshCoreConnector connector,
+    int index,
+    String name,
+    Uint8List psk,
+  ) async {
+    try {
+      await connector.setChannel(index, name, psk);
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('Failed to set channel $index: $error\n$stackTrace');
+      if (context.mounted) {
+        showDismissibleSnackBar(
+          context,
+          content: Text(context.l10n.shareLink_channelAddFailed),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        );
+      }
+      return false;
+    }
   }
 
   int _findNextAvailableIndex(List<Channel> channels, int maxChannels) {
