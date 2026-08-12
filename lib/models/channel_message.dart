@@ -159,7 +159,7 @@ class ChannelMessage {
     if (pathLength != null &&
         pathLength > maxPathHopCountForWidth(normalizedWidth)) {
       final decodedWidth = decodePathHashWidth(pathLength);
-      final decodedHopCount = decodePathHopCount(pathLength);
+      final decodedHopCount = decodeReceivedPathHopCount(pathLength);
       if (decodedWidth == normalizedWidth && decodedHopCount >= 0) {
         return decodedHopCount;
       }
@@ -260,7 +260,7 @@ class ChannelMessage {
         final pathLenRaw = reader.readByte();
         pathLen = decodeReceivedPathHopCount(pathLenRaw);
         pathHashWidth = decodePathHashWidth(pathLenRaw);
-        final pathByteLen = decodePathByteLen(pathLenRaw);
+        final pathByteLen = decodeReceivedPathByteLen(pathLenRaw);
         if (hasPath && pathByteLen > 0) {
           pathBytes = reader.readBytes(pathByteLen);
         }

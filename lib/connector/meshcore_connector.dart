@@ -6752,7 +6752,7 @@ class MeshCoreConnector extends ChangeNotifier {
       }
       final pathLenRaw = reader.readByte();
       if (!isValidPacketPathLen(pathLenRaw)) return null;
-      final pathByteLen = decodePathByteLen(pathLenRaw);
+      final pathByteLen = decodeReceivedPathByteLen(pathLenRaw);
       final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = reader.readBytes(pathByteLen);
       _logRawPathDiagnostics(
@@ -7428,7 +7428,7 @@ class MeshCoreConnector extends ChangeNotifier {
       //final payloadVer = (header >> 6) & 0x03;
       final pathLenRaw = packet.readByte();
       if (!isValidPacketPathLen(pathLenRaw)) return;
-      final pathByteLen = decodePathByteLen(pathLenRaw);
+      final pathByteLen = decodeReceivedPathByteLen(pathLenRaw);
       final pathHashWidth = decodePathHashWidth(pathLenRaw);
       final pathBytes = packet.readBytes(pathByteLen);
       final payload = packet.readBytes(packet.remaining);
@@ -7480,7 +7480,7 @@ class MeshCoreConnector extends ChangeNotifier {
       //final payloadVer = (header >> 6) & 0x03;
       final pathLenRaw = packet.readByte();
       if (!isValidPacketPathLen(pathLenRaw)) return;
-      final pathByteLen = decodePathByteLen(pathLenRaw);
+      final pathByteLen = decodeReceivedPathByteLen(pathLenRaw);
       pathHashWidth = decodePathHashWidth(pathLenRaw);
       pathBytes = packet.readBytes(pathByteLen);
     } catch (e) {
@@ -7947,7 +7947,7 @@ class _RawPacket {
   bool get isFlood =>
       routeType == _routeFlood || routeType == _routeTransportFlood;
 
-  int get hopCount => decodePathHopCount(pathLenRaw);
+  int get hopCount => decodeReceivedPathHopCount(pathLenRaw);
 }
 
 class _ParsedText {

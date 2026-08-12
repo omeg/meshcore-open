@@ -249,6 +249,43 @@ void main() {
       expect(message.pathBytes, isEmpty);
     });
 
+    test('decodes two-byte hash mode with zero hops as direct', () {
+      final writer = BytesBuilder();
+      writer.addByte(respCodeChannelMsgRecvV3);
+      writer.addByte(0); // SNR
+      writer.addByte(0); // flags: no path bytes in receive frame
+      writer.addByte(0); // reserved
+      writer.addByte(0); // channel index
+      writer.addByte(0x40); // two-byte hashes, zero hops
+      writer.addByte(txtTypePlain);
+      writer.add([1, 0, 0, 0]); // timestamp
+      writer.add('Node: hello'.codeUnits);
+      writer.addByte(0);
+
+      final message = ChannelMessage.fromFrame(
+        Uint8List.fromList(writer.toBytes()),
+      );
+
+      expect(message, isNotNull);
+      expect(message!.pathLength, equals(0));
+      expect(message.pathHashByteWidth, equals(2));
+      expect(message.pathBytes, isEmpty);
+    });
+
+    test('normalizes stored two-byte direct receive artifact', () {
+      final message = ChannelMessage(
+        senderName: 'Node',
+        text: 'hello',
+        timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+        isOutgoing: false,
+        status: ChannelMessageStatus.sent,
+        pathLength: 0x40,
+        pathHashByteWidth: 2,
+      );
+
+      expect(message.pathLength, equals(0));
+    });
+
     test('normalizes stored old direct receive pathLen artifact', () {
       final message = ChannelMessage(
         senderName: 'Node',

@@ -119,9 +119,12 @@ void main() {
     expect(isValidPacketPathLen(0xFF), isFalse); // reserved mode, not flood
   });
 
-  test('decodes companion receive 0xFF as direct', () {
+  test('decodes companion receive path lengths without legacy ambiguity', () {
     expect(decodeReceivedPathHopCount(0xFF), equals(0));
+    expect(decodeReceivedPathHopCount(0x40), equals(0));
+    expect(decodeReceivedPathByteLen(0x40), equals(0));
     expect(decodeReceivedPathHopCount(0x40 | 5), equals(5));
+    expect(decodeReceivedPathByteLen(0x40 | 5), equals(10));
   });
 
   test('trims dangling partial multibyte path chunks', () {

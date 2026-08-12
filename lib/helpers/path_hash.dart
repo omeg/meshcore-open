@@ -111,7 +111,17 @@ int decodePathHopCount(int pathLenRaw) {
 
 int decodeReceivedPathHopCount(int pathLenRaw) {
   if (pathLenRaw == 0xff) return 0;
-  return decodePathHopCount(pathLenRaw);
+  // Companion receive frames and raw radio packets always use the encoded
+  // path_len layout. In that context 0x40 is a zero-hop path using two-byte
+  // hashes, not the legacy 64-hop contact-record value.
+  return pathLenRaw & pathLenHopCountMask;
+}
+
+int decodeReceivedPathByteLen(int pathLenRaw) {
+  final hopCount = decodeReceivedPathHopCount(pathLenRaw);
+  if (hopCount <= 0) return 0;
+  final width = decodePathHashWidth(pathLenRaw);
+  return (hopCount * width).clamp(0, maxPathSize).toInt();
 }
 
 int decodePathByteLen(int pathLenRaw) {

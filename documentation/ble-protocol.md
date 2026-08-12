@@ -104,7 +104,12 @@ bits 0-5: hop count (0-63)
 bits 6-7: hash-width code, where width = code + 1
 ```
 
-The app decodes this with `decodePathHopCount()`, `decodePathHashWidth()`, and `decodePathByteLen()`. When sending a path update, use `encodePathLenForHashWidth()` so firmware receives the hop count and width code together.
+The app decodes packet and companion-receive metadata with
+`decodeReceivedPathHopCount()`, `decodePathHashWidth()`, and
+`decodeReceivedPathByteLen()`. Contact records use the legacy-aware
+`decodePathHopCount()` and `decodePathByteLen()` helpers. When sending a path
+update, use `encodePathLenForHashWidth()` so firmware receives the hop count
+and width code together.
 
 Capacity is constrained by the 64-byte path field:
 
@@ -114,7 +119,10 @@ Capacity is constrained by the 64-byte path field:
 | 2 bytes | 32 |
 | 3 bytes | 21 |
 
-`0xFF` still means no/unknown path for contact records. The legacy raw value `64` remains compatible with a 64-hop 1-byte path.
+`0xFF` still means no/unknown path for contact records. In packet and receive
+metadata, `0x40` means zero hops with two-byte hashes. Contact records retain
+compatibility with the legacy raw value `64` for a populated 64-hop, one-byte
+path.
 
 ### Byte Order
 
