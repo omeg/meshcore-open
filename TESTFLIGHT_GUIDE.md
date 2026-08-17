@@ -1,244 +1,123 @@
-# TestFlight and App Store Deployment Guide
+# TestFlight Release Guide
 
-## Prerequisites
+This guide describes the current iOS release path for MeshCore Open. Apple changes upload and review requirements over time, so use this as a repository checklist together with [Flutter's iOS release guide](https://docs.flutter.dev/deployment/ios) and [App Store Connect Help](https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds/).
 
-- [x] Apple Developer Account ($99/year) - [developer.apple.com](https://developer.apple.com)
-- [x] Xcode installed
-- [x] Apple Transporter app installed
-- [x] App icons ready (1024x1024px)
-- [x] Bundle ID configured: `com.monitormx.meshcoreopen`
+## Project facts
 
-## Step 1: Register Bundle Identifier
+- Bundle identifier: `com.monitormx.meshcoreopen`
+- Minimum iOS version: 16.4
+- Version source: `version:` in `pubspec.yaml` (currently `9.5.0+13`)
+- Xcode workspace: `ios/Runner.xcworkspace`
+- Privacy policy: publish [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) at a public HTTPS URL before distribution
 
-1. Go to [Apple Developer - Identifiers](https://developer.apple.com/account/resources/identifiers/list)
-2. Click the **"+"** button
-3. Select **"App IDs"** → Continue
-4. Select **"App"** → Continue
-5. Fill in:
-   - **Description**: Meshcore Open
-   - **Bundle ID**: Explicit - `com.monitormx.meshcoreopen`
-   - **Capabilities**: Leave defaults (or add as needed)
-6. Click **Continue** → **Register**
+Each App Store Connect upload needs a build number that has not already been uploaded for that version. Update `pubspec.yaml`, or supply `--build-name` and `--build-number` to the build command.
 
-## Step 2: Create App in App Store Connect
+## Requirements
 
-1. Go to [App Store Connect](https://appstoreconnect.apple.com)
-2. Sign in with your Apple ID
-3. Click **"My Apps"**
-4. Click the **"+"** button → **"New App"**
-5. Fill in the form:
-   - **Platforms**: iOS
-   - **Name**: Meshcore Open
-   - **Primary Language**: English (U.S.)
-   - **Bundle ID**: Select `com.monitormx.meshcoreopen` from dropdown
-   - **SKU**: `meshcore-open-001` (or any unique identifier)
-   - **User Access**: Full Access
-6. Click **"Create"**
+- A Mac with a currently supported Xcode version and command-line tools
+- A Flutter SDK compatible with the repository lockfile (Flutter 3.44+/Dart 3.12+ at the time of writing)
+- Membership in the Apple Developer Program
+- An App Store Connect user with permission to create/upload builds
+- A registered App ID and App Store Connect app record for `com.monitormx.meshcoreopen`
+- Signing certificates/profiles, normally managed automatically by Xcode
 
-## Step 3: Build the IPA
+## 1. Prepare and validate
 
-Run these commands from the project directory:
+From the repository root:
 
 ```bash
-# Add CocoaPods to PATH
-export PATH="/opt/homebrew/lib/ruby/gems/4.0.0/bin:$PATH"
-
-# Clean previous builds
-../flutter/bin/flutter clean
-
-# Build IPA for App Store
-../flutter/bin/flutter build ipa
+flutter pub get
+flutter analyze
+flutter test
 ```
 
-The IPA will be created at: `build/ios/ipa/meshcore_open.ipa`
-
-## Step 4: Upload to App Store Connect via Transporter
-
-1. **Open Apple Transporter**
-   - Launch from Applications folder
-   - Sign in with your Apple ID
-
-2. **Upload the IPA**
-   - Drag and drop `build/ios/ipa/meshcore_open.ipa` into Transporter
-   - Click **"Deliver"**
-   - Wait for upload to complete (usually 1-5 minutes)
-
-3. **Processing**
-   - Apple will process your build (10-30 minutes)
-   - You'll receive an email when processing is complete
-
-## Step 5: Configure App Store Connect Metadata
-
-### App Information
-1. In App Store Connect, go to your app
-2. Fill in required information:
-   - **Subtitle**: Short description (30 chars max)
-   - **Privacy Policy URL**: Required for Bluetooth apps
-   - **Category**: Utilities or Productivity
-   - **Age Rating**: Complete questionnaire
-
-### App Store Listing
-1. Go to **App Store** tab
-2. Upload **Screenshots** (required):
-   - iPhone 6.7" display (1290 x 2796 pixels) - At least 1 screenshot
-   - iPhone 6.5" display (1242 x 2688 pixels) - At least 1 screenshot
-   - Optional: iPad screenshots
-
-3. Fill in **Description**:
-   ```
-   Meshcore Open is a Flutter client for MeshCore LoRa mesh networking devices.
-
-   Features:
-   - BLE connectivity to MeshCore devices
-   - Real-time mesh network communication
-   - Map visualization with OpenStreetMap
-   - Community management with QR code scanning
-   - Message tracking and retry system
-
-   Connect to your MeshCore LoRa device and start communicating over the mesh network.
-   ```
-
-4. **Keywords**: `lora,mesh,networking,bluetooth,communication`
-5. **Support URL**: Your GitHub or website URL
-6. **Marketing URL**: (Optional)
-
-### Version Information
-1. **What's New in This Version**:
-   ```
-   Initial release of Meshcore Open
-
-   - BLE device connectivity
-   - Mesh network messaging
-   - Map integration
-   - Community features
-   ```
-
-2. **Build**: Select the uploaded build once processing completes
-
-## Step 6: TestFlight Setup
-
-### Internal Testing (No Review Required)
-1. Go to **TestFlight** tab in App Store Connect
-2. Click **Internal Testing** → **"+"** to create a group
-3. Name your group (e.g., "Internal Testers")
-4. Add yourself as a tester using your email
-5. Select the build you uploaded
-6. Testers will receive an email with TestFlight invitation
-
-### External Testing (Requires Beta Review)
-1. Click **External Testing** → **"+"** to create a group
-2. Add build and testers
-3. Fill in **Test Information**:
-   - **What to Test**: Brief description of features
-   - **Feedback Email**: Your email address
-4. Click **Submit for Review**
-5. Beta review typically takes 24-48 hours
-
-## Step 7: App Store Submission
-
-Once you're ready for public release:
-
-1. Go to **App Store** tab
-2. Complete all required metadata (if not done)
-3. Select your build
-4. Fill in **App Review Information**:
-   - **Contact Information**: Your name, phone, email
-   - **Demo Account**: If app requires login
-   - **Notes**: Any special instructions for reviewers
-5. Answer **Export Compliance** questions:
-   - Does your app use encryption? **Yes** (uses TLS/HTTPS)
-   - Is encryption registration required? **No** (standard encryption)
-6. Click **Add for Review**
-7. Review summary and click **Submit to App Review**
-
-## Step 8: After Submission
-
-- **App Review**: Typically 24-48 hours
-- **Common Rejection Reasons**:
-  - Missing privacy policy
-  - Incomplete app information
-  - Crashes or bugs
-  - Misleading app description
-
-- **If Approved**: You can release immediately or schedule a release date
-- **If Rejected**: Address issues and resubmit
-
-## Updating the App
-
-When you need to release an update:
-
-1. **Update version** in `pubspec.yaml`:
-   ```yaml
-   version: 0.5.0+6  # Increment version (0.5.0) and build number (+6)
-   ```
-
-2. **Build new IPA**:
-   ```bash
-   export PATH="/opt/homebrew/lib/ruby/gems/4.0.0/bin:$PATH"
-   ../flutter/bin/flutter clean
-   ../flutter/bin/flutter build ipa
-   ```
-
-3. **Upload via Transporter** (same process as above)
-
-4. **Create new version** in App Store Connect:
-   - Click **"+"** next to versions
-   - Select version number
-   - Update "What's New" text
-   - Select new build
-   - Submit for review
-
-## macOS Build (Bonus)
-
-To build for macOS:
+Then open the workspace:
 
 ```bash
-export PATH="/opt/homebrew/lib/ruby/gems/4.0.0/bin:$PATH"
-../flutter/bin/flutter build macos --release
-cd build/macos/Build/Products/Release
-zip -r meshcore_open-macos.zip meshcore_open.app
+open ios/Runner.xcworkspace
 ```
 
-Distribution:
-- Share the zip file directly
-- Users unzip and drag to Applications
-- First run: Right-click → Open (to bypass Gatekeeper)
+In Xcode, select the Runner target and verify:
 
-## Troubleshooting
+- Your Apple Developer team is selected under **Signing & Capabilities**.
+- The bundle identifier is correct and automatic signing reports no errors.
+- The deployment target remains iOS 16.4 unless a deliberate project change says otherwise.
+- Bluetooth descriptions and capabilities required by the app are present.
+- The Release configuration uses the intended app icon and display name.
 
-### Build Errors
-- **CocoaPods not found**: Ensure PATH includes `/opt/homebrew/lib/ruby/gems/4.0.0/bin`
-- **No signing certificate**: Configure Team in Xcode (Signing & Capabilities)
-- **Bundle ID mismatch**: Check `ios/Runner.xcodeproj/project.pbxproj`
+Test a release build on at least one physical device. The simulator cannot validate BLE companion behavior.
 
-### Upload Errors
-- **No profiles found**: Create app in App Store Connect first
-- **Bundle ID not registered**: Register in Apple Developer portal
-- **Authentication failed**: Use Transporter app instead of CLI
+## 2. Set a release version
 
-### TestFlight Issues
-- **Build not appearing**: Wait 10-30 minutes for processing
-- **Can't add testers**: Check you have available slots (100 internal, 10,000 external)
-- **TestFlight crashes**: Check device logs in Xcode → Devices & Simulators
+Use semantic version plus build number in `pubspec.yaml`:
 
-## Important Files
+```yaml
+version: 9.5.0+14
+```
 
-- **iOS IPA**: `build/ios/ipa/meshcore_open.ipa`
-- **macOS App**: `build/macos/Build/Products/Release/meshcore_open.app`
-- **Bundle ID Config**: `ios/Runner.xcodeproj/project.pbxproj`
-- **Version Info**: `pubspec.yaml`
+Increment the build number for every upload. Commit the version change when the build is intended to be reproducible from source.
 
-## Useful Links
+## 3. Build the archive and IPA
 
-- [App Store Connect](https://appstoreconnect.apple.com)
-- [Apple Developer Portal](https://developer.apple.com/account)
-- [TestFlight Documentation](https://developer.apple.com/testflight/)
-- [App Store Review Guidelines](https://developer.apple.com/app-store/review/guidelines/)
-- [Flutter iOS Deployment](https://docs.flutter.dev/deployment/ios)
+The Flutter command produces an Xcode archive in `build/ios/archive/` and an App Store IPA in `build/ios/ipa/`:
 
-## Support
+```bash
+flutter build ipa --release
+```
 
-For issues with:
-- **App Store Process**: [Apple Developer Support](https://developer.apple.com/contact/)
-- **Flutter Build Issues**: [Flutter GitHub](https://github.com/flutter/flutter/issues)
-- **Meshcore Open App**: [GitHub Issues](https://github.com/wel97459/meshcore-open/issues)
+If automatic export cannot resolve signing, open the generated `.xcarchive` in Xcode Organizer, validate it, and use **Distribute App → App Store Connect**. Do not open `Runner.xcodeproj`; use the workspace so CocoaPods dependencies are included.
+
+## 4. Upload
+
+Apple supports upload from Xcode Organizer, Transporter, or its command-line/API tooling. The simplest paths are:
+
+- In Xcode Organizer, select the archive, choose **Distribute App**, validate, and upload.
+- In Transporter, drop in the IPA from `build/ios/ipa/` and deliver it.
+
+The bundle identifier and marketing version associate the upload with the App Store Connect record; the build number uniquely identifies the build. Wait for App Store Connect processing and resolve any warning, failure, missing-compliance, or metadata action shown on the build.
+
+## 5. Complete TestFlight information
+
+In the app's **TestFlight** tab:
+
+1. Select the processed build.
+2. Supply beta app description, feedback contact, and **What to Test** notes.
+3. Complete privacy and export-compliance questions accurately.
+4. Add the build to an internal or external testing group.
+
+MeshCore Open uses cryptography in its protocol and dependencies. Do not copy a canned yes/no export-compliance answer from an older release. Apple requires the publisher to determine whether documentation or an exemption applies; follow [Apple's current export-compliance guidance](https://developer.apple.com/help/app-store-connect/manage-app-information/overview-of-export-compliance) and obtain qualified advice when needed.
+
+Internal testing supports up to 100 App Store Connect users with appropriate access. External testing supports up to 10,000 people and can require TestFlight App Review, particularly for the first build in a group. A TestFlight build is available for testing for up to 90 days. See [Apple's TestFlight overview](https://developer.apple.com/help/app-store-connect/test-a-beta-version/testflight-overview).
+
+## 6. Suggested test notes
+
+Keep the notes scoped to the build. For a broad fork release, ask testers to cover:
+
+- BLE connection/disconnection and background reconnect
+- TCP companion connection on iOS
+- Direct messages, channels, reactions, replies, share links, and resend/retry behavior
+- Contact/discovery persistence and identity changes
+- Maps, location pins, line-of-sight, and offline cache
+- Repeater login, live telemetry, CLI, neighbors, and settings
+- Telemetry-log/InfluxDB features only when the tester uses the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore)
+
+Include a warning if the build migrates identity-scoped storage or requires newer companion firmware.
+
+## App Store submission notes
+
+TestFlight distribution does not replace App Store product metadata. Before a public App Store submission, provide the required privacy-policy URL, app privacy answers, descriptions, support URL, age rating, categories, and current screenshots. Apple's screenshot requirements are maintained in [App Store Connect Help](https://developer.apple.com/help/app-store-connect/manage-app-information/upload-app-previews-and-screenshots); if the UI is identical across sizes, Apple can scale the highest-resolution screenshots to smaller sizes.
+
+Use the fork issue tracker as the support URL unless a dedicated support page exists:
+
+```text
+https://github.com/omeg/meshcore-open/issues
+```
+
+## Common failures
+
+- **Bundle identifier unavailable or app not found:** Confirm the App ID, App Store Connect record, and Xcode target all use `com.monitormx.meshcoreopen` under the same team.
+- **Signing/provisioning error:** Let Xcode refresh automatic signing, verify the selected team and device/App Store distribution method, then rebuild.
+- **Duplicate build number:** Increment the `+build` value or pass a new `--build-number`.
+- **Archive contains missing Pods/frameworks:** Build from `Runner.xcworkspace`, rerun `flutter pub get`, and regenerate the archive.
+- **Build remains unavailable:** Check its processing status, warnings, export-compliance state, and email from App Store Connect before uploading another copy.
+- **BLE cannot be tested:** Use a physical iPhone/iPad with Bluetooth permission granted and a compatible MeshCore companion nearby.

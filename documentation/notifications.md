@@ -33,6 +33,10 @@ MeshCore Open provides both **system notifications** (push-style OS alerts) and 
 - Tap to re-launch the app
 - **Does not auto-start on reboot** — the user must re-open the app manually after a phone restart
 
+### 5. Firmware-Fork Telemetry Results
+
+Telemetry-log fetch and InfluxDB import completion/failure can generate notifications when their screen has been closed. These belong to the telemetry-log integration that requires the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore), not ordinary live telemetry. See [Telemetry Logs, InfluxDB, and State Sync](telemetry-and-sync.md#firmware-fork-telemetry-logs-and-influxdb).
+
 ### Notification Tap Behavior
 
 Tapping a notification currently re-launches the app at the root route. It does **not** navigate directly to the relevant chat or channel.
@@ -73,7 +77,7 @@ There is no per-contact muting.
 
 The notification system prevents notification storms:
 - **Minimum interval**: 3 seconds between individual notifications
-- **Batch window**: If multiple notifications arrive within 5 seconds, they are combined into a single summary notification on a fourth Android channel (`batch_summary`). The title is "MeshCore Activity" and the body lists the grouped counts (e.g., "2 messages, 1 channel message, 3 new nodes"). Batch summaries are Android-only; queued notifications that overflow the batch window are silently dropped on other platforms
+- **Batch window**: An event arriving within that 3-second interval is queued for 5 seconds. If exactly one event is queued, it is then shown as its normal notification. If two or more are queued, Android shows one summary on the `batch_summary` channel with grouped counts (for example, "2 messages, 1 channel message, 3 new nodes"). The multi-event summary has Android notification details only, so that batched group is not displayed as an OS alert on other platforms
 
 ## Notification Clearing
 
@@ -83,10 +87,13 @@ The notification system prevents notification storms:
 
 ## Platform Support
 
-| Platform | Message Notifs | Badge | Background Service |
+The Badge column below refers to an operating-system/app-icon badge. The Contacts and Channels unread badges are part of the app UI and are available on every platform.
+
+| Platform | System Notifications | OS/App Badge | Background Service |
 |---|---|---|---|
 | Android | Yes | Via notification number | Yes (foreground service) |
 | iOS | Yes | Yes (app badge) | No |
 | macOS | Yes | Yes | No |
 | Windows | Yes | No | No |
 | Linux | Yes (if D-Bus available) | No | No |
+| Web | No | No | No |

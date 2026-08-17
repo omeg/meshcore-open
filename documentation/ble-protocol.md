@@ -1,4 +1,4 @@
-# BLE Protocol & Data Layer
+# Companion Protocol & Data Layer
 
 This is a technical reference for the communication protocol and data architecture.
 
@@ -48,21 +48,13 @@ enum MeshCoreConnectionState {
 
 ## BLE Connection Lifecycle
 
-1. **Scan** with known name prefixes (defined in `MeshCoreUuids.deviceNamePrefixes`):
-    - `MeshCore-`
-    - `Whisper-`
-    - `WisCore-`
-    - `Seeed`
-    - `Lilygo`
-    - `HT-`
-    - `LowMesh_MC_`
-    - `NRF52`
+1. **Scan** for advertisements containing the NUS service UUID. Known stock device-name prefixes remain in `MeshCoreUuids.deviceNamePrefixes` for display/reference but do not gate discovery.
 2. **Connect** with 15-second timeout (6 seconds on Linux)
-3. **Request MTU** 185 bytes (non-web only)
+3. **Request MTU** 185 bytes on supported native platforms (not Linux or web)
 4. **Discover services** and locate NUS
 5. **Enable TX notifications** (up to 3 attempts on native)
 6. **Subscribe** to TX characteristic for incoming frames
-7. **Initial sync**: device info query, time sync, channel sync
+7. **Initial sync**: device/self info, time, channels, queued messages, and contacts. Queued direct messages are deferred until contacts are available when sender-prefix resolution requires it
 
 ## Auto-Reconnect (BLE Only)
 
@@ -223,9 +215,9 @@ The app has a `PathDebug` log path in `MeshCoreConnector._logRawPathDiagnostics(
 | 6 | RESP_CODE_SENT | Message transmitted; carries `[1]=is_flood, [2–5]=ack_hash, [6–9]=estimated_timeout_ms` |
 | 7 | RESP_CODE_CONTACT_MSG_RECV | Incoming direct message (v2) |
 | 8 | RESP_CODE_CHANNEL_MSG_RECV | Incoming channel message (v2) |
+| 9 | RESP_CODE_CURR_TIME | Current device time |
 | 10 | RESP_CODE_NO_MORE_MESSAGES | No more queued messages |
 | 11 | RESP_CODE_EXPORT_CONTACT | Exported contact data |
-| 9 | RESP_CODE_CURR_TIME | Current device time |
 | 12 | RESP_CODE_BATT_AND_STORAGE | Battery mV (uint16 LE) + storage used/total (uint32 LE each) |
 | 13 | RESP_CODE_DEVICE_INFO | Firmware info |
 | 14 | RESP_CODE_PRIVATE_KEY | Exported 64-byte private identity |
@@ -276,14 +268,14 @@ Sender key, text, timestamp, outgoing flag, status (pending/sent/delivered/faile
 Sender name, text, timestamp, status (pending/sent/failed), repeater hops, path variants, channel index, reactions, reply threading fields.
 
 ### Channel
-Index (0–7), name, 16-byte PSK, unread count. PSK derivation methods for hashtag (SHA-256) and community (HMAC-SHA256) channels.
+Index (0 to `maxChannels - 1`), name, 16-byte PSK, unread count. The companion reports `maxChannels` at login; the app defaults to 40 until known. PSK derivation methods support hashtag (SHA-256) and community (HMAC-SHA256) channels.
 
 ### Community
 UUID, name, 32-byte secret, hashtag channel list. Shared via QR code.
 
 ## Persistence
 
-All data is stored via `SharedPreferences` (JSON-serialized). No SQLite or other database.
+Core identity-scoped state is stored as JSON-serialized values in `SharedPreferences`; the app does not use SQLite. Map tiles, translation models, telemetry logs, and optional sync snapshots are file-backed.
 
 | Data | Storage Key Pattern | Scope |
 |---|---|---|
@@ -298,6 +290,10 @@ All data is stored via `SharedPreferences` (JSON-serialized). No SQLite or other
 | Discovered Contacts | `discovered_contacts<pubKey10>` | Per device identity; legacy global `discovered_contacts` migrates on first scoped load |
 | App Settings | `app_settings` | Global |
 | Path History | `path_history_<contactKey>` | Per contact |
+
+When folder sync is enabled on Android or desktop, selected keys are merged into `meshcore-open-state-<pubKey10>.json`. Communities, the standalone `pending_messages` key, unread counts, repeater passwords, repeater auto-clock-sync preferences, and sync configuration are excluded. Direct/channel conversation keys—including their stored message-status fields—are included. The JSON is not encrypted by the app. See [Telemetry Logs, InfluxDB, and State Sync](telemetry-and-sync.md#state-sync).
+
+Recorded telemetry-log request subtypes and their InfluxDB workflow are extensions for the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore); they are not implied by the generic binary request code or the standard live telemetry command above.
 
 ## Auto-Add Configuration Bitmask
 

@@ -1,104 +1,69 @@
 # Privacy Policy for MeshCore Open
 
-**Last Updated:** January 11, 2026
+**Last updated:** August 12, 2026
 
-## Introduction
+MeshCore Open is an open-source client for MeshCore LoRa radios. It has no account system, analytics SDK, advertising SDK, or developer-operated backend. The project maintainers do not automatically receive app data. Features you choose to use can nevertheless send requests to mesh nodes, public third-party services, a server you configure, or a folder managed by another synchronization provider.
 
-MeshCore Open ("the App") is an open-source Flutter application for communicating with MeshCore LoRa mesh networking devices. This Privacy Policy explains how the App handles your information.
+## Data kept by the app
 
-## Data Collection
+Depending on the features used, local app storage may contain:
 
-### Data We Do NOT Collect
+- Companion identities and public keys, contacts, discovered nodes, channels, communities, groups, and channel secrets
+- Direct/channel message history, reactions, replies, unread state, delivery status, and observed routing/path information
+- Node locations and location-bearing messages received from the mesh
+- App/device preferences, including saved repeater passwords and optional InfluxDB connection details/API token
+- Optional debug logs, delivery observations, map tiles, downloaded translation models, GPX exports, and telemetry-log files
+- Plaintext JSON state bundles written to a user-selected sync folder
 
-MeshCore Open does **not**:
-- Collect personal information
-- Send data to external servers (except map tile requests)
-- Track your usage or behavior
-- Use analytics services
-- Require account creation
-- Share any data with third parties
+Most conversation and configuration state is scoped to the connected companion's public identity. Core records use the platform's app preferences; larger assets and exports use files. MeshCore Open does not add application-level encryption to local storage, telemetry files, or sync bundles. Operating-system storage protections and the security of any chosen folder/provider therefore matter.
 
-### Data Stored Locally on Your Device
+Uninstalling or clearing app data removes data in normal app-private storage according to the platform's behavior. Files explicitly exported or written to a sync/export folder must be removed there separately. Data imported into a user-configured InfluxDB server must be managed on that server.
 
-The App stores the following data **locally on your device only**:
+## Network and external-service requests
 
-- **Messages**: Chat messages sent and received through the mesh network
-- **Contacts**: Names and identifiers of mesh network contacts
-- **App Settings**: Your preferences (theme, language, notification settings)
-- **Channel Settings**: Configuration for mesh network channels
-- **Message History**: Path history for message routing
-- **Debug Logs**: Optional BLE and app debug logs (if enabled by user)
-- **Cached Map Tiles**: Offline map data for the mapping feature
+The app can make these optional outbound requests:
 
-All locally stored data remains on your device and is never transmitted to us or any third party.
+| Feature | Recipient | Data sent or exposed |
+|---|---|---|
+| Online/offline-map download | OpenStreetMap tile servers | Requested tile coordinates, IP address, and normal HTTP metadata |
+| Terrain line-of-sight analysis | Open-Meteo elevation API | Selected endpoint/sample coordinates, IP address, and normal HTTP metadata |
+| GIF picker and GIF display | GIPHY API/CDN | Search terms when entered, requested GIF IDs/assets, IP address, and normal HTTP metadata |
+| Translation-model download | Hugging Face for built-in presets, or a custom URL chosen by the user | Requested model URL, IP address, and normal HTTP metadata; chat text is translated on-device and is not sent for inference |
+| Firmware-fork telemetry import | User-configured InfluxDB v2 server | Repeater full public key, telemetry channel metadata, sensor values/timestamps, and API token in the authorization header |
+| External links in messages | The site opened after user confirmation | The requested URL, IP address, and normal browser/app metadata |
+
+Third-party operators handle those requests under their own policies: [OpenStreetMap Foundation privacy statement](https://osmfoundation.org/wiki/GDPR_Privacy_Statement), [Open-Meteo terms and privacy information](https://open-meteo.com/en/terms), [GIPHY privacy policy](https://support.giphy.com/hc/en-us/articles/360032872931-GIPHY-Privacy-Policy), and [Hugging Face privacy policy](https://huggingface.co/privacy).
+
+The InfluxDB destination is selected and controlled by the user, not the MeshCore Open project. Both HTTP and HTTPS URLs are accepted; use HTTPS unless the server is strictly local and the network is trusted. Telemetry-log download and its InfluxDB integration require the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore).
+
+## State-sync folders
+
+On Android and desktop, users can select a folder for automatic state handoff. MeshCore Open reads and writes an identity-scoped JSON file in that folder; it does not upload the file itself. If the folder belongs to a cloud drive, network share, backup product, or another app, that provider may copy or process the file under its own terms.
+
+The bundle may include message history, contacts, discovered nodes, channels and secrets, groups, region/encoding preferences, and global app settings—including an InfluxDB token when configured. Communities, the standalone pending-send store, unread counts, repeater passwords, and sync configuration are excluded; conversation history can still contain entries whose stored status is pending. The file is readable JSON and is not encrypted by the app. See [State sync](../documentation/telemetry-and-sync.md#state-sync) before enabling it.
+
+## Mesh communications and share links
+
+Messages and management commands are passed to the connected MeshCore radio and transmitted over the mesh. Direct messages use the MeshCore private-message protocol; channels use a shared pre-shared key. Radio traffic can be received or relayed by other nodes, and the app cannot control the retention or behavior of remote devices.
+
+Contact share links contain a node's public identity and metadata. Channel share links contain the channel's 16-byte secret and optional region scope. Anyone with a channel link can participate in and decrypt that channel, so private/community links should be treated as credentials. A full private identity imported under Settings is more sensitive still and should never be shared as a contact link.
+
+The phone's own GPS is not used for map positioning. A connected radio's manually configured or hardware-GPS location can be stored, advertised over the mesh, included in messages/exports, or sent to Open-Meteo when selected for line-of-sight analysis.
 
 ## Permissions
 
-The App requires certain device permissions to function:
+- **Bluetooth / nearby devices:** Discover and communicate with a BLE companion. Older Android versions also require location permission for BLE scanning.
+- **Location (older Android):** Satisfies the operating system's BLE-scan requirement; the app does not read the phone's GPS.
+- **USB:** Discover, request access to, and communicate with USB serial companions on supported platforms.
+- **Camera:** Scan community QR codes; camera access is optional and only used while scanning.
+- **Files/folders:** Select sync/export folders, save telemetry logs and GPX exports, and download map/model files.
+- **Internet:** Access the optional services described above or a user-entered TCP/Influx/custom-model endpoint.
+- **Notifications / foreground service / wake lock:** Show message and operation-result notifications and keep an Android BLE session alive in the background.
 
-### Bluetooth Permissions
-- **BLUETOOTH, BLUETOOTH_ADMIN** (Android 11 and below)
-- **BLUETOOTH_SCAN, BLUETOOTH_CONNECT, BLUETOOTH_ADVERTISE** (Android 12+)
+## Children
 
-These permissions are used solely to discover and communicate with MeshCore hardware devices via Bluetooth Low Energy (BLE).
+The app has no account service through which the project knowingly collects personal information from children. Mesh operators, third-party services, and user-configured storage or servers remain outside the project's control; guardians should supervise their use where required.
 
-### Location Permission
-- **ACCESS_FINE_LOCATION, ACCESS_COARSE_LOCATION**
+## Open source, changes, and contact
 
-Required by Android for BLE scanning on Android 11 and below. The App does not track or store your location. Location data may be optionally shared over the mesh network if you choose to enable location sharing features.
-
-### Internet Permission
-- **INTERNET**
-
-Used only for downloading map tiles from OpenStreetMap tile servers when using the map feature. No personal data is transmitted.
-
-### Notification Permission
-- **POST_NOTIFICATIONS** (Android 13+)
-
-Used to display notifications for incoming messages when the app is in the background.
-
-### Background Service Permissions
-- **FOREGROUND_SERVICE, FOREGROUND_SERVICE_CONNECTED_DEVICE, WAKE_LOCK**
-
-Used to maintain BLE connection with your MeshCore device while the app is in the background.
-
-## Third-Party Services
-
-### Map Tiles
-The App uses OpenStreetMap tile servers to display maps. When viewing maps, your device's IP address may be visible to the tile server. No other data is shared. See [OpenStreetMap's Privacy Policy](https://wiki.osmfoundation.org/wiki/Privacy_Policy) for more information.
-
-### GIF Search (Giphy)
-The App includes a GIF picker feature powered by Giphy. When you use the GIF search feature:
-- Your search queries are sent to Giphy's API servers
-- Your device's IP address is visible to Giphy
-- Giphy may collect usage data according to their privacy policy
-
-GIF search is optional and only activated when you choose to use it. See [Giphy's Privacy Policy](https://support.giphy.com/hc/en-us/articles/360032872931-GIPHY-Privacy-Policy) for more information about how they handle data.
-
-## Mesh Network Communications
-
-Messages sent through the MeshCore mesh network are transmitted over radio frequencies to other mesh devices. The App itself does not control or monitor these communications beyond facilitating the connection between your mobile device and your MeshCore hardware.
-
-## Data Security
-
-All data is stored locally on your device using standard Flutter/Android storage mechanisms. The App does not implement additional encryption for locally stored data beyond what the operating system provides.
-
-## Children's Privacy
-
-The App does not knowingly collect any personal information from children under 13 years of age.
-
-## Open Source
-
-MeshCore Open is open-source software. You can review the complete source code to verify these privacy practices at [the project repository].
-
-## Changes to This Policy
-
-We may update this Privacy Policy from time to time. Any changes will be reflected in the "Last Updated" date at the top of this policy.
-
-## Contact
-
-If you have questions about this Privacy Policy or the App's privacy practices, please open an issue on the project's GitHub repository.
-
----
-
-**Summary**: MeshCore Open is a privacy-respecting app that stores all data locally on your device. We do not collect, track, or share your personal information.
+The implementation can be reviewed in the [MeshCore Open repository](https://github.com/omeg/meshcore-open). This policy may change as features change; the date above will be updated. Questions or reports can be filed in the [issue tracker](https://github.com/omeg/meshcore-open/issues).

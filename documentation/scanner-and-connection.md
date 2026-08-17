@@ -26,14 +26,14 @@ The BLE Scanner is the app's home screen, displayed immediately on launch.
 | Connected | "Connected to \<device name\>" | Green |
 | Disconnecting | "Disconnecting..." | Orange |
 
-**Device List**: When no devices are found, shows a large Bluetooth icon with a prompt. The prompt text is dynamic: "Searching for devices..." while actively scanning, or "Tap Scan to search" when idle. When devices are found, shows a scrollable list of `DeviceTile` widgets.
+**Device List**: When no devices are found, shows a large Bluetooth icon with a prompt. The prompt text is dynamic: "Searching for devices..." while actively scanning, or "Tap Scan to search" when idle. The idle state also includes an in-page Scan button. When devices are found, shows a scrollable list of `DeviceTile` widgets.
 
 **App Bar Actions**: Icon buttons in the top-right corner of the app bar:
 - **USB** icon button - Opens USB connection screen (Android, Windows, Linux, macOS, Chrome web only)
 - **TCP/IP** icon button - Opens TCP connection screen (all non-web platforms)
 
 **Bottom FAB**: A single floating action button:
-- **BLE Scan** button - Toggles BLE scanning on/off; shows a spinner when scanning. **Disabled** (greyed out, not tappable) when Bluetooth is off
+- **BLE Scan** button - Toggles BLE scanning on/off; shows a spinner when scanning. It is disabled when Bluetooth is off. The button remains visible in the web build, but tapping it explains that browser BLE is unsupported; use Web Serial instead. While a connection is in progress, it changes to **Cancel**.
 
 ### Device Tile
 
@@ -47,7 +47,7 @@ Each discovered device is displayed as a list tile showing:
 - **RSSI value** in dBm (e.g., "-72 dBm")
 - **Device name** (falls back to "Unknown Device")
 - **Device ID** (BLE MAC address on Android; a system-assigned UUID on iOS/macOS)
-- **Connect button** (the entire tile row is also tappable — both trigger connection)
+- The entire row is tappable. While that device is connecting, its signal bars are replaced by a progress indicator
 
 Note: The weak (-80 to -90 dBm) and poor (< -90 dBm) tiers share the same icon shape and are only differentiated by color (orange vs. red).
 
@@ -61,14 +61,26 @@ Note: The weak (-80 to -90 dBm) and poor (< -90 dBm) tiers share the same icon s
 
 ### Connecting to a Device
 
-Tap a device tile or its Connect button:
+Tap a device tile:
 1. The connector stops scanning and transitions to "connecting"
 2. Connects to the device with a 15-second timeout (6 seconds on Linux)
-3. Requests MTU 185 bytes for optimal throughput
+3. Requests MTU 185 bytes for optimal throughput on supported native platforms (not Linux or web)
 4. Discovers BLE services and locates the Nordic UART Service
 5. Subscribes to TX notifications for receiving data
 6. On success, automatically navigates to the Channels screen
 7. On failure, shows a red error snackbar
+
+Linux applies additional connection recovery for stale pairing/bond state and retries notification setup. During development, Linux can connect to a known address without scanning:
+
+```bash
+flutter run -d linux -- --ble-address AA:BB:CC:DD:EE:FF
+```
+
+`--ble-addr`, `--ble-address=<address>`, and `--ble-addr=<address>` are equivalent. These arguments are Linux-only.
+
+### BLE reconnect
+
+An unexpected BLE disconnect starts native auto-reconnect with delays of 1, 2, 4, 8, 16, then 30 seconds between attempts. A successful connection resets the delay. Manual disconnects and USB/TCP sessions do not use this loop. The UI returns to Scanner while disconnected and reopens Channels if the BLE session is restored.
 
 ---
 
@@ -76,7 +88,7 @@ Tap a device tile or its Connect button:
 
 ### How to Access
 
-From the Scanner screen, tap the **USB** icon button in the app bar.
+From the Scanner screen, tap the **USB** icon button in the app bar. USB is supported on Android, Linux, Windows, macOS, and Chrome/Chromium through Web Serial; it is not available on iOS.
 
 ### What the User Sees
 
@@ -102,7 +114,7 @@ From the Scanner screen, tap the **USB** icon button in the app bar.
 
 ### How to Access
 
-From the Scanner screen, tap the **TCP/IP** icon button in the app bar.
+From the Scanner screen, tap the **TCP/IP** icon button in the app bar. TCP is available on native platforms, including iOS, and is not available in the web build.
 
 ### What the User Sees
 

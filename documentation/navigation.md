@@ -20,7 +20,7 @@ The QuickSwitchBar is a Material 3 `NavigationBar` with a frosted-glass visual t
 | 1 | Tag | Channels | ChannelsScreen |
 | 2 | Map | Map | MapScreen |
 
-Tapping a tab replaces the current screen with a subtle fade + slight horizontal nudge transition (220ms forward, 200ms reverse). The back button is suppressed on all three main screens — navigation between them is flat, not stacked. All icons use outline variants (`people_outline`, `tag`, `map_outlined`) following Material 3 conventions.
+Tapping a tab replaces the current screen with a subtle fade + slight horizontal nudge transition (220ms forward, 200ms reverse). The back button is suppressed on all three main screens — navigation between them is flat, not stacked. Contacts and Map use outline icons when unselected and filled icons when selected; the Tag icon is the same in both states.
 
 ## Disconnection
 
@@ -32,7 +32,7 @@ Tapping a tab replaces the current screen with a subtle fade + slight horizontal
 
 - **Theme mode** is user-configurable in App Settings (System / Light / Dark) — not locked to system
 - **Language** can be overridden to one of 18 supported languages, or follow the system locale
-- On web, if a non-Chromium browser is detected, the app shows a `ChromeRequiredScreen` instead of the Scanner (Web Bluetooth requires Chromium)
+- On web, a non-Chromium browser shows `ChromeRequiredScreen` because the app's browser transport is Web Serial. Web Bluetooth is not supported.
 
 ## Full Navigation Graph
 
@@ -49,12 +49,15 @@ ContactsScreen (selected=0)
   ├─ [quick-switch 2] → pushReplacement → MapScreen
   ├─ [tap contact] → push → ChatScreen
   ├─ [overflow > Settings] → push → SettingsScreen
-  └─ [overflow > Discovered] → push → DiscoveryScreen
+  ├─ [overflow > Nearby Nodes] → push → NearbyNodesScreen
+  └─ [overflow > Discovered Contacts] → push → DiscoveryScreen
 
 ChannelsScreen (selected=1)
   ├─ [quick-switch 0] → pushReplacement → ContactsScreen
   ├─ [quick-switch 2] → pushReplacement → MapScreen
   ├─ [tap channel] → push → ChannelChatScreen
+  ├─ [overflow > Nearby Nodes] → push → NearbyNodesScreen
+  ├─ [overflow > Discovered Contacts] → push → DiscoveryScreen
   └─ [overflow > Settings] → push → SettingsScreen
 
 MapScreen (selected=2)
@@ -62,7 +65,11 @@ MapScreen (selected=2)
   ├─ [quick-switch 1] → pushReplacement → ChannelsScreen
   ├─ [radar menu item] → enters in-map path trace mode (push → PathTraceMapScreen after path is built)
   ├─ [terrain menu item] → push → LineOfSightMapScreen
-  └─ [long-press] → share marker sheet
+  ├─ [overflow > Discovered Contacts] → push → DiscoveryScreen
+  ├─ [overflow > Settings] → push → SettingsScreen
+  └─ [long-press/right-click] → share marker sheet
+
+LineOfSightMapScreen also keeps the QuickSwitchBar visible, allowing direct replacement with Contacts or Channels.
 
 Settings (push from any main screen)
   └─ [App Settings] → push → AppSettingsScreen

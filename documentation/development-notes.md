@@ -4,7 +4,7 @@ These notes capture implementation findings that are useful for future work but 
 
 ## Multibyte Path Support
 
-Detailed protocol notes are in [BLE Protocol & Data Layer](ble-protocol.md#path-hashes-and-multibyte-paths). The short version:
+Detailed protocol notes are in [Companion Protocol & Data Layer](ble-protocol.md#path-hashes-and-multibyte-paths). The short version:
 
 - Path hashes are public-key prefixes and can be 1, 2, or 3 bytes. There are no 4-byte path hashes in the app path model.
 - Do not guess the hash width from raw path length. Use device self-info for active width and packet `path_len` for packet-specific width.
@@ -36,10 +36,10 @@ The connector must set the discovery store public key after self-info is parsed,
 Linux users can avoid scan delay by passing a BLE address at startup. Keep command-line argument handling compatible with Flutter's Linux invocation style:
 
 ```
-flutter run -d linux --dart-entrypoint-args=--ble-address=CF:DE:B5:89:55:F5
+flutter run -d linux -- --ble-address CF:DE:B5:89:55:F5
 ```
 
-The app should continue to support scanning when no address is supplied.
+`--ble-addr` and the `--ble-address=<address>` / `--ble-addr=<address>` forms are also accepted. The app should continue to support scanning when no address is supplied.
 
 ## Desktop Keyboard Flow
 
@@ -49,7 +49,7 @@ Unread/new-message markers on desktop should persist while the user remains on t
 
 ## Telemetry Log Fetching
 
-After a full telemetry log fetch, the UI should still allow a later refresh for newly appended data without requiring an app restart. Cancellation should abort promptly instead of waiting for the current long fetch loop to drain. Future changes in this area should check cancellation between request chunks and before delayed retries.
+Telemetry-log request subtypes and their InfluxDB workflow target the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore); do not present them as stock-firmware behavior. After a full fetch, the UI should still allow a later refresh for newly appended data without requiring an app restart. Cancellation should abort promptly instead of waiting for the current long fetch loop to drain. Future changes in this area should check cancellation between request chunks and before delayed retries.
 
 ## Debugging Raw Path Issues
 

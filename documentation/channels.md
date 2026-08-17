@@ -2,7 +2,7 @@
 
 ## Overview
 
-Channels are broadcast group-chat spaces secured by a 16-byte pre-shared key (PSK). Any device with the same channel index and PSK will receive and decrypt channel messages. Unlike direct messages, channel messages are broadcast to the entire mesh.
+Channels are broadcast group-chat spaces secured by a 16-byte pre-shared key (PSK). Any device that stores the same PSK in one of its local channel slots can receive and decrypt the traffic; channel indexes do not need to match between devices. Unlike direct messages, channel messages use flood routing across the mesh, optionally constrained by a selected region scope.
 
 The number of active channels is determined by the firmware (default 40); the device reports its actual limit at login.
 
@@ -31,7 +31,7 @@ QuickSwitchBar tab 1 (middle) from any main screen.
   - Unread badge (if messages are unread)
   - Drag handle (when manual sort is active)
 - **"+" FAB** to add a new channel
-- **Overflow menu**: Disconnect, Manage Communities, Settings
+- **Overflow menu**: Nearby Nodes, Discovered Contacts, Manage Communities (when any exist), Disconnect, and Settings
 
 If no channels exist, an empty state with an "Add Public Channel" shortcut is shown. If a search produces no results, a separate "no results" empty state with a search-off icon is shown.
 
@@ -60,6 +60,7 @@ Tap the "+" FAB to open a dialog with six options:
 | Action | Description |
 |---|---|
 | Edit | Change name, PSK (with a dice icon to generate a random PSK), SMAZ compression toggle (compresses outgoing messages to allow longer text within the byte limit), or Cyr2Lat encoding toggle (transliterates Cyrillic to Latin for compatibility) |
+| Copy Share Link | Copies a channel link containing its name, 16-byte secret, and optional region scope |
 | Mute / Unmute | Toggle push notification suppression for this channel |
 | Delete | Remove the channel from the device (confirmation required) |
 
@@ -71,7 +72,8 @@ Tap a channel card to open the channel chat screen.
 
 - Type icon: globe for public channels, tag (#) for all other channel types
 - Channel name
-- Subtitle: "{Public|Private} • {N} unread" (e.g., "Public • 3 unread")
+- Subtitle: "{Public|Private} • {N} unread" plus the selected region scope, when set
+- Region button (or tapping the title): choose/clear a stored region or open Region Management. The choice is saved per channel and scopes subsequent flood traffic
 
 ### Message Display
 
@@ -91,10 +93,12 @@ Tap a channel card to open the channel chat screen.
 - **Location pins** (`m:{lat},{lon}|{label}|`) shown as tappable location cards
 - **Reactions** displayed as emoji pills below target messages
 
+The composer provides GIF and optional translation controls, plus a desktop emoji picker. Trailing whitespace is removed before sending, and whitespace-only messages are ignored.
+
 ### Replies (Channel Chat Only)
 
-- **Mobile**: Swipe an **incoming** message left to trigger reply (with haptic feedback). You cannot swipe your own outgoing messages. Swipe reply is not available on desktop.
-- **All platforms**: Long-press → "Reply"
+- **All platforms**: Long-press/right-click → "Reply"
+- **Browser build**: An incoming message can also be swiped left to reply. Swipe-to-reply is disabled in the native mobile and desktop builds.
 - Reply banner appears above the input bar with the quoted message (tap X to cancel)
 - Sent replies are prefixed `@[{senderName}] {text}`
 - Replies sent on this device show a bordered quote block inside the bubble; tapping scrolls to the original. Reply previews render GIF thumbnails and location pin icons, not just text.
@@ -111,10 +115,25 @@ Tap a channel card to open the channel chat screen.
 |---|---|---|
 | Reply | All messages | Triggers reply mode |
 | Path | All messages | Opens message path view |
+| Copy Path | Messages with path data | Copies hop prefixes using the message's recorded hash width |
 | Add Reaction | Incoming messages only | Opens emoji picker (cannot react to your own messages) |
 | Copy | All messages | Copies text to clipboard |
+| Translate | Incoming messages only, when translation is enabled | Runs on-device translation |
 | Mark as Unread | Incoming messages only | Marks this message and all subsequent incoming messages as unread |
+| Resend Message | Outgoing messages | Sends the content as a new channel message |
 | Delete | All messages | Removes locally (not from mesh) |
+
+## Channel share links
+
+The copied format is:
+
+```text
+meshcore://channel/add?name=<encoded-name>&secret=<32-hex>&region_scope=<encoded-region>
+```
+
+`region_scope` is omitted when no scope is selected. A received link opens a preview and requires an available companion channel slot before it can be added. For private channels, the receiver can edit the displayed name before import.
+
+The `secret` parameter is the channel's PSK. Anyone who receives the link can decrypt and transmit on that channel, so treat private and community channel links as sensitive credentials.
 
 ## Communities
 
@@ -152,5 +171,5 @@ From the channels screen overflow menu → "Manage Communities". Opens a draggab
 | Addressing | Broadcast to all nodes with matching PSK | Point-to-point to a specific contact |
 | Encryption | Shared PSK (symmetric) | Contact's public key (asymmetric) |
 | Sender identity | Plain text prefix in payload | Verified via public key |
-| Replies | Supported (swipe or long-press) | Not supported |
+| Replies | Supported from the context menu; browser swipe is optional | Not supported |
 | Retry mechanism | No automatic retry | Exponential backoff with path rotation |

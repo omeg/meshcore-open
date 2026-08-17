@@ -1,4 +1,4 @@
-# How to contribute to Meshcore Open
+# How to contribute to MeshCore Open
 
 Before submitting any pull requests (PR), please review the following information.
 
@@ -11,9 +11,9 @@ may also be rejected. [See more](#ai-use)
 
 ### **Did you find a bug?**
 
-* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/zjs81/meshcore-open/issues).
+* **Ensure the bug was not already reported** by searching on GitHub under [Issues](https://github.com/omeg/meshcore-open/issues).
 
-* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/zjs81/meshcore-open/issues/new).
+* If you're unable to find an open issue addressing the problem, [open a new one](https://github.com/omeg/meshcore-open/issues/new).
 Be sure to include a **title and clear description**, as much relevant
 information as possible, and a **code sample** or an **executable test case**
 demonstrating the expected behavior that is not occurring. You can also include
@@ -53,9 +53,11 @@ multiple commits will be squashed into one before merging if required. See
 [Git Mastery](https://git-mastery.org/lessons/commitMessage/) for more
 information on good commit messages.
 
-* **Before committing changes** on your branch, be sure to run both
-`dart format .` and `flutter analyze`. The continuous development checks will
-fail if issues here are not addressed before hand.
+* **Before committing changes** on your branch, be sure to run
+`dart format .`, `flutter analyze`, and `flutter test`. The continuous
+development checks will fail if issues here are not addressed beforehand.
+
+* Update the relevant public guide under `documentation/` when behavior changes. Protocol changes belong in `documentation/ble-protocol.md`; `docs/BLE_PROTOCOL.md` is only a compatibility pointer.
 
 ## AI-use
 

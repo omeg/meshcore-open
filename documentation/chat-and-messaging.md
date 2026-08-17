@@ -10,7 +10,7 @@ This page covers direct messaging. For channel chat, see the Channels documentat
 
 ## How to Access
 
-From the Contacts screen, tap any Chat-type contact to open the ChatScreen.
+From the Contacts screen, tap a Chat contact. Room contacts open the same chat UI after remote authentication.
 
 ## Chat Screen Layout
 
@@ -27,10 +27,11 @@ From the Contacts screen, tap any Chat-type contact to open the ChatScreen.
 - **Outgoing messages**: Right-aligned, primary color background. **Failed messages** change to a red-toned error container background
 - **Incoming messages**: Left-aligned, grey background with a colored avatar (initial letter or first emoji of sender name; color is deterministic from a hash of the sender name)
 - Bubble width capped at 72% of screen width
-- Hyperlinks rendered as tappable green underlined text
+- Hyperlinks and MeshCore share links rendered as tappable orange underlined text
 - **Pinch-to-zoom**: Two-finger zoom (0.8x–1.8x) and double-tap to reset
 - **Jump to bottom**: Floating button appears when scrolled away from the bottom
 - **Lazy loading**: Scrolling to top loads older messages from storage
+- **Unread divider**: The new-message marker remains visible for the rest of the screen visit, including on desktop, and is cleared after leaving/acknowledging the chat. With **Jump to Oldest Unread** enabled, the chat initially scrolls to that marker
 
 ### Input Bar
 
@@ -38,8 +39,9 @@ From the Contacts screen, tap any Chat-type contact to open the ChatScreen.
 - **Translation button** (optional, between GIF and text field): Shown only when translation is enabled in App Settings. Tap to configure outgoing-message translation language and on/off toggle.
 - **Text field** (center): Auto-capitalization, enforces UTF-8 byte limit in real-time
 - **Send button** (right): Submits the message
-- On desktop: Enter/Numpad Enter also submits
+- On desktop: an emoji-picker button is available and Enter/Numpad Enter submits
 - When a GIF is selected, the text field shows an inline GIF preview with a dismiss button
+- Trailing spaces, tabs, and line endings are removed before send; leading whitespace is preserved, and a whitespace-only message is not sent
 
 ## Message Types
 
@@ -77,7 +79,7 @@ When enabled in App Settings, additional metadata appears inside each bubble:
 
 ## Send Queue
 
-Only one message per contact can be in-flight at a time (to avoid overflowing the firmware's 8-entry ACK table). If you send multiple messages rapidly, they are queued and sent sequentially — each waits for the previous one to be delivered, fail, or exhaust retries before transmitting.
+Only one message per contact can be in-flight at a time. Across all contacts, the app allows at most six active sends, leaving two slots of headroom in the firmware's global 8-entry ACK table. If you send multiple messages rapidly, excess messages are queued; each per-contact queue waits for its active message to be delivered, fail, or exhaust retries before transmitting.
 
 ## Retry Mechanism
 
@@ -92,9 +94,11 @@ When a direct message is sent:
 7. If **Clear Path on Max Retry** is enabled (App Settings), the contact's stored routing path is automatically cleared when max retries are exhausted
 8. **Auto route rotation**: When enabled (and no manual path override is set), the retry service uses a diversity window to avoid re-using recently tried paths, cycling through known routes on each attempt
 
-### Manual Retry
+### Manual retry and resend
 
 Long-press a failed message → "Retry" to re-send using the current routing settings.
+
+Long-press any other outgoing message → **Resend Message** to create a new send attempt. Retrying a failed message replaces the failed local entry; resending a completed message creates a new outgoing entry.
 
 ## Reactions
 
@@ -113,9 +117,13 @@ Add emoji reactions to incoming messages (not your own):
 |---|---|---|
 | Add reaction | Incoming messages only | Opens emoji picker |
 | View path | All platforms: long-press/right-click menu | Shows message routing path |
+| Copy path | Messages with path data | Copies hop prefixes using the message's path-hash width |
 | Copy | All messages | Copies text to clipboard |
 | Translate | Incoming messages only (when translation is enabled and not yet translated) | Translates the message on-demand using the on-device model |
 | Mark as Unread | Incoming messages only | Marks this message and all subsequent incoming messages as unread |
 | Delete | All messages | Removes locally (not from mesh) |
 | Retry | Failed outgoing messages | Re-sends the message |
+| Resend Message | Other outgoing messages | Sends the content as a new message |
 | Open chat with sender | Room server chats | Opens 1:1 chat with the message sender |
+
+Direct chats do not implement replies. Reply metadata is a channel-chat feature.

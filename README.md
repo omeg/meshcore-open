@@ -2,247 +2,107 @@
 
 Open-source Flutter client for MeshCore LoRa mesh networking devices.
 
-## Overview
-
-MeshCore Open is a cross-platform mobile application for communicating with MeshCore LoRa mesh network devices via Bluetooth Low Energy (BLE). The app enables long-range, off-grid communication through peer-to-peer messaging, public channels, and mesh networking capabilities.
+MeshCore Open connects to a companion radio over Bluetooth Low Energy, USB serial, or TCP and provides direct messaging, channels, maps, repeater administration, device configuration, and local message history. The app does not require an account or a developer-operated cloud service.
 
 **Website:** [meshcoreopen.org](https://meshcoreopen.org/)
 
-<a href="http://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/zjs81/meshcore-open">
-        <img src="assets/badges/badge_obtainium.png" height="80" align="center" alt="Get it on Obtainium"/>
+<a href="http://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/omeg/meshcore-open">
+  <img src="assets/badges/badge_obtainium.png" height="80" align="center" alt="Get it on Obtainium"/>
 </a>
 
 ## Screenshots
 
 <table>
   <tr>
-    <td><img src="docs/screenshots/contacts.jpg" width="200"/><br/><p align="center"><b>Contacts</b></p></td>
-    <td><img src="docs/screenshots/chat1.jpg" width="200"/><br/><p align="center"><b>Chat</b></p></td>
-    <td><img src="docs/screenshots/chat2.jpg" width="200"/><br/><p align="center"><b>Reactions</b></p></td>
-    <td><img src="docs/screenshots/map.jpg" width="200"/><br/><p align="center"><b>Map</b></p></td>
-    <td><img src="docs/screenshots/channels.jpg" width="200"/><br/><p align="center"><b>Channels</b></p></td>
+    <td><img src="docs/screenshots/contacts.jpg" width="200" alt="Contacts"/><br/><p align="center"><b>Contacts</b></p></td>
+    <td><img src="docs/screenshots/chat1.jpg" width="200" alt="Chat"/><br/><p align="center"><b>Chat</b></p></td>
+    <td><img src="docs/screenshots/chat2.jpg" width="200" alt="Reactions"/><br/><p align="center"><b>Reactions</b></p></td>
+    <td><img src="docs/screenshots/map.jpg" width="200" alt="Map"/><br/><p align="center"><b>Map</b></p></td>
+    <td><img src="docs/screenshots/channels.jpg" width="200" alt="Channels"/><br/><p align="center"><b>Channels</b></p></td>
   </tr>
 </table>
 
 ## Features
 
-### Core Functionality
+- Encrypted direct messages with delivery tracking, reactions, resend/retry controls, route history, and automatic route rotation
+- Broadcast channels, private channels, communities, region-scoped flooding, channel replies, and share links
+- Persistent contacts and discovered nodes, groups, favorites, nearby-repeater discovery, and structured contact sharing
+- Interactive maps, offline tile downloads, path traces, message-path inspection, and terrain line-of-sight profiles
+- Companion settings for radio parameters, identity import, 1/2/3-byte path hashes, regions, telemetry, radio statistics, and GPS-capable hardware
+- Repeater and room-server status, live telemetry, CLI, neighbor discovery, and remote settings
+- Telemetry-log download and optional InfluxDB v2 import when used with the [omeg MeshCore firmware fork](https://github.com/omeg/meshcore)
+- Optional folder-based state synchronization between app installations
+- 18 interface languages, on-device translation, Cyrillic-to-Latin profiles, GPX export, notifications, and debug tools
 
-- **Direct Messaging**: Private encrypted conversations with individual contacts
-- **Public Channels**: Broadcast messages to channel subscribers on the mesh network
-- **Contact Management**: Organize contacts, track last seen times, and manage conversation history
-- **Contact Groups**: Create custom groups to organize your mesh network contacts
-- **Message Reactions**: React to messages with emoji responses
-- **Message Replies**: Thread conversations with inline reply functionality
+See the [feature documentation](documentation/README.md) for behavior, platform limits, and user instructions. The canonical companion-protocol reference is [documentation/ble-protocol.md](documentation/ble-protocol.md), and data handling is described in the [privacy policy](docs/PRIVACY_POLICY.md).
 
-### Mesh Network
+## Platform support
 
-- **Path Visualization**: View routing paths and signal quality for each contact
-- **Route Management**: Manual path overriding and automatic route rotation
-- **Signal Metrics**: Real-time SNR (Signal-to-Noise Ratio) tracking
-- **Node Discovery**: Automatic detection of nearby mesh nodes
-- **Repeater Support**: Connect to and manage repeater nodes for extended range
+| Transport or feature | Android | iOS | Linux | Windows | macOS | Web |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|
+| BLE companion | Yes | Yes | Yes | Yes | Yes | No |
+| USB serial companion | Yes | No | Yes | Yes | Yes | Chrome only |
+| TCP companion | Yes | Yes | Yes | Yes | Yes | No |
+| Core messaging, channels, map, and settings | Yes | Yes | Yes | Yes | Yes | Yes* |
+| Repeater management | Yes | Yes | Yes | Yes | Yes | Yes* |
+| State-sync folders | Yes | No | Yes | Yes | Yes | No |
 
-### Map & Location
+\* The web build requires a Chromium-based browser and a connected Web Serial companion. Browser BLE is intentionally unsupported.
 
-- **Live Map View**: Real-time visualization of mesh network nodes on an interactive map
-- **Node Filtering**: Filter by node type (chat, repeater, sensor) and time range
-- **Location Sharing**: Share GPS coordinates and custom markers with contacts
-- **Offline Maps**: Download map tiles for offline use in remote areas
-- **MGRS Coordinates**: Support for Military Grid Reference System coordinate format
+The current mobile deployment targets are Android API 24+ and iOS 16.4+.
 
-### Device Management
+## Architecture
 
-- **BLE, USB, TCP Connection**: Scan and connect to MeshCore devices via Bluetooth, USB or TCP
-- **Device Settings**: Configure radio parameters, power settings, and network options
-- **Battery Monitoring**: Real-time battery status with chemistry-specific voltage curves
-- **Firmware Updates**: Over-the-air firmware updates via BLE (coming soon)
+- Flutter 3.44+ and Dart 3.12+
+- `Provider`/`ChangeNotifier` state management
+- Nordic UART Service for BLE; the same binary command protocol over framed USB serial and TCP transports
+- Identity-scoped JSON data in `SharedPreferences`, plus files for map tiles, translation models, synchronization snapshots, and telemetry logs
+- MeshCore protocol encryption for private messages; shared pre-shared keys for channels
 
-### Repeater Hub
-
-- **CLI Access**: Full command-line interface to repeater nodes
-- **Settings Management**: Configure repeater behavior, power limits, and network settings
-- **Statistics Dashboard**: View repeater traffic, connected clients, and system health
-- **Remote Management**: Administer repeaters from anywhere on the mesh network
-
-## Technical Details
-
-### Architecture
-
-- **Framework**: Flutter 3.38.5 / Dart 3.10.4
-- **State Management**: Provider pattern with ChangeNotifier
-- **BLE Protocol**: Nordic UART Service (NUS) over Bluetooth Low Energy
-- **Storage**: Local SQLite database for messages and contact data
-- **Encryption**: End-to-end encryption for private messages using the MeshCore protocol
-
-### Platform Support
-
-| Feature            | Android (API 21+) | iOS (12+) | Linux | Windows | macOS |                Web                |
-|--------------------|:-----------------:|:---------:|:-----:|:-------:|:-----:|:---------------------------------:|
-| BLE companion      | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-| USB companion      | ✅                | 🚧        | ✅   | ✅      | ✅    | ✅                                |
-| TCP companion      | ✅                | 🚧        | ✅   | ✅      | ✅    | ❌<br>(requires websocket bridge) |
-| Core Functionality | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-| Mesh Network       | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-| Map & Location     | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-| Device Management  | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-| Repeater Hub       | ✅                | ✅        | ✅   | ✅      | ✅    | ✅                                |
-
-### Dependencies
-
-| Package | Purpose |
-|---------|---------|
-| flutter_blue_plus | Bluetooth Low Energy communication |
-| provider | State management |
-| shared_preferences | Local key-value storage (scoped per device) |
-| flutter_map | Interactive map display |
-| latlong2 | Geographic coordinate handling |
-| flutter_local_notifications | Background notification support |
-| pointycastle | Cryptographic operations |
-| llamadart | On-device LLM message translation |
-| intl | Internationalization and date formatting |
-
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
-- Flutter SDK 3.38.5 or later
-- Android Studio / Xcode (for mobile development)
-- A MeshCore-compatible LoRa device
+- Flutter 3.44 or later
+- Android Studio, Xcode, or the desktop platform toolchain needed for your target
+- A MeshCore-compatible companion radio
 
-### Installation
+### Build and run
 
-1. **Clone the repository**
+```bash
+git clone https://github.com/omeg/meshcore-open.git
+cd meshcore-open
+flutter pub get
+flutter run
+```
 
-   ```bash
-   git clone https://github.com/zjs81/meshcore-open.git
-   cd meshcore-open
-   ```
+Run the checks used for changes:
 
-2. **Install dependencies**
+```bash
+flutter analyze
+flutter test
+```
 
-   ```bash
-   flutter pub get
-   ```
-
-3. **Run the app**
-
-   ```bash
-   flutter run
-   ```
-
-### Building for Release
-
-**Android APK:**
+Release examples:
 
 ```bash
 flutter build apk --release
-```
-
-**iOS:**
-
-```bash
 flutter build ios --release
 ```
 
-## Project Structure
+For Linux BLE development, a device can be selected without scanning:
 
-```
-lib/
-├── main.dart                    # App entry point
-├── connector/
-│   ├── meshcore_connector.dart  # BLE communication & state management
-│   ├── meshcore_protocol.dart   # Protocol definitions & frame parsing
-│   └── meshcore_uuids.dart      # Device names and IDs (add prefixes here!)
-├── screens/
-│   ├── scanner_screen.dart      # Device scanning (home screen)
-│   ├── contacts_screen.dart     # Contact list
-│   ├── chat_screen.dart         # Direct messaging
-│   ├── channels_screen.dart     # Public channels
-│   ├── map_screen.dart          # Network visualization map
-│   ├── settings_screen.dart     # Device settings
-│   └── repeater_hub_screen.dart # Repeater management
-├── models/
-│   ├── contact.dart             # Contact data model
-│   ├── message.dart             # Message data structure
-│   └── channel.dart             # Channel definitions
-├── services/
-│   ├── notification_service.dart      # Push notifications
-│   ├── message_retry_service.dart     # Automatic message retry
-│   ├── background_service.dart        # Background BLE connection
-│   └── map_tile_cache_service.dart    # Offline map storage
-└── storage/
-    ├── message_store.dart       # Message persistence
-    ├── contact_store.dart       # Contact database
-    └── unread_store.dart        # Unread message tracking
+```bash
+flutter run -d linux -- --ble-address AA:BB:CC:DD:EE:FF
 ```
 
-## BLE Protocol
-
-### Nordic UART Service (NUS)
-
-- **Service UUID**: `6e400001-b5a3-f393-e0a9-e50e24dcca9e`
-- **RX Characteristic**: `6e400002-b5a3-f393-e0a9-e50e24dcca9e` (Write to device)
-- **TX Characteristic**: `6e400003-b5a3-f393-e0a9-e50e24dcca9e` (Notify from device)
-
-### Device Discovery
-
-Devices are discovered by scanning for BLE advertisements with known MeshCore device name prefixes. These are currently:
-    - `MeshCore-`
-    - `Whisper-`
-    - `WisCore-`
-    - `HT-`
-    - `LowMesh_MC_`
-    - `NRF52`
-
-New device prefixes can be added in `lib/connector/meshcore_uuids.dart`.
-
-
-### Message Format
-
-Messages are transmitted as binary frames using a custom protocol optimized for LoRa transmission. See `meshcore_protocol.dart` for frame structure definitions.
-
-## Configuration
-
-### App Settings
-
-- **Theme**: System default, light, or dark mode
-- **Language**: Use one of 15 languages (English, Chinese, French, Spanish, Portuguese, German, Dutch, Polish, Swedish, Italian, Slovak, Slovene, Bulgarian, Russian, Ukrainian)
-- **Notifications**: Configurable for messages, channels, and node advertisements
-- **Battery Chemistry**: Support for NMC, LiFePO4, and LiPo battery types
-- **Message Retry**: Automatic retry with configurable path clearing
-
-### Device Settings
-
-- **Radio Power**: Transmit power adjustment (10-30 dBm)
-- **Frequency**: LoRa frequency configuration
-- **Bandwidth**: Channel bandwidth selection
-- **Spreading Factor**: Range vs. speed trade-off
-- **Network ID**: Mesh network identifier
+`--ble-addr` and `--ble-address=<address>` are also accepted.
 
 ## Contributing
 
-This is an open-source project. Contributions are welcome!
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md), keep protocol changes synchronized with the canonical protocol guide, and run formatting, analysis, and tests before opening a pull request.
 
-### Development Guidelines
-
-- Follow the Flutter style guide
-- Use Material 3 design components
-- Write clear commit messages
-- Test on both Android and iOS before submitting PRs
-
-### Code Style
-
-- Prefer `StatelessWidget` with `Consumer` for reactive UI
-- Use `const` constructors where possible
-- Keep functions small and focused
-- Avoid premature abstractions
-- Run dart format on all changes before submitting
-
-## Support
-
-For issues, questions, or feature requests, please open an issue on GitHub:
-<https://github.com/zjs81/meshcore-open/issues>
+For issues, questions, or feature requests, use the [GitHub issue tracker](https://github.com/omeg/meshcore-open/issues).
 
 ## Donate
 
@@ -250,14 +110,11 @@ If you find MeshCore Open useful and would like to support development, you can 
 
 **Solana Address:** `F15YanjZj96YTBtKJYgNa8RLQLCZkx5CEwogPWkqXeoQ`
 
-
 **Monero Address:** `453TxnpUqjkJtXxzdjMsrgERNkBRXEGamPbpC45ENrvKAk9tH7kZbxWF82Hz66etgDZyXFPEBU2JUEqhLeJyWt9kBvTVy5m`
 
 **Bitcoin Address:** `bc1qh45x28v8dslcg4v4upmqd9g0mvc3lnyffmyzr5`
 
-Your support helps maintain and improve this open-source project!
-
 ## Acknowledgments
 
 - Built with [Flutter](https://flutter.dev/)
-- Map tiles from [OpenStreetMap](https://www.openstreetmap.org/)
+- Map data and tiles from [OpenStreetMap](https://www.openstreetmap.org/)
