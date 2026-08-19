@@ -1152,7 +1152,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get nearbyNodes_unknownRepeater => 'Unknown repeater';
 
   @override
+  String get nearbyNodes_goToContact => 'Go to contact';
+
+  @override
+  String get nearbyNodes_copyPublicKey => 'Copy public key';
+
+  @override
+  String get nearbyNodes_copyPublicKeyPrefix => 'Copy public-key prefix';
+
+  @override
   String get nearbyNodes_keyCopied => 'Public key copied';
+
+  @override
+  String get nearbyNodes_keyPrefixCopied => 'Public-key prefix copied';
 
   @override
   String nearbyNodes_snr(String snr) {

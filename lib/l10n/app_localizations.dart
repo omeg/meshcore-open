@@ -2152,11 +2152,35 @@ abstract class AppLocalizations {
   /// **'Unknown repeater'**
   String get nearbyNodes_unknownRepeater;
 
+  /// No description provided for @nearbyNodes_goToContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to contact'**
+  String get nearbyNodes_goToContact;
+
+  /// No description provided for @nearbyNodes_copyPublicKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy public key'**
+  String get nearbyNodes_copyPublicKey;
+
+  /// No description provided for @nearbyNodes_copyPublicKeyPrefix.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy public-key prefix'**
+  String get nearbyNodes_copyPublicKeyPrefix;
+
   /// No description provided for @nearbyNodes_keyCopied.
   ///
   /// In en, this message translates to:
   /// **'Public key copied'**
   String get nearbyNodes_keyCopied;
+
+  /// No description provided for @nearbyNodes_keyPrefixCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Public-key prefix copied'**
+  String get nearbyNodes_keyPrefixCopied;
 
   /// No description provided for @nearbyNodes_snr.
   ///

@@ -8,6 +8,8 @@ import '../helpers/path_helper.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../utils/platform_info.dart';
+import 'nearby_repeater_actions.dart';
 import 'signal_ui.dart';
 
 Contact? _getRepeaterPrefixMatchNearLocation(
@@ -334,41 +336,66 @@ class _SNRIndicatorState extends State<SNRIndicator> {
           final signalLine =
               'Packets: ${repeater.snrSampleCount} • Avg SNR: ${repeater.averageSnr.toStringAsFixed(1)} dB • ${l10n.snrIndicator_lastSeen}: ${_formatLastUpdated(repeater.lastUpdated)}';
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(
-                  width: 28,
-                  child: Icon(snrUi.icon, color: snrUi.color),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        name ?? prefixHex,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      Text(
-                        pathLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        signalLine,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+          final isSavedContact =
+              contact != null &&
+              widget.connector.contacts.any(
+                (saved) => saved.publicKeyHex == contact.publicKeyHex,
+              );
+          final identityHex = contact?.publicKeyHex ?? repeater.hashPrefixHex;
+
+          return InkWell(
+            onLongPress: () => showNearbyRepeaterActions(
+              context,
+              identityHex: identityHex,
+              hasFullPublicKey: contact != null,
+              isSavedContact: isSavedContact,
+              contact: contact,
+            ),
+            onSecondaryTap: PlatformInfo.isDesktop
+                ? () => showNearbyRepeaterActions(
+                    context,
+                    identityHex: identityHex,
+                    hasFullPublicKey: contact != null,
+                    isSavedContact: isSavedContact,
+                    contact: contact,
+                  )
+                : null,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    width: 28,
+                    child: Icon(snrUi.icon, color: snrUi.color),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name ?? prefixHex,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        Text(
+                          pathLine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          signalLine,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         },

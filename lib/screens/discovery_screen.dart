@@ -24,7 +24,9 @@ import '../helpers/snack_bar_builder.dart';
 enum DiscoverySortOption { lastSeen, name, type }
 
 class DiscoveryScreen extends StatefulWidget {
-  const DiscoveryScreen({super.key});
+  final String? highlightedContactPublicKeyHex;
+
+  const DiscoveryScreen({super.key, this.highlightedContactPublicKeyHex});
 
   @override
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
@@ -202,7 +204,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       child: DesktopDeleteShortcut(
         onDelete: () => connector.removeDiscoveredContact(contact),
         builder: (context, selected) => MeshCard(
-          borderColor: selected ? scheme.primary : null,
+          borderColor:
+              selected ||
+                  contact.publicKeyHex == widget.highlightedContactPublicKeyHex
+              ? scheme.primary
+              : null,
           onTap: () => _handleContactTap(contact, connector, tapAction),
           onLongPress: () => _showContactContextMenu(contact, connector),
           onSecondaryTap: PlatformInfo.isDesktop
@@ -598,6 +604,23 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           (a, b) => _resolveLastSeen(b).compareTo(_resolveLastSeen(a)),
         );
         break;
+    }
+
+    final highlightedKey = widget.highlightedContactPublicKeyHex;
+    if (highlightedKey != null) {
+      Contact? highlighted;
+      for (final contact in contacts) {
+        if (contact.publicKeyHex == highlightedKey) {
+          highlighted = contact;
+          break;
+        }
+      }
+      if (highlighted != null) {
+        filtered.removeWhere(
+          (contact) => contact.publicKeyHex == highlightedKey,
+        );
+        filtered.insert(0, highlighted);
+      }
     }
 
     return filtered;

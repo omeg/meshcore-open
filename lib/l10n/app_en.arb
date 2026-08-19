@@ -519,7 +519,11 @@
   "nearbyNodes_noneFound": "No nearby repeaters responded",
   "nearbyNodes_failed": "Discovery failed",
   "nearbyNodes_unknownRepeater": "Unknown repeater",
+  "nearbyNodes_goToContact": "Go to contact",
+  "nearbyNodes_copyPublicKey": "Copy public key",
+  "nearbyNodes_copyPublicKeyPrefix": "Copy public-key prefix",
   "nearbyNodes_keyCopied": "Public key copied",
+  "nearbyNodes_keyPrefixCopied": "Public-key prefix copied",
   "nearbyNodes_snr": "SNR {snr} dB",
   "@nearbyNodes_snr": {
     "placeholders": {

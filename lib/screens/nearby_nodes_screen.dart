@@ -10,8 +10,10 @@ import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/disconnect_navigation_mixin.dart';
+import '../utils/platform_info.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/nearby_repeater_actions.dart';
 import '../widgets/snr_indicator.dart';
 
 class NearbyNodesScreen extends StatefulWidget {
@@ -179,6 +181,11 @@ class _NearbyNodesScreenState extends State<NearbyNodesScreen>
                           return _NearbyNodeTile(
                             response: response,
                             contact: _findContact(connector, response),
+                            isSavedContact: connector.contacts.any(
+                              (contact) =>
+                                  contact.publicKeyHex ==
+                                  pubKeyToHex(response.publicKey),
+                            ),
                             spreadingFactor: connector.currentSf,
                           );
                         },
@@ -195,11 +202,13 @@ class _NearbyNodesScreenState extends State<NearbyNodesScreen>
 class _NearbyNodeTile extends StatelessWidget {
   final DiscoveryResponse response;
   final Contact? contact;
+  final bool isSavedContact;
   final int? spreadingFactor;
 
   const _NearbyNodeTile({
     required this.response,
     required this.contact,
+    required this.isSavedContact,
     required this.spreadingFactor,
   });
 
@@ -219,6 +228,22 @@ class _NearbyNodeTile extends StatelessWidget {
           SnackBar(content: Text(context.l10n.nearbyNodes_keyCopied)),
         );
       },
+      onLongPress: () => showNearbyRepeaterActions(
+        context,
+        identityHex: keyHex,
+        hasFullPublicKey: true,
+        isSavedContact: isSavedContact,
+        contact: contact,
+      ),
+      onSecondaryTap: PlatformInfo.isDesktop
+          ? () => showNearbyRepeaterActions(
+              context,
+              identityHex: keyHex,
+              hasFullPublicKey: true,
+              isSavedContact: isSavedContact,
+              contact: contact,
+            )
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [

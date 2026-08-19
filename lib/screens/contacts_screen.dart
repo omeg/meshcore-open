@@ -49,8 +49,13 @@ enum ContactOperationType { import, zeroHopShare }
 
 class ContactsScreen extends StatefulWidget {
   final bool hideBackButton;
+  final String? highlightedContactPublicKeyHex;
 
-  const ContactsScreen({super.key, this.hideBackButton = false});
+  const ContactsScreen({
+    super.key,
+    this.hideBackButton = false,
+    this.highlightedContactPublicKeyHex,
+  });
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();
@@ -1079,6 +1084,9 @@ class _ContactsScreenState extends State<ContactsScreen>
                         lastSeen: _resolveLastSeen(contact),
                         unreadCount: unreadCount,
                         isFavorite: contact.isFavorite,
+                        isHighlighted:
+                            contact.publicKeyHex ==
+                            widget.highlightedContactPublicKeyHex,
                         onTap: () => _openChat(context, contact),
                         onLongPress: () =>
                             _showContactOptions(context, connector, contact),
@@ -1169,6 +1177,23 @@ class _ContactsScreenState extends State<ContactsScreen>
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         });
         break;
+    }
+
+    final highlightedKey = widget.highlightedContactPublicKeyHex;
+    if (highlightedKey != null) {
+      Contact? highlighted;
+      for (final contact in contacts) {
+        if (contact.publicKeyHex == highlightedKey) {
+          highlighted = contact;
+          break;
+        }
+      }
+      if (highlighted != null) {
+        filtered.removeWhere(
+          (contact) => contact.publicKeyHex == highlightedKey,
+        );
+        filtered.insert(0, highlighted);
+      }
     }
 
     return filtered;
@@ -1989,6 +2014,7 @@ class _ContactTileEntrance extends StatelessWidget {
   final DateTime lastSeen;
   final int unreadCount;
   final bool isFavorite;
+  final bool isHighlighted;
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final VoidCallback onDelete;
@@ -2000,6 +2026,7 @@ class _ContactTileEntrance extends StatelessWidget {
     required this.lastSeen,
     required this.unreadCount,
     required this.isFavorite,
+    this.isHighlighted = false,
     required this.onTap,
     required this.onLongPress,
     required this.onDelete,
@@ -2016,7 +2043,7 @@ class _ContactTileEntrance extends StatelessWidget {
           lastSeen: lastSeen,
           unreadCount: unreadCount,
           isFavorite: isFavorite,
-          isSelected: selected,
+          isSelected: selected || isHighlighted,
           onTap: onTap,
           onLongPress: onLongPress,
         ),
