@@ -161,6 +161,12 @@ class StateSyncService extends ChangeNotifier {
         if (encoded != null) keys[key] = encoded;
       }
 
+      // A sync folder can contain newer state written by another device.
+      // Merge it into this export before overwriting the shared bundle so a
+      // smaller local cache cannot erase the remote contact/message history.
+      final existing = await _backend.readJson(folderId, _bundleName(scope));
+      _mergeExistingBundleIntoExport(scope, keys, existing);
+
       final bundle = {
         'schemaVersion': _schemaVersion,
         'appId': _bundleAppId,
@@ -185,6 +191,57 @@ class StateSyncService extends ChangeNotifier {
   }
 
   String _bundleName(String scope) => 'meshcore-open-state-$scope.json';
+
+  void _mergeExistingBundleIntoExport(
+    String scope,
+    Map<String, Map<String, dynamic>> localKeys,
+    Map<String, dynamic>? existingBundle,
+  ) {
+    if (existingBundle == null ||
+        existingBundle['appId'] != _bundleAppId ||
+        existingBundle['schemaVersion'] != _schemaVersion ||
+        existingBundle['scope'] != scope) {
+      return;
+    }
+    final remoteKeys = existingBundle['keys'];
+    if (remoteKeys is! Map) return;
+
+    for (final entry in remoteKeys.entries) {
+      final key = entry.key.toString();
+      if (!_shouldSyncKey(key, scope) || entry.value is! Map) continue;
+      final remote = Map<String, dynamic>.from(entry.value as Map);
+      final local = localKeys[key];
+      if (local == null) {
+        localKeys[key] = remote;
+        continue;
+      }
+      if (!_isMergeableStringKey(key, scope) ||
+          local['type'] != 'string' ||
+          remote['type'] != 'string' ||
+          local['value'] is! String ||
+          remote['value'] is! String) {
+        continue;
+      }
+      localKeys[key] = {
+        'type': 'string',
+        'value': _mergeStringValue(
+          scope,
+          key,
+          local['value'] as String,
+          remote['value'] as String,
+        ),
+      };
+    }
+  }
+
+  bool _isMergeableStringKey(String key, String scope) {
+    return key == 'contacts$scope' ||
+        key == 'discovered_contacts$scope' ||
+        key.startsWith('messages_$scope') ||
+        key.startsWith('channel_messages_$scope') ||
+        key == 'channels$scope' ||
+        key == 'contact_groups$scope';
+  }
 
   bool _shouldSyncKey(String key, String scope) {
     if (key == 'app_settings') return true;

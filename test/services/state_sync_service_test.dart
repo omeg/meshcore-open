@@ -110,4 +110,42 @@ void main() {
       '[{"publicKey":"same","name":"new","lastSeen":2000}]',
     );
   });
+
+  test(
+    'export preserves discovered contacts already in the sync bundle',
+    () async {
+      final backend = _FakeStateSyncBackend();
+      final service = StateSyncService(backend: backend);
+      await service.initialize();
+      await service.pickFolder();
+
+      final prefs = PrefsManager.instance;
+      await prefs.setString(
+        'discovered_contacts$scope',
+        '[{"publicKey":"local","name":"Local","lastSeen":2000}]',
+      );
+      backend.files['meshcore-open-state-$scope.json'] = {
+        'schemaVersion': 1,
+        'appId': 'meshcore-open',
+        'scope': scope,
+        'updatedAt': 1000,
+        'keys': {
+          'discovered_contacts$scope': {
+            'type': 'string',
+            'value': '[{"publicKey":"remote","name":"Remote","lastSeen":1000}]',
+          },
+        },
+      };
+
+      await service.exportForNode(selfKey);
+
+      final bundle = backend.files['meshcore-open-state-$scope.json']!;
+      final keys = bundle['keys'] as Map<String, dynamic>;
+      final discovered = keys['discovered_contacts$scope'] as Map;
+      expect(
+        discovered['value'],
+        '[{"publicKey":"local","name":"Local","lastSeen":2000},{"publicKey":"remote","name":"Remote","lastSeen":1000}]',
+      );
+    },
+  );
 }
