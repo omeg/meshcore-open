@@ -450,7 +450,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
     final messages = connector.getChannelMessages(channel);
     final lastMessage = messages.isNotEmpty ? messages.last : null;
     final lastPreview = lastMessage?.text ?? '';
-    final lastTime = lastMessage?.timestamp;
+    final lastTime = lastMessage?.orderTimestamp;
 
     final channelLabel = channel.name.isEmpty
         ? context.l10n.channels_channelIndex(channel.index)
@@ -807,10 +807,10 @@ class _ChannelsScreenState extends State<ChannelsScreen>
           final bMessages = connector.getChannelMessages(b);
           final aLast = aMessages.isEmpty
               ? DateTime(1970)
-              : aMessages.last.timestamp;
+              : aMessages.last.orderTimestamp;
           final bLast = bMessages.isEmpty
               ? DateTime(1970)
-              : bMessages.last.timestamp;
+              : bMessages.last.orderTimestamp;
           final timeCompare = bLast.compareTo(aLast);
           if (timeCompare != 0) return timeCompare;
           return compareByName(a, b);

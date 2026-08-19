@@ -768,8 +768,27 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Text(
-                                _formatTime(context, message.timestamp),
+                              Text.rich(
+                                TextSpan(
+                                  text: _formatTime(
+                                    context,
+                                    message.orderTimestamp,
+                                  ),
+                                  children: [
+                                    if (_hasDistinctSenderTimestamp(message))
+                                      TextSpan(
+                                        text:
+                                            ' (${_formatSenderTimestamp(context, message.timestamp)})',
+                                        style: TextStyle(
+                                          color: Color.lerp(
+                                            metaColor,
+                                            scheme.error,
+                                            0.65,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
                                 style: MeshTheme.mono(
                                   fontSize: 10 * textScale,
                                   color: metaColor,
@@ -1415,7 +1434,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   String _formatTime(BuildContext context, DateTime time) {
     final now = DateTime.now();
-    final diff = now.difference(time);
     final locale = Localizations.localeOf(context).toString();
     if (locale != _cachedFormatLocale) {
       _cachedFormatLocale = locale;
@@ -1423,8 +1441,10 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       _mdFormat = DateFormat.Md(locale);
     }
     final hm = _hmFormat.format(time);
+    final isToday =
+        now.year == time.year && now.month == time.month && now.day == time.day;
 
-    if (diff.inDays > 0) {
+    if (!isToday) {
       return '${_mdFormat.format(time)} $hm';
     } else {
       return hm;
@@ -1585,6 +1605,18 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       context,
       content: Text(context.l10n.chat_resendingMessage),
     );
+  }
+
+  bool _hasDistinctSenderTimestamp(ChannelMessage message) {
+    final receivedAt = message.receivedAt;
+    if (receivedAt == null) return false;
+    return receivedAt.difference(message.timestamp).abs() >
+        const Duration(minutes: 5);
+  }
+
+  String _formatSenderTimestamp(BuildContext context, DateTime timestamp) {
+    final locale = Localizations.localeOf(context).toString();
+    return DateFormat.yMd(locale).add_Hm().format(timestamp);
   }
 
   void _showEmojiPicker(ChannelMessage message) {

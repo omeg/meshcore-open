@@ -34,6 +34,45 @@ void main() {
     expect(loaded.single.floodScopeCode, 0x3878);
   });
 
+  test('persists channel message arrival timestamp', () async {
+    final store = ChannelMessageStore()..setPublicKeyHex = '0123456789abcdef';
+    final sentAt = DateTime(2090, 8, 16, 19, 54);
+    final receivedAt = DateTime(2026, 8, 19, 20, 14);
+    final message = ChannelMessage(
+      senderName: 'Bad clock',
+      text: 'hello',
+      timestamp: sentAt,
+      receivedAt: receivedAt,
+      isOutgoing: false,
+      status: ChannelMessageStatus.sent,
+      channelIndex: 3,
+    );
+
+    await store.saveChannelMessages(3, [message]);
+    final loaded = await store.loadChannelMessages(3);
+
+    expect(loaded.single.timestamp, sentAt);
+    expect(loaded.single.receivedAt, receivedAt);
+    expect(loaded.single.orderTimestamp, receivedAt);
+  });
+
+  test('restores an orphaned pending send as failed', () async {
+    final store = ChannelMessageStore()..setPublicKeyHex = '0123456789abcdef';
+    final message = ChannelMessage(
+      senderName: 'Me',
+      text: 'unfinished',
+      timestamp: DateTime.fromMillisecondsSinceEpoch(1000),
+      isOutgoing: true,
+      status: ChannelMessageStatus.pending,
+      channelIndex: 1,
+    );
+
+    await store.saveChannelMessages(1, [message]);
+    final loaded = await store.loadChannelMessages(1);
+
+    expect(loaded.single.status, ChannelMessageStatus.failed);
+  });
+
   test('persists verified channel reply metadata', () async {
     final store = ChannelMessageStore()..setPublicKeyHex = '0123456789abcdef';
     final message = ChannelMessage(

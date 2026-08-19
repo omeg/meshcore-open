@@ -105,6 +105,7 @@ class ChannelMessageStore {
       'translationStatus': msg.translationStatus.value,
       'translationModelId': msg.translationModelId,
       'timestamp': msg.timestamp.millisecondsSinceEpoch,
+      'receivedAt': msg.receivedAt?.millisecondsSinceEpoch,
       'isOutgoing': msg.isOutgoing,
       'status': msg.status.index,
       'channelIndex': msg.channelIndex,
@@ -130,6 +131,8 @@ class ChannelMessageStore {
   ChannelMessage _messageFromJson(Map<String, dynamic> json) {
     final rawText = json['text'] as String;
     final decodedText = Smaz.tryDecodePrefixed(rawText) ?? rawText;
+    final isOutgoing = json['isOutgoing'] as bool;
+    final storedStatus = ChannelMessageStatus.values[json['status'] as int];
     return ChannelMessage(
       senderKey: json['senderKey'] != null
           ? Uint8List.fromList(base64Decode(json['senderKey']))
@@ -144,8 +147,16 @@ class ChannelMessageStore {
       ),
       translationModelId: json['translationModelId'] as String?,
       timestamp: DateTime.fromMillisecondsSinceEpoch(json['timestamp'] as int),
-      isOutgoing: json['isOutgoing'] as bool,
-      status: ChannelMessageStatus.values[json['status'] as int],
+      receivedAt: json['receivedAt'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(json['receivedAt'] as int)
+          : null,
+      isOutgoing: isOutgoing,
+      // A pending send is process-local state. After restart there is no
+      // command in flight that can complete it, so restore it as retryable
+      // failure instead of showing the sending animation forever.
+      status: isOutgoing && storedStatus == ChannelMessageStatus.pending
+          ? ChannelMessageStatus.failed
+          : storedStatus,
       repeatCount: (json['repeatCount'] as int?) ?? 0,
       pathLength: json['pathLength'] as int?,
       pathHashByteWidth: json['pathHashByteWidth'] as int?,

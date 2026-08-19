@@ -15,6 +15,7 @@ class StateSyncService extends ChangeNotifier {
   static const String _bundleAppId = 'meshcore-open';
   static const int _schemaVersion = 1;
   static const Duration _exportDebounce = Duration(seconds: 2);
+  static const Duration _maxFutureMessageClockSkew = Duration(days: 1);
 
   final StateSyncBackend _backend;
   Timer? _exportTimer;
@@ -470,47 +471,156 @@ class StateSyncService extends ChangeNotifier {
     bool channelMessage = false,
   }) {
     final merged = <String, Map<String, dynamic>>{};
+    final messageIdKeys = <String, String>{};
+    final packetHashKeys = <String, String>{};
+
+    Map<String, dynamic> mergeEntries(
+      Map<String, dynamic> current,
+      Map<String, dynamic> entry,
+    ) {
+      final currentRank = statusRank(current['status']);
+      final nextRank = statusRank(entry['status']);
+      final currentTime =
+          _asInt(current['deliveredAt']) ??
+          _asInt(current['sentAt']) ??
+          _asInt(current['timestamp']) ??
+          0;
+      final nextTime =
+          _asInt(entry['deliveredAt']) ??
+          _asInt(entry['sentAt']) ??
+          _asInt(entry['timestamp']) ??
+          0;
+      final winner =
+          nextRank > currentRank ||
+              (nextRank == currentRank && nextTime >= currentTime)
+          ? Map<String, dynamic>.from(entry)
+          : Map<String, dynamic>.from(current);
+      if (channelMessage) {
+        final earliestReceivedAt = _earliestTimestamp(
+          _asInt(current['receivedAt']),
+          _asInt(entry['receivedAt']),
+        );
+        if (earliestReceivedAt != null) {
+          winner['receivedAt'] = earliestReceivedAt;
+        }
+      }
+      winner['reactions'] = {
+        ...((current['reactions'] as Map?) ?? const {}),
+        ...((entry['reactions'] as Map?) ?? const {}),
+      };
+      return winner;
+    }
+
+    String? nonEmptyString(dynamic value) {
+      final string = value?.toString();
+      return string == null || string.isEmpty ? null : string;
+    }
+
+    void registerAliases(String key, Map<String, dynamic> entry) {
+      final messageId = nonEmptyString(entry['messageId']);
+      final packetHash = nonEmptyString(entry['packetHash']);
+      if (messageId != null) messageIdKeys[messageId] = key;
+      if (packetHash != null) packetHashKeys[packetHash] = key;
+    }
+
     void addAll(List<Map<String, dynamic>> entries) {
       for (final entry in entries) {
-        final key = _messageKey(entry, channelMessage: channelMessage);
-        final current = merged[key];
+        final messageId = nonEmptyString(entry['messageId']);
+        final packetHash = nonEmptyString(entry['packetHash']);
+        final messageIdKey = messageId == null
+            ? null
+            : messageIdKeys[messageId];
+        final packetHashKey = packetHash == null
+            ? null
+            : packetHashKeys[packetHash];
+        final key =
+            messageIdKey ??
+            packetHashKey ??
+            _messageKey(entry, channelMessage: channelMessage);
+        var current = merged[key];
+
+        // A pending outgoing snapshot has only a message ID. Its promoted sent
+        // snapshot also has a packet hash. Match on either alias so state sync
+        // cannot restore both versions after restart. If two previously
+        // separate groups are bridged by this entry, fold them together too.
+        if (messageIdKey != null &&
+            packetHashKey != null &&
+            messageIdKey != packetHashKey) {
+          final bridged = merged.remove(packetHashKey);
+          if (bridged != null) {
+            current = current == null
+                ? bridged
+                : mergeEntries(current, bridged);
+            registerAliases(key, bridged);
+          }
+        }
         if (current == null) {
           merged[key] = entry;
+          registerAliases(key, entry);
           continue;
         }
-        final currentRank = statusRank(current['status']);
-        final nextRank = statusRank(entry['status']);
-        final currentTime =
-            _asInt(current['deliveredAt']) ??
-            _asInt(current['sentAt']) ??
-            _asInt(current['timestamp']) ??
-            0;
-        final nextTime =
-            _asInt(entry['deliveredAt']) ??
-            _asInt(entry['sentAt']) ??
-            _asInt(entry['timestamp']) ??
-            0;
-        final winner =
-            nextRank > currentRank ||
-                (nextRank == currentRank && nextTime >= currentTime)
-            ? Map<String, dynamic>.from(entry)
-            : Map<String, dynamic>.from(current);
-        winner['reactions'] = {
-          ...((current['reactions'] as Map?) ?? const {}),
-          ...((entry['reactions'] as Map?) ?? const {}),
-        };
+        final winner = mergeEntries(current, entry);
         merged[key] = winner;
+        registerAliases(key, current);
+        registerAliases(key, entry);
+        registerAliases(key, winner);
       }
     }
 
     addAll(_decodeList(local));
     addAll(_decodeList(remote));
-    final list = merged.values.toList();
-    list.sort(
-      (a, b) =>
-          (_asInt(a['timestamp']) ?? 0).compareTo(_asInt(b['timestamp']) ?? 0),
-    );
-    return list;
+    final nowMillis = DateTime.now().millisecondsSinceEpoch;
+    final maxPlausibleTimestamp =
+        nowMillis + _maxFutureMessageClockSkew.inMilliseconds;
+    final indexed = merged.values.indexed.toList();
+    indexed.sort((a, b) {
+      final timestampCompare =
+          _messageSortTimestamp(
+            a.$2,
+            maxPlausibleTimestamp,
+            channelMessage: channelMessage,
+          ).compareTo(
+            _messageSortTimestamp(
+              b.$2,
+              maxPlausibleTimestamp,
+              channelMessage: channelMessage,
+            ),
+          );
+      if (timestampCompare != 0) return timestampCompare;
+
+      // List.sort is not stable. Preserve arrival/source order when two
+      // messages have the same timestamp, including implausible future
+      // timestamps which are deliberately assigned the same oldest key.
+      return a.$1.compareTo(b.$1);
+    });
+    return indexed.map((entry) => entry.$2).toList();
+  }
+
+  int _messageSortTimestamp(
+    Map<String, dynamic> message,
+    int maxPlausibleTimestamp, {
+    required bool channelMessage,
+  }) {
+    if (channelMessage) {
+      final receivedAt = _asInt(message['receivedAt']);
+      if (receivedAt != null && receivedAt <= maxPlausibleTimestamp) {
+        return receivedAt;
+      }
+    }
+    final timestamp = _asInt(message['timestamp']) ?? 0;
+
+    // Legacy records have no arrival timestamp. Their timestamps originate on
+    // remote mesh nodes and can be years ahead when a node's RTC is wrong.
+    // Such values must not become the newest messages on every state-sync
+    // import and displace real recent history from the in-memory window. Keep
+    // the records, but order them before plausible dated messages.
+    return timestamp > maxPlausibleTimestamp ? 0 : timestamp;
+  }
+
+  int? _earliestTimestamp(int? first, int? second) {
+    if (first == null) return second;
+    if (second == null) return first;
+    return first < second ? first : second;
   }
 
   String _messageKey(

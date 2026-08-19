@@ -37,6 +37,7 @@ class ChannelMessage {
   final MessageTranslationStatus translationStatus;
   final String? translationModelId;
   final DateTime timestamp;
+  final DateTime? receivedAt;
   final bool isOutgoing;
   final ChannelMessageStatus status;
   final List<Repeat> repeats;
@@ -77,6 +78,7 @@ class ChannelMessage {
     this.translationStatus = MessageTranslationStatus.none,
     this.translationModelId,
     required this.timestamp,
+    this.receivedAt,
     required this.isOutgoing,
     this.status = ChannelMessageStatus.pending,
     this.repeats = const [],
@@ -115,6 +117,12 @@ class ChannelMessage {
 
   String? get senderKeyHex =>
       senderKey != null ? pubKeyToHex(senderKey!) : null;
+
+  /// Local arrival time used for chronological storage and display ordering.
+  ///
+  /// [timestamp] comes from the sending mesh node and can be incorrect when
+  /// that node's clock is not set. Legacy records do not have an arrival time.
+  DateTime get orderTimestamp => receivedAt ?? timestamp;
 
   int directRepeaterRepeatCount(int pathHashByteWidth) {
     final width = normalizePathHashByteWidth(pathHashByteWidth);
@@ -169,6 +177,7 @@ class ChannelMessage {
 
   ChannelMessage copyWith({
     String? text,
+    DateTime? receivedAt,
     ChannelMessageStatus? status,
     List<Repeat>? repeats,
     int? repeatCount,
@@ -208,6 +217,7 @@ class ChannelMessage {
           ? this.translationModelId
           : translationModelId as String?,
       timestamp: timestamp,
+      receivedAt: receivedAt ?? this.receivedAt,
       isOutgoing: isOutgoing,
       status: status ?? this.status,
       repeats: repeats ?? this.repeats,
@@ -304,6 +314,7 @@ class ChannelMessage {
         senderName: senderName,
         text: decodedText,
         timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
+        receivedAt: DateTime.now(),
         isOutgoing: false,
         status: ChannelMessageStatus.sent,
         pathLength: pathLen,
@@ -331,6 +342,7 @@ class ChannelMessage {
     String? replyToText,
     bool isReplyTargetVerified = false,
   }) {
+    final now = DateTime.now();
     return ChannelMessage(
       senderKey: null,
       senderName: senderName,
@@ -338,7 +350,8 @@ class ChannelMessage {
       originalText: originalText,
       translatedLanguageCode: translatedLanguageCode,
       translationModelId: translationModelId,
-      timestamp: DateTime.now(),
+      timestamp: now,
+      receivedAt: now,
       isOutgoing: true,
       status: ChannelMessageStatus.pending,
       pathLength: null,

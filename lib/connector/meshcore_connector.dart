@@ -6303,6 +6303,7 @@ class MeshCoreConnector extends ChangeNotifier {
             senderName: parsed.senderName,
             text: decodedText,
             timestamp: DateTime.fromMillisecondsSinceEpoch(timestampRaw * 1000),
+            receivedAt: DateTime.now(),
             isOutgoing: false,
             status: ChannelMessageStatus.sent,
             pathLength: packet.pathBytes.isNotEmpty
