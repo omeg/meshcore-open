@@ -28,6 +28,7 @@ import '../helpers/path_hash.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/desktop_delete_shortcut.dart';
+import '../widgets/desktop_page_scroll.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/quick_switch_bar.dart';
 import '../widgets/remote_node_auth.dart';
@@ -65,6 +66,7 @@ class ContactsScreen extends StatefulWidget {
 class _ContactsScreenState extends State<ContactsScreen>
     with DisconnectNavigationMixin {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final ContactGroupStore _groupStore = ContactGroupStore();
   MeshCoreConnector? _scopeSyncConnector;
   List<ContactGroup> _groups = [];
@@ -108,6 +110,7 @@ class _ContactsScreenState extends State<ContactsScreen>
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     _frameSubscription?.cancel();
     _scopeSyncConnector?.removeListener(_handleConnectorScopeChange);
     super.dispose();
@@ -383,7 +386,7 @@ class _ContactsScreenState extends State<ContactsScreen>
     }
 
     final allowBack = !connector.isConnected;
-    return PopScope(
+    final screen = PopScope(
       canPop: allowBack,
       child: Scaffold(
         appBar: AppBar(
@@ -593,6 +596,7 @@ class _ContactsScreenState extends State<ContactsScreen>
         ),
       ),
     );
+    return DesktopPageScroll(controller: _scrollController, child: screen);
   }
 
   Widget _buildContactSyncNotice(
@@ -1052,6 +1056,7 @@ class _ContactsScreenState extends State<ContactsScreen>
             child: filteredAndSorted.isEmpty
                 ? LayoutBuilder(
                     builder: (context, constraints) => ListView(
+                      controller: _scrollController,
                       physics: const AlwaysScrollableScrollPhysics(),
                       children: [
                         ConstrainedBox(
@@ -1069,6 +1074,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ),
                   )
                 : ListView.builder(
+                    controller: _scrollController,
                     padding: const EdgeInsets.only(bottom: 88),
                     itemCount: filteredAndSorted.length,
                     itemBuilder: (context, index) {

@@ -18,6 +18,7 @@ import '../utils/contact_search.dart';
 import '../utils/platform_info.dart';
 import '../widgets/app_bar.dart';
 import '../widgets/desktop_delete_shortcut.dart';
+import '../widgets/desktop_page_scroll.dart';
 import '../widgets/list_filter_widget.dart';
 import '../widgets/mesh_ui.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -35,6 +36,7 @@ class DiscoveryScreen extends StatefulWidget {
 
 class _DiscoveryScreenState extends State<DiscoveryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String searchQuery = '';
   ContactSortOption sortOption = ContactSortOption.lastSeen;
   bool showUnreadOnly = false;
@@ -45,6 +47,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     _searchDebounce?.cancel();
     super.dispose();
   }
@@ -115,7 +118,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
       connector,
     );
 
-    return Scaffold(
+    final screen = Scaffold(
       appBar: AppBar(
         title: AppBarTitle(
           l10n.discoveredContacts_Title,
@@ -164,6 +167,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                     )
                   : ListView.builder(
                       key: const ValueKey('list'),
+                      controller: _scrollController,
                       padding: const EdgeInsets.only(bottom: 24),
                       itemCount: filteredAndSorted.length,
                       itemBuilder: (context, index) {
@@ -183,6 +187,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
         ],
       ),
     );
+    return DesktopPageScroll(controller: _scrollController, child: screen);
   }
 
   Widget _buildDiscoveryTile(

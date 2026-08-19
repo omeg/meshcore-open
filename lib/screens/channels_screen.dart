@@ -22,6 +22,7 @@ import '../utils/dialog_utils.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/route_transitions.dart';
 import '../widgets/list_filter_widget.dart';
+import '../widgets/desktop_page_scroll.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/qr_code_display.dart';
@@ -49,6 +50,7 @@ class ChannelsScreen extends StatefulWidget {
 class _ChannelsScreenState extends State<ChannelsScreen>
     with DisconnectNavigationMixin {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final CommunityStore _communityStore = CommunityStore();
   final CommunityPskIndex _communityIndex = CommunityPskIndex();
   List<Community> _communities = [];
@@ -85,6 +87,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
   void dispose() {
     _searchDebounce?.cancel();
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -111,7 +114,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
 
     final allowBack = !connector.isConnected;
 
-    return PopScope(
+    final screen = PopScope(
       canPop: allowBack,
       child: Scaffold(
         appBar: AppBar(
@@ -217,6 +220,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
 
             if (channels.isEmpty) {
               return ListView(
+                controller: _scrollController,
                 children: [
                   SizedBox(
                     height: MediaQuery.of(context).size.height - 200,
@@ -292,6 +296,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                   child: filteredChannels.isEmpty
                       ? LayoutBuilder(
                           builder: (context, constraints) => ListView(
+                            controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
                             children: [
                               ConstrainedBox(
@@ -310,6 +315,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                                 ChannelSortOption.manual &&
                             viewState.channelsSearchText.isEmpty)
                       ? ReorderableListView.builder(
+                          scrollController: _scrollController,
                           padding: const EdgeInsets.only(
                             left: 0,
                             right: 0,
@@ -346,6 +352,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                           },
                         )
                       : ListView.builder(
+                          controller: _scrollController,
                           padding: const EdgeInsets.only(
                             left: 0,
                             right: 0,
@@ -386,6 +393,7 @@ class _ChannelsScreenState extends State<ChannelsScreen>
         ),
       ),
     );
+    return DesktopPageScroll(controller: _scrollController, child: screen);
   }
 
   Widget _buildChannelTile(

@@ -32,6 +32,7 @@ import '../services/translation_service.dart';
 import '../widgets/chat_zoom_wrapper.dart';
 import '../widgets/byte_count_input.dart';
 import '../widgets/desktop_emoji_picker_button.dart';
+import '../widgets/desktop_page_scroll.dart';
 import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import '../widgets/emoji_picker.dart';
@@ -176,7 +177,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final screen = Scaffold(
       appBar: AppBar(
         title: Consumer2<PathHistoryService, MeshCoreConnector>(
           builder: (context, pathService, connector, _) {
@@ -342,6 +343,7 @@ class _ChatScreenState extends State<ChatScreen> {
         },
       ),
     );
+    return DesktopPageScroll(controller: _scrollController, child: screen);
   }
 
   Widget _buildEmptyState() {
