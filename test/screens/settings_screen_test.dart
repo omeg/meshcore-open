@@ -5,6 +5,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import 'package:meshcore_open/connector/meshcore_connector.dart';
+import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/meshcore_share_link.dart';
 import 'package:meshcore_open/screens/map_screen.dart';
@@ -210,6 +211,48 @@ void main() {
       find.descendant(of: deviceInfoCard, matching: find.text('Public Key')),
       findsNothing,
     );
+  });
+
+  testWidgets('identity displays a short key and copies the complete key', (
+    tester,
+  ) async {
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final connector = _FakeMeshCoreConnector();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<MeshCoreConnector>.value(
+        value: connector,
+        child: const MaterialApp(
+          locale: Locale('en'),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: SettingsScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('01020304..1d1e1f20'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('copy_identity_public_key')));
+    await tester.pump();
+
+    expect(clipboardText, pubKeyToHex(connector.selfPublicKey!));
   });
 
   testWidgets('node settings updates the companion path hash size', (

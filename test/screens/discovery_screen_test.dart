@@ -196,6 +196,7 @@ void main() {
     expect(find.text('recently'), findsNothing);
     expect(find.text('2 m'), findsOneWidget);
     expect(find.text('4 HOPS'), findsOneWidget);
+    expect(find.text('01020304..1d1e1f20'), findsOneWidget);
     expect(find.byIcon(Icons.trending_flat), findsNothing);
 
     final timeRight = tester.getTopRight(find.text('2 m')).dx;

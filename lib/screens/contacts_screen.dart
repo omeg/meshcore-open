@@ -34,6 +34,7 @@ import '../widgets/remote_node_auth.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/unread_badge.dart';
 import '../helpers/snack_bar_builder.dart';
+import '../helpers/public_key.dart';
 import 'channels_screen.dart';
 import 'chat_screen.dart';
 import 'discovery_screen.dart';
@@ -1700,6 +1701,14 @@ class _ContactsScreenState extends State<ContactsScreen>
               onTap: () {
                 Navigator.pop(sheetContext);
                 _copyContactShareLink(contact);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.key_outlined),
+              title: Text(context.l10n.nearbyNodes_copyPublicKey),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                copyPublicKeyHex(context, contact.publicKeyHex);
               },
             ),
             ListTile(

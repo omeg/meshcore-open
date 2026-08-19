@@ -164,6 +164,51 @@ void main() {
     expect((link! as MeshCoreContactShareLink).name, 'My Companion');
   });
 
+  testWidgets('contact context menu copies the complete public key', (
+    tester,
+  ) async {
+    String? clipboardText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          clipboardText =
+              (call.arguments as Map<Object?, Object?>)['text'] as String?;
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Copy Key Contact',
+      type: advTypeChat,
+      pathLength: 0,
+      path: Uint8List(0),
+      lastSeen: DateTime.now(),
+    );
+
+    await tester.pumpWidget(_buildTestApp(_FakeMeshCoreConnector(contact)));
+    await tester.pumpAndSettle();
+    await tester.longPress(find.text(contact.name));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ContactsScreen)),
+    );
+    await tester.tap(find.text(l10n.nearbyNodes_copyPublicKey));
+    await tester.pump();
+
+    expect(clipboardText, contact.publicKeyHex);
+  });
+
   testWidgets('failed contact sync shows rollback warning and retry', (
     tester,
   ) async {

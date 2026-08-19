@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../connector/meshcore_protocol.dart';
 
@@ -15,6 +16,7 @@ class DebugFrameViewer {
         .join(' ');
 
     final details = StringBuffer();
+    String? destinationPublicKeyHex;
     details.writeln(context.l10n.debugFrame_length(frame.length));
     details.writeln('');
     details.writeln(
@@ -24,11 +26,12 @@ class DebugFrameViewer {
     );
 
     if (frame[0] == cmdSendTxtMsg && frame.length > 37) {
+      destinationPublicKeyHex = pubKeyToHex(frame.sublist(1, 33));
       details.writeln('');
       details.writeln(context.l10n.debugFrame_textMessageHeader);
       details.writeln(
         context.l10n.debugFrame_destinationPubKey(
-          pubKeyToHex(frame.sublist(1, 33)),
+          formatPublicKeyHex(destinationPublicKeyHex),
         ),
       );
       details.writeln(
@@ -81,6 +84,13 @@ class DebugFrameViewer {
           ),
         ),
         actions: [
+          if (destinationPublicKeyHex != null)
+            IconButton(
+              tooltip: context.l10n.common_copy,
+              icon: const Icon(Icons.copy_outlined),
+              onPressed: () =>
+                  copyPublicKeyHex(context, destinationPublicKeyHex!),
+            ),
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.common_close),

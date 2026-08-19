@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/public_key.dart';
 import '../l10n/contact_localization.dart';
 import '../l10n/l10n.dart';
 import '../models/meshcore_share_link.dart';
@@ -74,7 +75,8 @@ class _ShareLinkScreenState extends State<ShareLinkScreen> {
         if (link.publicKey != null)
           _InfoRow(
             label: context.l10n.chat_publicKey,
-            value: pubKeyToHex(link.publicKey!),
+            value: formatPublicKey(link.publicKey!),
+            copyValue: pubKeyToHex(link.publicKey!),
           ),
         const SizedBox(height: 20),
         FilledButton.icon(
@@ -303,8 +305,9 @@ class _ShareCard extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
+  final String? copyValue;
 
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.label, required this.value, this.copyValue});
 
   @override
   Widget build(BuildContext context) {
@@ -320,7 +323,28 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          SelectableText(value, style: MeshTheme.mono(fontSize: 13)),
+          Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  value,
+                  style: MeshTheme.mono(fontSize: 13),
+                ),
+              ),
+              if (copyValue != null)
+                IconButton(
+                  tooltip: context.l10n.common_copy,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  icon: const Icon(Icons.copy_outlined, size: 16),
+                  onPressed: () => copyPublicKeyHex(context, copyValue!),
+                ),
+            ],
+          ),
         ],
       ),
     );

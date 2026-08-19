@@ -1,11 +1,12 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
@@ -222,12 +223,7 @@ class _NearbyNodeTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return MeshCard(
-      onTap: () {
-        Clipboard.setData(ClipboardData(text: keyHex));
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.l10n.nearbyNodes_keyCopied)),
-        );
-      },
+      onTap: () => copyPublicKeyHex(context, keyHex),
       onLongPress: () => showNearbyRepeaterActions(
         context,
         identityHex: keyHex,
@@ -263,7 +259,7 @@ class _NearbyNodeTile extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  keyHex,
+                  formatPublicKeyHex(keyHex),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: MeshTheme.mono(
@@ -290,6 +286,14 @@ class _NearbyNodeTile extends StatelessWidget {
               Text(
                 snrUi.text,
                 style: MeshTheme.mono(fontSize: 11, color: snrUi.color),
+              ),
+              IconButton(
+                tooltip: context.l10n.common_copy,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: const Icon(Icons.copy_outlined, size: 16),
+                onPressed: () => copyPublicKeyHex(context, keyHex),
               ),
             ],
           ),

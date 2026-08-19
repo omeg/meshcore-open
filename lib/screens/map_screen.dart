@@ -10,6 +10,7 @@ import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../connector/meshcore_protocol.dart';
 import '../models/app_settings.dart';
@@ -2090,7 +2091,7 @@ class _MapScreenState extends State<MapScreen> {
                                 overflow: TextOverflow.ellipsis,
                               ),
                               Text(
-                                c.publicKeyHex.substring(0, 12),
+                                formatPublicKeyHex(c.publicKeyHex),
                                 style: MeshTheme.mono(
                                   fontSize: 10.5,
                                   color: MapPalette.textSecondary,
@@ -2098,6 +2099,19 @@ class _MapScreenState extends State<MapScreen> {
                               ),
                             ],
                           ),
+                        ),
+                        IconButton(
+                          color: MapPalette.textSecondary,
+                          icon: const Icon(Icons.copy_outlined, size: 16),
+                          tooltip: context.l10n.common_copy,
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          onPressed: () =>
+                              copyPublicKeyHex(context, c.publicKeyHex),
                         ),
                         if (c.hasLocation)
                           Icon(
@@ -2380,7 +2394,11 @@ class _MapScreenState extends State<MapScreen> {
                     context.l10n.map_path,
                     contact.pathLabel(context.l10n),
                   ),
-                  _miniMeta('ID', contact.publicKeyHex.substring(0, 12)),
+                  _miniMeta(
+                    'ID',
+                    formatPublicKeyHex(contact.publicKeyHex),
+                    copyValue: contact.publicKeyHex,
+                  ),
                   if (pos != null)
                     _miniMeta(
                       context.l10n.map_location,
@@ -2414,7 +2432,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _miniMeta(String label, String value) {
+  Widget _miniMeta(String label, String value, {String? copyValue}) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2427,9 +2445,29 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
         const SizedBox(height: 1),
-        Text(
-          value,
-          style: MeshTheme.mono(fontSize: 11.5, color: MapPalette.textPrimary),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: MeshTheme.mono(
+                fontSize: 11.5,
+                color: MapPalette.textPrimary,
+              ),
+            ),
+            if (copyValue != null) ...[
+              const SizedBox(width: 2),
+              IconButton(
+                color: MapPalette.textSecondary,
+                icon: const Icon(Icons.copy_outlined, size: 14),
+                tooltip: context.l10n.common_copy,
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => copyPublicKeyHex(context, copyValue),
+              ),
+            ],
+          ],
         ),
       ],
     );
@@ -2787,7 +2825,8 @@ class _MapScreenState extends State<MapScreen> {
                       ),
                       _buildInfoRow(
                         context.l10n.map_publicKey,
-                        contact.publicKeyHex,
+                        formatPublicKeyHex(contact.publicKeyHex),
+                        copyValue: contact.publicKeyHex,
                       ),
                       const SizedBox(height: 16),
                       ...actions,
@@ -2907,7 +2946,7 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {String? copyValue}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Column(
@@ -2922,12 +2961,30 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
           const SizedBox(height: 2),
-          SelectableText(
-            value,
-            style: MeshTheme.mono(
-              fontSize: 13,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  value,
+                  style: MeshTheme.mono(
+                    fontSize: 13,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (copyValue != null)
+                IconButton(
+                  tooltip: context.l10n.common_copy,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
+                  ),
+                  icon: const Icon(Icons.copy_outlined, size: 16),
+                  onPressed: () => copyPublicKeyHex(context, copyValue),
+                ),
+            ],
           ),
         ],
       ),

@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/public_key.dart';
 import '../l10n/app_localizations.dart';
 import '../l10n/l10n.dart';
 import '../models/meshcore_share_link.dart';
@@ -376,8 +377,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: l10n.settings_infoPublicKey,
               value: publicKey == null
                   ? l10n.common_notAvailable
-                  : pubKeyToHex(publicKey),
+                  : formatPublicKey(publicKey),
               mono: true,
+              onCopy: publicKey == null
+                  ? null
+                  : () => copyPublicKeyHex(context, pubKeyToHex(publicKey)),
             ),
           ),
         ),
@@ -440,6 +444,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Widget? leading,
     Color? valueColor,
     VoidCallback? onTap,
+    VoidCallback? onCopy,
   }) {
     final scheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
@@ -462,22 +467,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ],
           ),
           const SizedBox(height: 2),
-          mono
-              ? Text(
-                  value,
-                  style: MeshTheme.mono(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: valueColor ?? scheme.onSurface,
+          Row(
+            children: [
+              Expanded(
+                child: mono
+                    ? Text(
+                        value,
+                        style: MeshTheme.mono(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                          color: valueColor ?? scheme.onSurface,
+                        ),
+                      )
+                    : Text(
+                        value,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: valueColor,
+                        ),
+                      ),
+              ),
+              if (onCopy != null)
+                IconButton(
+                  key: const ValueKey('copy_identity_public_key'),
+                  tooltip: context.l10n.common_copy,
+                  visualDensity: VisualDensity.compact,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(
+                    minWidth: 32,
+                    minHeight: 32,
                   ),
-                )
-              : Text(
-                  value,
-                  style: textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: valueColor,
-                  ),
+                  icon: const Icon(Icons.copy_outlined, size: 16),
+                  onPressed: onCopy,
                 ),
+            ],
+          ),
         ],
       ),
     );

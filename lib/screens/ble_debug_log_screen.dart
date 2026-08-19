@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../l10n/l10n.dart';
 import '../services/ble_debug_log_service.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/public_key.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -417,7 +418,7 @@ class _BleDebugLogScreenState extends State<BleDebugLogScreen> {
       final locPart = (lat != null && lon != null)
           ? ' loc=${lat.toStringAsFixed(6)},${lon.toStringAsFixed(6)}'
           : '';
-      return 'ADVERT role=$role ts=$timestamp$namePart$locPart key=${pubKey.substring(0, 12)}…';
+      return 'ADVERT role=$role ts=$timestamp$namePart$locPart key=${formatPublicKeyHex(pubKey)}';
     } catch (e) {
       return 'ADVERT (invalid)';
     }

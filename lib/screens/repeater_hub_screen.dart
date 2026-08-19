@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
@@ -136,7 +137,7 @@ class RepeaterHubScreen extends StatelessWidget {
                             children: [
                               Expanded(
                                 child: Text(
-                                  repeater.publicKeyHex,
+                                  formatPublicKeyHex(repeater.publicKeyHex),
                                   style: MeshTheme.mono(
                                     fontSize: 11,
                                     color: scheme.onSurfaceVariant,
@@ -152,17 +153,10 @@ class RepeaterHubScreen extends StatelessWidget {
                                   minHeight: 32,
                                 ),
                                 icon: const Icon(Icons.copy_outlined, size: 16),
-                                onPressed: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: repeater.publicKeyHex),
-                                  );
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(l10n.nearbyNodes_keyCopied),
-                                    ),
-                                  );
-                                },
+                                onPressed: () => copyPublicKeyHex(
+                                  context,
+                                  repeater.publicKeyHex,
+                                ),
                               ),
                             ],
                           ),

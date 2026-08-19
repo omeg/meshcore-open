@@ -3,6 +3,7 @@ import 'package:meshcore_open/utils/app_logger.dart';
 
 import '../connector/meshcore_protocol.dart';
 import '../helpers/path_hash.dart';
+import '../helpers/public_key.dart';
 
 class Contact {
   final Uint8List publicKey;
@@ -138,7 +139,7 @@ class Contact {
   String get pathIdList => pathFormattedIdList(pathHashSize);
 
   String get shortPubKeyHex {
-    return "<${publicKeyHex.substring(0, 8)}...${publicKeyHex.substring(publicKeyHex.length - 8)}>";
+    return formatPublicKeyHex(publicKeyHex);
   }
 
   Uint8List get pathBytesForDisplay {

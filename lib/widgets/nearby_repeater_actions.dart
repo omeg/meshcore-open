@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:latlong2/latlong.dart';
 
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
 import '../screens/contacts_screen.dart';
@@ -19,7 +19,6 @@ Future<void> showNearbyRepeaterActions(
   Contact? contact,
 }) async {
   final navigator = Navigator.of(context);
-  final messenger = ScaffoldMessenger.of(context);
   final l10n = context.l10n;
 
   final action = await showMeshSheet<_NearbyRepeaterAction>(
@@ -30,7 +29,9 @@ Future<void> showNearbyRepeaterActions(
         children: [
           BottomSheetHeader(
             title: contact?.name ?? l10n.nearbyNodes_unknownRepeater,
-            subtitle: identityHex,
+            subtitle: hasFullPublicKey
+                ? formatPublicKeyHex(identityHex)
+                : identityHex,
           ),
           if (contact != null)
             ListTile(
@@ -70,7 +71,7 @@ Future<void> showNearbyRepeaterActions(
     ),
   );
 
-  if (action == null) return;
+  if (action == null || !context.mounted) return;
 
   switch (action) {
     case _NearbyRepeaterAction.goToContact:
@@ -92,16 +93,7 @@ Future<void> showNearbyRepeaterActions(
       }
       break;
     case _NearbyRepeaterAction.copyPublicKey:
-      await Clipboard.setData(ClipboardData(text: identityHex));
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            hasFullPublicKey
-                ? l10n.nearbyNodes_keyCopied
-                : l10n.nearbyNodes_keyPrefixCopied,
-          ),
-        ),
-      );
+      await copyPublicKeyHex(context, identityHex, isPrefix: !hasFullPublicKey);
       break;
     case _NearbyRepeaterAction.showOnMap:
       final mappedContact = contact!;

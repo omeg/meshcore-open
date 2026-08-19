@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/public_key.dart';
 import '../l10n/l10n.dart';
 import '../l10n/contact_localization.dart';
 import '../models/app_settings.dart';
@@ -396,6 +397,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                 onTap: () => Navigator.of(sheetContext).pop('copy_contact'),
               ),
               ListTile(
+                leading: const Icon(Icons.key_outlined),
+                title: Text(l10n.nearbyNodes_copyPublicKey),
+                onTap: () => Navigator.of(sheetContext).pop('copy_public_key'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete),
                 title: Text(l10n.discoveredContacts_deleteContact),
                 onTap: () => Navigator.of(sheetContext).pop('delete_contact'),
@@ -423,6 +429,9 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
           context,
           content: Text(context.l10n.shareLink_copied),
         );
+        break;
+      case 'copy_public_key':
+        await copyPublicKeyHex(context, contact.publicKeyHex);
         break;
       case 'delete_contact':
         connector.removeDiscoveredContact(contact);

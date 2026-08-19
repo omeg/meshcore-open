@@ -150,6 +150,7 @@ void main() {
     await tester.pump();
 
     expect(find.text(contact.name), findsOneWidget);
+    expect(find.text('11220203..1c1d1e1f'), findsOneWidget);
     await tester.longPress(find.text(contact.name));
     await tester.pumpAndSettle();
 

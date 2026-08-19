@@ -19,6 +19,7 @@ import '../helpers/chat_scroll_controller.dart';
 import '../helpers/gif_helper.dart';
 import '../helpers/message_text.dart';
 import '../helpers/path_helper.dart';
+import '../helpers/public_key.dart';
 import '../models/channel_message.dart';
 import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
@@ -831,7 +832,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   context.l10n.chat_location,
                   '${contact.latitude?.toStringAsFixed(4)}, ${contact.longitude?.toStringAsFixed(4)}',
                 ),
-              _buildInfoRow(context.l10n.chat_publicKey, contact.publicKeyHex),
+              _buildInfoRow(
+                context.l10n.chat_publicKey,
+                formatPublicKeyHex(contact.publicKeyHex),
+                copyValue: contact.publicKeyHex,
+              ),
             ],
           ),
         ),
@@ -1037,7 +1042,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Widget _buildInfoRow(String label, String value, {String? copyValue}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -1053,6 +1058,15 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           Expanded(child: SelectableText(value)),
+          if (copyValue != null)
+            IconButton(
+              tooltip: context.l10n.common_copy,
+              visualDensity: VisualDensity.compact,
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(Icons.copy_outlined, size: 16),
+              onPressed: () => copyPublicKeyHex(context, copyValue),
+            ),
         ],
       ),
     );
