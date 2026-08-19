@@ -2731,6 +2731,17 @@ class AppLocalizationsFr extends AppLocalizations {
   String get repeater_settingsTitle => 'Paramètres du répéteur';
 
   @override
+  String get repeater_valueUnknown => 'Unknown';
+
+  @override
+  String get repeater_channelActivityDetection =>
+      'Channel Activity Detection (CAD)';
+
+  @override
+  String get repeater_channelActivityDetectionHelper =>
+      'Check for LoRa channel activity before transmitting and defer while the channel is busy. This operates independently of the interference threshold.';
+
+  @override
   String get repeater_basicSettings => 'Paramètres de base';
 
   @override
@@ -2982,6 +2993,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get repeater_pathHashMode => 'Mode de hachage de chemin';
+
+  @override
+  String repeater_pathHashModeOption(int mode, int bytes) {
+    return '$mode ($bytes byte hash)';
+  }
 
   @override
   String get repeater_pathHashModeHelper =>

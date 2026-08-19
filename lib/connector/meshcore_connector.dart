@@ -17,6 +17,7 @@ import '../models/contact.dart';
 import '../models/message.dart';
 import '../models/path_selection.dart';
 import '../models/remote_node_auth_session.dart';
+import '../models/repeater_settings_session_snapshot.dart';
 import '../models/translation_support.dart';
 import '../helpers/flood_scope.dart';
 import '../helpers/message_text.dart';
@@ -399,6 +400,8 @@ class MeshCoreConnector extends ChangeNotifier {
   /// Reported by firmware in the login-success push frame at byte offset 8.
   final Map<String, DateTime> _repeaterLoginClocks = {};
   final Map<String, RemoteNodeAuthSession> _remoteNodeAuthSessions = {};
+  final Map<String, RepeaterSettingsSessionSnapshot>
+  _repeaterSettingsSessionSnapshots = {};
 
   // Channel syncing state (sequential pattern)
   bool _isSyncingChannels = false;
@@ -625,6 +628,20 @@ class MeshCoreConnector extends ChangeNotifier {
     return remoteNodeAuthSession(contact) != null;
   }
 
+  RepeaterSettingsSessionSnapshot? repeaterSettingsSessionSnapshot(
+    Contact contact,
+  ) {
+    return _repeaterSettingsSessionSnapshots[contact.publicKeyHex];
+  }
+
+  void rememberRepeaterSettingsSessionSnapshot(
+    Contact contact,
+    RepeaterSettingsSessionSnapshot snapshot,
+  ) {
+    if (!isRemoteNodeAuthenticated(contact)) return;
+    _repeaterSettingsSessionSnapshots[contact.publicKeyHex] = snapshot;
+  }
+
   RemoteNodeAuthSession rememberRemoteNodeAuthentication(
     Contact contact, {
     required String password,
@@ -643,11 +660,14 @@ class MeshCoreConnector extends ChangeNotifier {
 
   void clearRemoteNodeAuthentication(Contact contact) {
     final removed = _remoteNodeAuthSessions.remove(contact.publicKeyHex);
+    final settingsRemoved = _repeaterSettingsSessionSnapshots.remove(
+      contact.publicKeyHex,
+    );
     final prefix = contact.publicKey.length < 6
         ? pubKeyToHex(contact.publicKey)
         : pubKeyToHex(contact.publicKey.sublist(0, 6));
     final clockRemoved = _repeaterLoginClocks.remove(prefix);
-    if (removed != null || clockRemoved != null) {
+    if (removed != null || clockRemoved != null || settingsRemoved != null) {
       notifyListeners();
     }
   }
@@ -655,6 +675,7 @@ class MeshCoreConnector extends ChangeNotifier {
   void _clearRemoteNodeAuthentications() {
     _remoteNodeAuthSessions.clear();
     _repeaterLoginClocks.clear();
+    _repeaterSettingsSessionSnapshots.clear();
   }
 
   void rememberNonRepeatRadioState(MeshCoreRadioStateSnapshot snapshot) {
@@ -5122,6 +5143,7 @@ class MeshCoreConnector extends ChangeNotifier {
       _contactCyr2LatProfileId.clear();
       _remoteNodeAuthSessions.clear();
       _repeaterLoginClocks.clear();
+      _repeaterSettingsSessionSnapshots.clear();
     }
     _loadedConversationKeys.clear();
     _channelMessages.clear();
@@ -7461,9 +7483,12 @@ class MeshCoreConnector extends ChangeNotifier {
     final contact = _contactMatchingLoginFrame(frame);
     if (contact == null) return;
     final removed = _remoteNodeAuthSessions.remove(contact.publicKeyHex);
+    final settingsRemoved = _repeaterSettingsSessionSnapshots.remove(
+      contact.publicKeyHex,
+    );
     final prefix = pubKeyToHex(frame.sublist(2, 8));
     final clockRemoved = _repeaterLoginClocks.remove(prefix);
-    if (removed != null || clockRemoved != null) {
+    if (removed != null || clockRemoved != null || settingsRemoved != null) {
       notifyListeners();
     }
   }

@@ -1504,6 +1504,12 @@
     }
   },
   "repeater_settingsTitle": "Repeater Settings",
+  "repeater_valueUnknown": "Unknown",
+  "@repeater_valueUnknown": {
+    "description": "Shown for a repeater setting that has not been fetched from the node"
+  },
+  "repeater_channelActivityDetection": "Channel Activity Detection (CAD)",
+  "repeater_channelActivityDetectionHelper": "Check for LoRa channel activity before transmitting and defer while the channel is busy. This operates independently of the interference threshold.",
   "repeater_basicSettings": "Basic Settings",
   "repeater_repeaterName": "Repeater Name",
   "repeater_repeaterNameHelper": "Display name for this repeater",
@@ -1611,6 +1617,18 @@
   "repeater_advancedSettings": "Advanced",
   "repeater_advancedSettingsSubtitle": "Tuning knobs for experienced operators",
   "repeater_pathHashMode": "Path hash mode",
+  "repeater_pathHashModeOption": "{mode} ({bytes} byte hash)",
+  "@repeater_pathHashModeOption": {
+    "description": "Label for a repeater path hash mode dropdown option",
+    "placeholders": {
+      "mode": {
+        "type": "int"
+      },
+      "bytes": {
+        "type": "int"
+      }
+    }
+  },
   "repeater_pathHashModeHelper": "Bytes used to encode this repeater's ID in flood path/loop-detect tags. 0=1 byte (256 IDs, up to 64 hops), 1=2 bytes (65K IDs, up to 32 hops), 2=3 bytes (16M IDs, up to 21 hops). v1.13 and older firmware drops multi-byte paths — only raise once your network is on v1.14+.",
   "repeater_txDelay": "Flood TX delay",
   "repeater_txDelayHelper": "Retransmit spacing for flood traffic, as a multiplier of the packet's airtime (0-2, default 0.5). Higher = fewer collisions but slower delivery.",

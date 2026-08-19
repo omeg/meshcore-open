@@ -4886,6 +4886,24 @@ abstract class AppLocalizations {
   /// **'Repeater Settings'**
   String get repeater_settingsTitle;
 
+  /// Shown for a repeater setting that has not been fetched from the node
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get repeater_valueUnknown;
+
+  /// No description provided for @repeater_channelActivityDetection.
+  ///
+  /// In en, this message translates to:
+  /// **'Channel Activity Detection (CAD)'**
+  String get repeater_channelActivityDetection;
+
+  /// No description provided for @repeater_channelActivityDetectionHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for LoRa channel activity before transmitting and defer while the channel is busy. This operates independently of the interference threshold.'**
+  String get repeater_channelActivityDetectionHelper;
+
   /// No description provided for @repeater_basicSettings.
   ///
   /// In en, this message translates to:
@@ -5317,6 +5335,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Path hash mode'**
   String get repeater_pathHashMode;
+
+  /// Label for a repeater path hash mode dropdown option
+  ///
+  /// In en, this message translates to:
+  /// **'{mode} ({bytes} byte hash)'**
+  String repeater_pathHashModeOption(int mode, int bytes);
 
   /// No description provided for @repeater_pathHashModeHelper.
   ///

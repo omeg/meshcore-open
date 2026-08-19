@@ -2607,6 +2607,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repeater_settingsTitle => '转发节点设置';
 
   @override
+  String get repeater_valueUnknown => 'Unknown';
+
+  @override
+  String get repeater_channelActivityDetection =>
+      'Channel Activity Detection (CAD)';
+
+  @override
+  String get repeater_channelActivityDetectionHelper =>
+      'Check for LoRa channel activity before transmitting and defer while the channel is busy. This operates independently of the interference threshold.';
+
+  @override
   String get repeater_basicSettings => '基本设置';
 
   @override
@@ -2831,6 +2842,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get repeater_pathHashMode => '路径哈希模式';
+
+  @override
+  String repeater_pathHashModeOption(int mode, int bytes) {
+    return '$mode ($bytes byte hash)';
+  }
 
   @override
   String get repeater_pathHashModeHelper =>

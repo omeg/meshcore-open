@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
+import '../models/repeater_settings_session_snapshot.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../services/repeater_command_service.dart';
@@ -47,6 +48,7 @@ enum _SettingField {
   txDelay,
   directTxDelay,
   intThresh,
+  channelActivityDetection,
   agcResetInterval,
 }
 
@@ -84,10 +86,12 @@ String _shortCommandLabel(String command) {
 
 class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   final StorageService _storage = StorageService();
+  late final MeshCoreConnector _sessionConnector;
 
   bool _isLoading = false;
   bool _hasChanges = false;
   final Set<_SettingField> _dirtyFields = {};
+  final Set<_SettingField> _knownFields = {};
   bool _refreshingBasic = false;
   bool _refreshingRadio = false;
   bool _refreshingTxPower = false;
@@ -107,6 +111,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   bool _refreshingTxDelay = false;
   bool _refreshingDirectTxDelay = false;
   bool _refreshingIntThresh = false;
+  bool _refreshingChannelActivityDetection = false;
   bool _refreshingAgcResetInterval = false;
   bool _runningAction = false;
   StreamSubscription<Uint8List>? _frameSubscription;
@@ -132,33 +137,32 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   bool _lonInvalid = false;
 
   // Feature toggles
-  bool _repeatEnabled = true;
-  bool _allowReadOnly = true;
-  bool _multiAcks = false;
-  bool _rxGainBoosted = false;
+  bool? _repeatEnabled;
+  bool? _allowReadOnly;
+  bool? _multiAcks;
+  bool? _rxGainBoosted;
   bool _autoClockSyncAfterLogin = false;
 
   // Advertisement settings
-  bool _advertEnable = true;
-  int _advertInterval = 120; // minutes/2
-  bool _floodAdvertEnable = true;
-  int _floodAdvertInterval = 12; // hours
-  int _floodMax = 64; // 0-64 hops
+  int? _advertInterval; // 0 disables advertisements
+  int? _floodAdvertInterval; // 0 disables flood advertisements
+  int? _floodMax; // 0-64 hops
 
   // Network health
-  String _loopDetect = 'off'; // off|minimal|moderate|strict
-  int _dutyCycle = 50; // 1-100
+  String? _loopDetect; // off|minimal|moderate|strict
+  int? _dutyCycle; // 1-100
 
   // Operator info
   final TextEditingController _ownerInfoController = TextEditingController();
 
   // Advanced
-  int _pathHashMode = 0; // 0-2
+  int? _pathHashMode; // 0-2
   final TextEditingController _txDelayController = TextEditingController();
   final TextEditingController _directTxDelayController =
       TextEditingController();
   final TextEditingController _intThreshController = TextEditingController();
-  int _agcResetInterval = 0; // seconds, multiple of 4, 0 disabled
+  bool? _channelActivityDetectionEnabled;
+  int? _agcResetInterval; // seconds, multiple of 4, 0 disabled
 
   static const List<String> _loopDetectOptions = [
     'off',
@@ -186,7 +190,9 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   void initState() {
     super.initState();
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    _sessionConnector = connector;
     _commandService = RepeaterCommandService(connector);
+    _restoreSettingsSessionSnapshot();
     _setupMessageListener();
     _loadSettings();
   }
@@ -260,133 +266,315 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     return true;
   }
 
+  static _SettingField? _fieldForGetKey(String key) {
+    return switch (key) {
+      'name' => _SettingField.name,
+      'radio' => _SettingField.radio,
+      'tx' => _SettingField.txPower,
+      'lat' => _SettingField.lat,
+      'lon' => _SettingField.lon,
+      'repeat' => _SettingField.repeat,
+      'allow.read.only' => _SettingField.allowReadOnly,
+      'advert.interval' => _SettingField.advertInterval,
+      'flood.advert.interval' => _SettingField.floodAdvertInterval,
+      'radio.rxgain' => _SettingField.rxGain,
+      'multi.acks' => _SettingField.multiAcks,
+      'loop.detect' => _SettingField.loopDetect,
+      'dutycycle' => _SettingField.dutyCycle,
+      'owner.info' => _SettingField.ownerInfo,
+      'flood.max' => _SettingField.floodMax,
+      'path.hash.mode' => _SettingField.pathHashMode,
+      'txdelay' => _SettingField.txDelay,
+      'direct.txdelay' => _SettingField.directTxDelay,
+      'int.thresh' => _SettingField.intThresh,
+      'cad' => _SettingField.channelActivityDetection,
+      'agc.reset.interval' => _SettingField.agcResetInterval,
+      _ => null,
+    };
+  }
+
+  static String _getKeyForField(_SettingField field) {
+    return switch (field) {
+      _SettingField.name => 'name',
+      _SettingField.radio => 'radio',
+      _SettingField.txPower => 'tx',
+      _SettingField.lat => 'lat',
+      _SettingField.lon => 'lon',
+      _SettingField.repeat => 'repeat',
+      _SettingField.allowReadOnly => 'allow.read.only',
+      _SettingField.advertInterval => 'advert.interval',
+      _SettingField.floodAdvertInterval => 'flood.advert.interval',
+      _SettingField.rxGain => 'radio.rxgain',
+      _SettingField.multiAcks => 'multi.acks',
+      _SettingField.loopDetect => 'loop.detect',
+      _SettingField.dutyCycle => 'dutycycle',
+      _SettingField.ownerInfo => 'owner.info',
+      _SettingField.floodMax => 'flood.max',
+      _SettingField.pathHashMode => 'path.hash.mode',
+      _SettingField.txDelay => 'txdelay',
+      _SettingField.directTxDelay => 'direct.txdelay',
+      _SettingField.intThresh => 'int.thresh',
+      _SettingField.channelActivityDetection => 'cad',
+      _SettingField.agcResetInterval => 'agc.reset.interval',
+    };
+  }
+
+  void _restoreSettingsSessionSnapshot() {
+    final snapshot = _sessionConnector.repeaterSettingsSessionSnapshot(
+      widget.repeater,
+    );
+    if (snapshot == null) return;
+
+    for (final entry in snapshot.valuesByKey.entries) {
+      final field = _fieldForGetKey(entry.key);
+      if (field == null || !_applyGetValue(entry.key, entry.value)) continue;
+      _knownFields.add(field);
+      if (snapshot.dirtyKeys.contains(entry.key)) {
+        _dirtyFields.add(field);
+      }
+    }
+    _hasChanges = _dirtyFields.isNotEmpty;
+  }
+
+  String? _currentValueForField(_SettingField field) {
+    switch (field) {
+      case _SettingField.name:
+        return _nameController.text;
+      case _SettingField.radio:
+        final frequency = _freqController.text.trim();
+        if (double.tryParse(frequency) == null ||
+            _bandwidth == null ||
+            _spreadingFactor == null ||
+            _codingRate == null) {
+          return null;
+        }
+        return '$frequency,${_bandwidth! / 1000},$_spreadingFactor,$_codingRate';
+      case _SettingField.txPower:
+        final value = int.tryParse(_txPowerController.text.trim());
+        return value == null || value < 1 || value > 30
+            ? null
+            : value.toString();
+      case _SettingField.lat:
+        final value = _latController.text.trim();
+        return value.isNotEmpty && _isValidCoordinate(value, 90) ? value : null;
+      case _SettingField.lon:
+        final value = _lonController.text.trim();
+        return value.isNotEmpty && _isValidCoordinate(value, 180)
+            ? value
+            : null;
+      case _SettingField.repeat:
+        return _repeatEnabled == null ? null : (_repeatEnabled! ? 'on' : 'off');
+      case _SettingField.allowReadOnly:
+        return _allowReadOnly == null ? null : (_allowReadOnly! ? 'on' : 'off');
+      case _SettingField.multiAcks:
+        return _multiAcks == null ? null : (_multiAcks! ? '1' : '0');
+      case _SettingField.rxGain:
+        return _rxGainBoosted == null ? null : (_rxGainBoosted! ? 'on' : 'off');
+      case _SettingField.advertInterval:
+        return _advertInterval?.toString();
+      case _SettingField.floodAdvertInterval:
+        return _floodAdvertInterval?.toString();
+      case _SettingField.floodMax:
+        return _floodMax?.toString();
+      case _SettingField.loopDetect:
+        return _loopDetect;
+      case _SettingField.dutyCycle:
+        return _dutyCycle?.toString();
+      case _SettingField.ownerInfo:
+        return _ownerInfoController.text.replaceAll('\n', '|');
+      case _SettingField.pathHashMode:
+        return _pathHashMode?.toString();
+      case _SettingField.txDelay:
+        final value = _txDelayController.text.trim();
+        return double.tryParse(value) == null ? null : value;
+      case _SettingField.directTxDelay:
+        final value = _directTxDelayController.text.trim();
+        return double.tryParse(value) == null ? null : value;
+      case _SettingField.intThresh:
+        final value = _intThreshController.text.trim();
+        return int.tryParse(value) == null ? null : value;
+      case _SettingField.channelActivityDetection:
+        return _channelActivityDetectionEnabled == null
+            ? null
+            : (_channelActivityDetectionEnabled! ? 'on' : 'off');
+      case _SettingField.agcResetInterval:
+        return _agcResetInterval?.toString();
+    }
+  }
+
+  void _rememberSettingsSessionSnapshot() {
+    final valuesByKey = <String, String>{};
+    final dirtyKeys = <String>{};
+    for (final field in _knownFields) {
+      final value = _currentValueForField(field);
+      if (value == null) continue;
+      final key = _getKeyForField(field);
+      valuesByKey[key] = value;
+      if (_dirtyFields.contains(field)) dirtyKeys.add(key);
+    }
+    _sessionConnector.rememberRepeaterSettingsSessionSnapshot(
+      widget.repeater,
+      RepeaterSettingsSessionSnapshot(
+        valuesByKey: valuesByKey,
+        dirtyKeys: dirtyKeys,
+      ),
+    );
+  }
+
   /// Apply a single `get <key>` response value to the relevant UI state.
   /// Caller is responsible for invoking this inside setState.
-  /// Unparseable values are ignored (current state is preserved).
-  void _applyGetValue(String key, String value) {
+  /// Returns false for malformed or unsupported values so they remain unknown.
+  bool _applyGetValue(String key, String value) {
     switch (key) {
       case 'name':
         _nameController.text = value;
-        break;
+        return true;
       case 'radio':
-        _applyRadioValue(value);
-        break;
+        return _applyRadioValue(value);
       case 'tx':
         final dbm = int.tryParse(value.replaceAll(RegExp(r'[^0-9-]'), ''));
         if (dbm != null && dbm >= 1 && dbm <= 30) {
           _txPowerController.text = dbm.toString();
+          return true;
         }
-        break;
+        return false;
       case 'lat':
-        _latController.text = value;
-        break;
+        if (!_isValidCoordinate(value, 90) || value.trim().isEmpty) {
+          return false;
+        }
+        _latController.text = value.trim();
+        return true;
       case 'lon':
-        _lonController.text = value;
-        break;
+        if (!_isValidCoordinate(value, 180) || value.trim().isEmpty) {
+          return false;
+        }
+        _lonController.text = value.trim();
+        return true;
       case 'repeat':
-        _repeatEnabled = _parseOnOff(value);
-        break;
+        _repeatEnabled = _tryParseOnOff(value);
+        return _repeatEnabled != null;
       case 'allow.read.only':
-        _allowReadOnly = _parseOnOff(value);
-        break;
+        _allowReadOnly = _tryParseOnOff(value);
+        return _allowReadOnly != null;
       case 'advert.interval':
         final v = int.tryParse(value.trim());
-        if (v != null && v >= 0) {
+        if (v != null && (v == 0 || (v >= 60 && v <= 240))) {
           _advertInterval = v;
-          _advertEnable = v > 0;
+          return true;
         }
-        break;
+        return false;
       case 'flood.advert.interval':
         final v = int.tryParse(value.trim());
-        if (v != null && v >= 0) {
+        if (v != null && (v == 0 || (v >= 3 && v <= 168))) {
           _floodAdvertInterval = v;
-          _floodAdvertEnable = v > 0;
+          return true;
         }
-        break;
+        return false;
       case 'radio.rxgain':
-        _rxGainBoosted = _parseOnOff(value);
-        break;
+        _rxGainBoosted = _tryParseOnOff(value);
+        return _rxGainBoosted != null;
       case 'multi.acks':
         // Firmware reply is "0" or "1".
-        _multiAcks = _parseOnOff(value);
-        break;
+        _multiAcks = _tryParseOnOff(value);
+        return _multiAcks != null;
       case 'loop.detect':
         final lower = value.trim().toLowerCase();
-        if (_loopDetectOptions.contains(lower)) _loopDetect = lower;
-        break;
+        if (!_loopDetectOptions.contains(lower)) return false;
+        _loopDetect = lower;
+        return true;
       case 'dutycycle':
-        // Reply is "<int>.<int>%" e.g. "50.0%"; first number is the percent.
-        final pct = double.tryParse(
-          value.replaceAll('%', '').split('.').first.trim(),
-        );
-        if (pct != null) _dutyCycle = pct.toInt().clamp(1, 100);
-        break;
+        // Reply is "<int>.<int>%" e.g. "50.0%".
+        final pct = double.tryParse(value.replaceAll('%', '').trim());
+        if (pct == null || pct < 1 || pct > 100) return false;
+        _dutyCycle = pct.toInt();
+        return true;
       case 'owner.info':
         // Firmware translates internal newlines back to '|' on the wire.
         _ownerInfoController.text = value.replaceAll('|', '\n');
-        break;
+        return true;
       case 'flood.max':
         final v = int.tryParse(value.trim());
-        if (v != null && v >= 0 && v <= 64) _floodMax = v;
-        break;
+        if (v == null || v < 0 || v > 64) return false;
+        _floodMax = v;
+        return true;
       case 'path.hash.mode':
         final v = int.tryParse(value.trim());
-        if (v != null && v >= 0 && v <= 2) _pathHashMode = v;
-        break;
+        if (v == null || v < 0 || v > 2) return false;
+        _pathHashMode = v;
+        return true;
       case 'txdelay':
-        if (double.tryParse(value.trim()) != null) {
-          _txDelayController.text = value.trim();
-        }
-        break;
+        if (double.tryParse(value.trim()) == null) return false;
+        _txDelayController.text = value.trim();
+        return true;
       case 'direct.txdelay':
-        if (double.tryParse(value.trim()) != null) {
-          _directTxDelayController.text = value.trim();
-        }
-        break;
+        if (double.tryParse(value.trim()) == null) return false;
+        _directTxDelayController.text = value.trim();
+        return true;
       case 'int.thresh':
-        if (int.tryParse(value.trim()) != null) {
-          _intThreshController.text = value.trim();
-        }
-        break;
+        if (int.tryParse(value.trim()) == null) return false;
+        _intThreshController.text = value.trim();
+        return true;
+      case 'cad':
+        _channelActivityDetectionEnabled = _tryParseOnOff(value);
+        return _channelActivityDetectionEnabled != null;
       case 'agc.reset.interval':
         final v = int.tryParse(value.trim());
-        if (v != null && v >= 0) _agcResetInterval = v;
-        break;
+        if (v == null || v < 0 || v > 240 || v % 4 != 0) return false;
+        _agcResetInterval = v;
+        return true;
+      default:
+        return false;
     }
   }
 
   /// Parse the firmware "freq,bw,sf,cr" radio reply (e.g. "908.205017,62.5,10,7").
-  void _applyRadioValue(String radioStr) {
+  bool _applyRadioValue(String radioStr) {
     final parts = radioStr.split(',');
-    if (parts.isEmpty) return;
+    if (parts.length != 4) return false;
     final freqText = parts[0].trim();
-    if (freqText.isNotEmpty && double.tryParse(freqText) != null) {
-      _freqController.text = freqText;
+    final frequency = double.tryParse(freqText);
+    final bandwidthKHz = double.tryParse(parts[1].trim());
+    final spreadingFactor = int.tryParse(parts[2].trim());
+    final codingRate = int.tryParse(parts[3].trim());
+    if (frequency == null ||
+        frequency < 300 ||
+        frequency > 2500 ||
+        bandwidthKHz == null ||
+        bandwidthKHz <= 0 ||
+        spreadingFactor == null ||
+        !_spreadingFactorOptions.contains(spreadingFactor) ||
+        codingRate == null ||
+        !_codingRateOptions.contains(codingRate)) {
+      return false;
     }
-    if (parts.length > 1) {
-      final bw = double.tryParse(parts[1].trim());
-      if (bw != null) {
-        _bandwidth = (bw * 1000).toInt();
-        if (!_bandwidthOptions.contains(_bandwidth)) {
-          _bandwidthOptions.add(_bandwidth!);
-          _bandwidthOptions.sort();
-        }
-      }
+
+    final bandwidth = (bandwidthKHz * 1000).round();
+    _freqController.text = freqText;
+    _bandwidth = bandwidth;
+    _spreadingFactor = spreadingFactor;
+    _codingRate = codingRate;
+    if (!_bandwidthOptions.contains(bandwidth)) {
+      _bandwidthOptions.add(bandwidth);
+      _bandwidthOptions.sort();
     }
-    if (parts.length > 2) {
-      _spreadingFactor = int.tryParse(parts[2].trim()) ?? _spreadingFactor;
-    }
-    if (parts.length > 3) {
-      _codingRate = int.tryParse(parts[3].trim()) ?? _codingRate;
-    }
+    return true;
   }
 
-  bool _parseOnOff(String value) {
+  bool? _tryParseOnOff(String value) {
     final lower = value.trim().toLowerCase();
-    return lower == 'on' ||
+    if (lower == 'on' ||
         lower == 'true' ||
         lower == '1' ||
-        lower == 'enabled';
+        lower == 'enabled') {
+      return true;
+    }
+    if (lower == 'off' ||
+        lower == 'false' ||
+        lower == '0' ||
+        lower == 'disabled') {
+      return false;
+    }
+    return null;
   }
 
   String _formatBandwidthLabel(int bandwidthHz) {
@@ -409,8 +597,15 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     final key = normalized.substring(4).trim();
     final value = _extractGetValue(response);
     if (value == null) return false;
-    setState(() => _applyGetValue(key, value));
-    return true;
+    final field = _fieldForGetKey(key);
+    if (field == null) return false;
+    var applied = false;
+    setState(() {
+      applied = _applyGetValue(key, value);
+      if (applied) _knownFields.add(field);
+    });
+    if (applied) _rememberSettingsSessionSnapshot();
+    return applied;
   }
 
   /// Firmware GET replies are always `> <value>` (CommonCLI.cpp `sprintf(reply, "> %s", ...)`).
@@ -419,8 +614,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     for (final line in response.split('\n')) {
       final trimmed = line.trim();
       if (trimmed.startsWith('>')) {
-        final value = trimmed.substring(1).trim();
-        if (value.isNotEmpty) return value;
+        return trimmed.substring(1).trim();
       }
     }
     return null;
@@ -640,6 +834,15 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     );
   }
 
+  Future<void> _refreshChannelActivityDetection() async {
+    final l10n = context.l10n;
+    await _refreshSection(
+      label: l10n.repeater_channelActivityDetection,
+      commands: const ['get cad'],
+      setRefreshing: (value) => _refreshingChannelActivityDetection = value,
+    );
+  }
+
   Future<void> _refreshAgcResetInterval() async {
     final l10n = context.l10n;
     await _refreshSection(
@@ -689,17 +892,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    // Just populate with current repeater data on initial load
-    // User must click sync button to fetch from device
-    setState(() {
-      _nameController.text = widget.repeater.name;
-
-      if (widget.repeater.hasLocation) {
-        _latController.text = widget.repeater.latitude?.toString() ?? '';
-        _lonController.text = widget.repeater.longitude?.toString() ?? '';
-      }
-    });
-
+    // Node-backed settings deliberately remain unknown until a successful
+    // `get` response arrives. This local preference is the only initial value.
     final autoClockSync = await _storage
         .getRepeaterAutoClockSyncAfterLoginEnabled(
           widget.repeater.publicKeyHex,
@@ -726,8 +920,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
       // available and the user can retry.
       final pending = <({_SettingField? field, String command})>[];
 
-      if (_dirtyFields.contains(_SettingField.name) &&
-          _nameController.text.isNotEmpty) {
+      if (_shouldSave(_SettingField.name) && _nameController.text.isNotEmpty) {
         pending.add((
           field: _SettingField.name,
           command: 'set name ${_nameController.text}',
@@ -749,7 +942,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
       }
 
       // Radio parameters are bundled in a single command.
-      if (_dirtyFields.contains(_SettingField.radio) &&
+      if (_shouldSave(_SettingField.radio) &&
           _freqController.text.isNotEmpty &&
           _bandwidth != null &&
           _spreadingFactor != null &&
@@ -765,7 +958,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
         }
       }
 
-      if (_dirtyFields.contains(_SettingField.txPower) &&
+      if (_shouldSave(_SettingField.txPower) &&
           _txPowerController.text.isNotEmpty) {
         final dbm = int.tryParse(_txPowerController.text.trim());
         if (dbm != null) {
@@ -773,7 +966,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
         }
       }
 
-      if (_dirtyFields.contains(_SettingField.lat) &&
+      if (_shouldSave(_SettingField.lat) &&
           _latController.text.isNotEmpty &&
           _isValidCoordinate(_latController.text, 90)) {
         pending.add((
@@ -781,7 +974,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           command: 'set lat ${_latController.text}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.lon) &&
+      if (_shouldSave(_SettingField.lon) &&
           _lonController.text.isNotEmpty &&
           _isValidCoordinate(_lonController.text, 180)) {
         pending.add((
@@ -790,63 +983,63 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
         ));
       }
 
-      if (_dirtyFields.contains(_SettingField.repeat)) {
+      if (_shouldSave(_SettingField.repeat)) {
         pending.add((
           field: _SettingField.repeat,
-          command: 'set repeat ${_repeatEnabled ? "on" : "off"}',
+          command: 'set repeat ${_repeatEnabled! ? "on" : "off"}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.allowReadOnly)) {
+      if (_shouldSave(_SettingField.allowReadOnly)) {
         pending.add((
           field: _SettingField.allowReadOnly,
-          command: 'set allow.read.only ${_allowReadOnly ? "on" : "off"}',
+          command: 'set allow.read.only ${_allowReadOnly! ? "on" : "off"}',
         ));
       }
 
-      if (_dirtyFields.contains(_SettingField.advertInterval)) {
+      if (_shouldSave(_SettingField.advertInterval)) {
         pending.add((
           field: _SettingField.advertInterval,
-          command: 'set advert.interval $_advertInterval',
+          command: 'set advert.interval ${_advertInterval!}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.floodAdvertInterval)) {
+      if (_shouldSave(_SettingField.floodAdvertInterval)) {
         pending.add((
           field: _SettingField.floodAdvertInterval,
-          command: 'set flood.advert.interval $_floodAdvertInterval',
+          command: 'set flood.advert.interval ${_floodAdvertInterval!}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.floodMax)) {
+      if (_shouldSave(_SettingField.floodMax)) {
         pending.add((
           field: _SettingField.floodMax,
-          command: 'set flood.max $_floodMax',
+          command: 'set flood.max ${_floodMax!}',
         ));
       }
 
-      if (_dirtyFields.contains(_SettingField.rxGain)) {
+      if (_shouldSave(_SettingField.rxGain)) {
         pending.add((
           field: _SettingField.rxGain,
-          command: 'set radio.rxgain ${_rxGainBoosted ? "on" : "off"}',
+          command: 'set radio.rxgain ${_rxGainBoosted! ? "on" : "off"}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.multiAcks)) {
+      if (_shouldSave(_SettingField.multiAcks)) {
         pending.add((
           field: _SettingField.multiAcks,
-          command: 'set multi.acks ${_multiAcks ? 1 : 0}',
+          command: 'set multi.acks ${_multiAcks! ? 1 : 0}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.loopDetect)) {
+      if (_shouldSave(_SettingField.loopDetect)) {
         pending.add((
           field: _SettingField.loopDetect,
-          command: 'set loop.detect $_loopDetect',
+          command: 'set loop.detect ${_loopDetect!}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.dutyCycle)) {
+      if (_shouldSave(_SettingField.dutyCycle)) {
         pending.add((
           field: _SettingField.dutyCycle,
-          command: 'set dutycycle $_dutyCycle',
+          command: 'set dutycycle ${_dutyCycle!}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.ownerInfo)) {
+      if (_shouldSave(_SettingField.ownerInfo)) {
         // Firmware splits on '|', treating it as newline.
         final encoded = _ownerInfoController.text.replaceAll('\n', '|');
         pending.add((
@@ -854,13 +1047,13 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           command: 'set owner.info $encoded',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.pathHashMode)) {
+      if (_shouldSave(_SettingField.pathHashMode)) {
         pending.add((
           field: _SettingField.pathHashMode,
-          command: 'set path.hash.mode $_pathHashMode',
+          command: 'set path.hash.mode ${_pathHashMode!}',
         ));
       }
-      if (_dirtyFields.contains(_SettingField.txDelay) &&
+      if (_shouldSave(_SettingField.txDelay) &&
           _txDelayController.text.isNotEmpty) {
         final v = double.tryParse(_txDelayController.text.trim());
         if (v != null) {
@@ -870,7 +1063,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           ));
         }
       }
-      if (_dirtyFields.contains(_SettingField.directTxDelay) &&
+      if (_shouldSave(_SettingField.directTxDelay) &&
           _directTxDelayController.text.isNotEmpty) {
         final v = double.tryParse(_directTxDelayController.text.trim());
         if (v != null) {
@@ -880,7 +1073,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           ));
         }
       }
-      if (_dirtyFields.contains(_SettingField.intThresh) &&
+      if (_shouldSave(_SettingField.intThresh) &&
           _intThreshController.text.isNotEmpty) {
         final v = int.tryParse(_intThreshController.text.trim());
         if (v != null) {
@@ -890,10 +1083,17 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           ));
         }
       }
-      if (_dirtyFields.contains(_SettingField.agcResetInterval)) {
+      if (_shouldSave(_SettingField.channelActivityDetection)) {
+        pending.add((
+          field: _SettingField.channelActivityDetection,
+          command:
+              'set cad ${_channelActivityDetectionEnabled! ? "on" : "off"}',
+        ));
+      }
+      if (_shouldSave(_SettingField.agcResetInterval)) {
         pending.add((
           field: _SettingField.agcResetInterval,
-          command: 'set agc.reset.interval $_agcResetInterval',
+          command: 'set agc.reset.interval ${_agcResetInterval!}',
         ));
       }
 
@@ -945,6 +1145,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
           ..addAll(retainDirty);
         _hasChanges = _dirtyFields.isNotEmpty || passwordsFailed;
       });
+      _rememberSettingsSessionSnapshot();
 
       if (mounted) {
         final l10n = context.l10n;
@@ -986,9 +1187,19 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     }
   }
 
+  bool _shouldSave(_SettingField field) {
+    return _knownFields.contains(field) && _dirtyFields.contains(field);
+  }
+
   void _markChanged(_SettingField field) {
+    final wasKnown = _knownFields.contains(field);
+    final wasDirty = _dirtyFields.contains(field);
+    _knownFields.add(field);
     _dirtyFields.add(field);
-    _flagHasChanges();
+    final needsRebuild = !wasKnown || !wasDirty || !_hasChanges;
+    _hasChanges = true;
+    _rememberSettingsSessionSnapshot();
+    if (needsRebuild) setState(() {});
   }
 
   static bool _isValidCoordinate(String text, double max) {
@@ -1003,6 +1214,91 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
         _hasChanges = true;
       });
     }
+  }
+
+  TextStyle _unknownStyle() {
+    return TextStyle(
+      color: Theme.of(context).colorScheme.tertiary,
+      fontStyle: FontStyle.italic,
+      fontWeight: FontWeight.w600,
+    );
+  }
+
+  Widget _unknownValue(_SettingField field, {String suffix = ''}) {
+    return Text(
+      context.l10n.repeater_valueUnknown,
+      key: ValueKey('unknown-${field.name}$suffix'),
+      style: _unknownStyle(),
+    );
+  }
+
+  Widget _unknownBooleanPicker({
+    required _SettingField field,
+    required ValueChanged<bool> onSelected,
+  }) {
+    final l10n = context.l10n;
+    return PopupMenuButton<bool>(
+      tooltip: l10n.repeater_valueUnknown,
+      onSelected: onSelected,
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: false,
+          child: Row(
+            children: [
+              const Icon(Icons.toggle_off_outlined),
+              const SizedBox(width: 8),
+              Text(l10n.common_disable),
+            ],
+          ),
+        ),
+        PopupMenuItem(
+          value: true,
+          child: Row(
+            children: [
+              const Icon(Icons.toggle_on_outlined),
+              const SizedBox(width: 8),
+              Text(l10n.common_enable),
+            ],
+          ),
+        ),
+      ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _unknownValue(field, suffix: '-picker'),
+          Icon(
+            Icons.arrow_drop_down,
+            color: Theme.of(context).colorScheme.tertiary,
+          ),
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _settingDecoration({
+    required _SettingField field,
+    required String labelText,
+    String? helperText,
+    int? helperMaxLines,
+    String? suffixText,
+    String? errorText,
+  }) {
+    final isUnknown = !_knownFields.contains(field);
+    return InputDecoration(
+      labelText: labelText,
+      helperText: helperText,
+      helperMaxLines: helperMaxLines,
+      suffixText: suffixText,
+      errorText: errorText,
+      hintText: isUnknown ? context.l10n.repeater_valueUnknown : null,
+      hintStyle: isUnknown ? _unknownStyle() : null,
+      filled: isUnknown,
+      fillColor: isUnknown
+          ? Theme.of(
+              context,
+            ).colorScheme.tertiaryContainer.withValues(alpha: .14)
+          : null,
+    );
   }
 
   Widget _buildInlineRefreshButton({
@@ -1055,24 +1351,22 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
       ),
       body: SafeArea(
         top: false,
-        child: _isLoading && _nameController.text.isEmpty
-            ? const Center(child: CircularProgressIndicator())
-            : ListView(
-                padding: const EdgeInsets.only(bottom: 32),
-                children: [
-                  _buildBasicSettingsCard(),
-                  _buildRadioSettingsCard(),
-                  _buildLocationSettingsCard(),
-                  _buildFeatureTogglesCard(),
-                  _buildNetworkHealthCard(),
-                  _buildAdvertisementSettingsCard(),
-                  _buildOwnerInfoCard(),
-                  _buildActionsCard(),
-                  _buildAdvancedCard(),
-                  const SizedBox(height: 16),
-                  _buildDangerZoneCard(),
-                ],
-              ),
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 32),
+          children: [
+            _buildBasicSettingsCard(),
+            _buildRadioSettingsCard(),
+            _buildLocationSettingsCard(),
+            _buildFeatureTogglesCard(),
+            _buildNetworkHealthCard(),
+            _buildAdvertisementSettingsCard(),
+            _buildOwnerInfoCard(),
+            _buildActionsCard(),
+            _buildAdvancedCard(),
+            const SizedBox(height: 16),
+            _buildDangerZoneCard(),
+          ],
+        ),
       ),
     );
   }
@@ -1102,7 +1396,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             children: [
               TextField(
                 controller: _nameController,
-                decoration: InputDecoration(
+                decoration: _settingDecoration(
+                  field: _SettingField.name,
                   labelText: l10n.repeater_repeaterName,
                   helperText: l10n.repeater_repeaterNameHelper,
                 ),
@@ -1160,7 +1455,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             children: [
               TextField(
                 controller: _freqController,
-                decoration: InputDecoration(
+                decoration: _settingDecoration(
+                  field: _SettingField.radio,
                   labelText: l10n.repeater_frequencyMhz,
                   helperText: l10n.repeater_frequencyHelper,
                   suffixText: 'MHz',
@@ -1177,7 +1473,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _txPowerController,
-                      decoration: InputDecoration(
+                      decoration: _settingDecoration(
+                        field: _SettingField.txPower,
                         labelText: l10n.repeater_txPower,
                         helperText: l10n.repeater_txPowerHelper,
                         suffixText: 'dBm',
@@ -1195,8 +1492,13 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
+                key: ValueKey('bandwidth-${_bandwidth ?? 'unknown'}'),
                 initialValue: _bandwidth,
-                decoration: InputDecoration(labelText: l10n.repeater_bandwidth),
+                decoration: _settingDecoration(
+                  field: _SettingField.radio,
+                  labelText: l10n.repeater_bandwidth,
+                ),
+                hint: _unknownValue(_SettingField.radio, suffix: '-bandwidth'),
                 items: _bandwidthOptions.map((bw) {
                   return DropdownMenuItem(
                     value: bw,
@@ -1214,9 +1516,17 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
+                key: ValueKey(
+                  'spreading-factor-${_spreadingFactor ?? 'unknown'}',
+                ),
                 initialValue: _spreadingFactor,
-                decoration: InputDecoration(
+                decoration: _settingDecoration(
+                  field: _SettingField.radio,
                   labelText: l10n.repeater_spreadingFactor,
+                ),
+                hint: _unknownValue(
+                  _SettingField.radio,
+                  suffix: '-spreading-factor',
                 ),
                 items: _spreadingFactorOptions.map((sf) {
                   return DropdownMenuItem(value: sf, child: Text('SF$sf'));
@@ -1232,9 +1542,15 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
+                key: ValueKey('coding-rate-${_codingRate ?? 'unknown'}'),
                 initialValue: _codingRate,
-                decoration: InputDecoration(
+                decoration: _settingDecoration(
+                  field: _SettingField.radio,
                   labelText: l10n.repeater_codingRate,
+                ),
+                hint: _unknownValue(
+                  _SettingField.radio,
+                  suffix: '-coding-rate',
                 ),
                 items: _codingRateOptions.map((cr) {
                   return DropdownMenuItem(value: cr, child: Text('4/$cr'));
@@ -1250,6 +1566,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               ),
               const SizedBox(height: 4),
               _buildFeatureToggleRow(
+                field: _SettingField.rxGain,
                 title: l10n.repeater_rxGain,
                 subtitle: l10n.repeater_rxGainHelper,
                 value: _rxGainBoosted,
@@ -1284,7 +1601,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _latController,
-                      decoration: InputDecoration(
+                      decoration: _settingDecoration(
+                        field: _SettingField.lat,
                         labelText: l10n.repeater_latitude,
                         helperText: l10n.repeater_latitudeHelper,
                         errorText: _latInvalid
@@ -1318,7 +1636,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                   Expanded(
                     child: TextField(
                       controller: _lonController,
-                      decoration: InputDecoration(
+                      decoration: _settingDecoration(
+                        field: _SettingField.lon,
                         labelText: l10n.repeater_longitude,
                         helperText: l10n.repeater_longitudeHelper,
                         errorText: _lonInvalid
@@ -1363,6 +1682,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildFeatureToggleRow(
+                field: _SettingField.repeat,
                 title: l10n.repeater_packetForwarding,
                 subtitle: l10n.repeater_packetForwardingSubtitle,
                 value: _repeatEnabled,
@@ -1377,6 +1697,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 refreshTooltip: l10n.repeater_refreshPacketForwarding,
               ),
               _buildFeatureToggleRow(
+                field: _SettingField.allowReadOnly,
                 title: l10n.repeater_guestAccess,
                 subtitle: l10n.repeater_guestAccessSubtitle,
                 value: _allowReadOnly,
@@ -1391,6 +1712,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 refreshTooltip: l10n.repeater_refreshGuestAccess,
               ),
               _buildFeatureToggleRow(
+                field: _SettingField.multiAcks,
                 title: l10n.repeater_multiAcks,
                 subtitle: l10n.repeater_multiAcksSubtitle,
                 value: _multiAcks,
@@ -1425,9 +1747,10 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
   }
 
   Widget _buildFeatureToggleRow({
+    required _SettingField field,
     required String title,
     required String subtitle,
-    required bool value,
+    required bool? value,
     required bool isRefreshing,
     required ValueChanged<bool> onChanged,
     required VoidCallback onRefresh,
@@ -1436,13 +1759,23 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     return Row(
       children: [
         Expanded(
-          child: SwitchListTile(
-            title: Text(title),
-            subtitle: Text(subtitle),
-            value: value,
-            onChanged: onChanged,
-            contentPadding: EdgeInsets.zero,
-          ),
+          child: value == null
+              ? ListTile(
+                  title: Text(title),
+                  subtitle: Text(subtitle),
+                  trailing: _unknownBooleanPicker(
+                    field: field,
+                    onSelected: onChanged,
+                  ),
+                  contentPadding: EdgeInsets.zero,
+                )
+              : SwitchListTile(
+                  title: Text(title),
+                  subtitle: Text(subtitle),
+                  value: value,
+                  onChanged: onChanged,
+                  contentPadding: EdgeInsets.zero,
+                ),
         ),
         IconButton(
           icon: isRefreshing
@@ -1462,6 +1795,9 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
 
   Widget _buildAdvertisementSettingsCard() {
     final l10n = context.l10n;
+    final advertInterval = _advertInterval;
+    final floodAdvertInterval = _floodAdvertInterval;
+    final floodMax = _floodMax;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1475,21 +1811,32 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                   Expanded(
                     child: ListTile(
                       title: Text(l10n.repeater_localAdvertInterval),
-                      subtitle: Text(
-                        l10n.repeater_localAdvertIntervalMinutes(
-                          _advertInterval,
-                        ),
-                      ),
-                      trailing: Switch(
-                        value: _advertEnable,
-                        onChanged: (value) {
-                          setState(() {
-                            _advertInterval = value ? 60 : 0;
-                            _advertEnable = value;
-                          });
-                          _markChanged(_SettingField.advertInterval);
-                        },
-                      ),
+                      subtitle: advertInterval == null
+                          ? _unknownValue(_SettingField.advertInterval)
+                          : Text(
+                              l10n.repeater_localAdvertIntervalMinutes(
+                                advertInterval,
+                              ),
+                            ),
+                      trailing: advertInterval == null
+                          ? _unknownBooleanPicker(
+                              field: _SettingField.advertInterval,
+                              onSelected: (enabled) {
+                                setState(() {
+                                  _advertInterval = enabled ? 60 : 0;
+                                });
+                                _markChanged(_SettingField.advertInterval);
+                              },
+                            )
+                          : Switch(
+                              value: advertInterval > 0,
+                              onChanged: (value) {
+                                setState(() {
+                                  _advertInterval = value ? 60 : 0;
+                                });
+                                _markChanged(_SettingField.advertInterval);
+                              },
+                            ),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -1510,16 +1857,22 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 ],
               ),
               Slider(
-                value: _advertInterval == 0
+                value: advertInterval == null || advertInterval == 0
                     ? 60.toDouble()
-                    : _advertInterval.toDouble(),
+                    : advertInterval.toDouble(),
                 min: 60,
                 max: 240,
                 divisions: 18,
-                label: l10n.repeater_localAdvertIntervalMinutes(
-                  _advertInterval,
-                ),
-                onChanged: _advertEnable
+                label: advertInterval == null
+                    ? l10n.repeater_valueUnknown
+                    : l10n.repeater_localAdvertIntervalMinutes(advertInterval),
+                activeColor: advertInterval == null
+                    ? Theme.of(context).colorScheme.tertiary
+                    : null,
+                inactiveColor: advertInterval == null
+                    ? Theme.of(context).colorScheme.tertiaryContainer
+                    : null,
+                onChanged: advertInterval == null || advertInterval > 0
                     ? (value) {
                         setState(() {
                           _advertInterval = value.toInt();
@@ -1534,21 +1887,32 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                   Expanded(
                     child: ListTile(
                       title: Text(l10n.repeater_floodAdvertInterval),
-                      subtitle: Text(
-                        l10n.repeater_floodAdvertIntervalHours(
-                          _floodAdvertInterval,
-                        ),
-                      ),
-                      trailing: Switch(
-                        value: _floodAdvertEnable,
-                        onChanged: (value) {
-                          setState(() {
-                            _floodAdvertInterval = value ? 3 : 0;
-                            _floodAdvertEnable = value;
-                          });
-                          _markChanged(_SettingField.floodAdvertInterval);
-                        },
-                      ),
+                      subtitle: floodAdvertInterval == null
+                          ? _unknownValue(_SettingField.floodAdvertInterval)
+                          : Text(
+                              l10n.repeater_floodAdvertIntervalHours(
+                                floodAdvertInterval,
+                              ),
+                            ),
+                      trailing: floodAdvertInterval == null
+                          ? _unknownBooleanPicker(
+                              field: _SettingField.floodAdvertInterval,
+                              onSelected: (enabled) {
+                                setState(() {
+                                  _floodAdvertInterval = enabled ? 3 : 0;
+                                });
+                                _markChanged(_SettingField.floodAdvertInterval);
+                              },
+                            )
+                          : Switch(
+                              value: floodAdvertInterval > 0,
+                              onChanged: (value) {
+                                setState(() {
+                                  _floodAdvertInterval = value ? 3 : 0;
+                                });
+                                _markChanged(_SettingField.floodAdvertInterval);
+                              },
+                            ),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -1569,16 +1933,25 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 ],
               ),
               Slider(
-                value: _floodAdvertInterval == 0
+                value: floodAdvertInterval == null || floodAdvertInterval == 0
                     ? 3.toDouble()
-                    : _floodAdvertInterval.toDouble(),
+                    : floodAdvertInterval.toDouble(),
                 min: 3,
                 max: 168,
                 divisions: 165,
-                label: l10n.repeater_floodAdvertIntervalHours(
-                  _floodAdvertInterval,
-                ),
-                onChanged: _floodAdvertEnable
+                label: floodAdvertInterval == null
+                    ? l10n.repeater_valueUnknown
+                    : l10n.repeater_floodAdvertIntervalHours(
+                        floodAdvertInterval,
+                      ),
+                activeColor: floodAdvertInterval == null
+                    ? Theme.of(context).colorScheme.tertiary
+                    : null,
+                inactiveColor: floodAdvertInterval == null
+                    ? Theme.of(context).colorScheme.tertiaryContainer
+                    : null,
+                onChanged:
+                    floodAdvertInterval == null || floodAdvertInterval > 0
                     ? (value) {
                         setState(() {
                           _floodAdvertInterval = value.toInt();
@@ -1594,10 +1967,14 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                     child: ListTile(
                       title: Text(l10n.repeater_floodMax),
                       subtitle: Text(l10n.repeater_floodMaxHelper),
-                      trailing: Text(
-                        '$_floodMax',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      trailing: floodMax == null
+                          ? _unknownValue(_SettingField.floodMax)
+                          : Text(
+                              '$floodMax',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -1616,11 +1993,17 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 ],
               ),
               Slider(
-                value: _floodMax.toDouble(),
+                value: (floodMax ?? 0).toDouble(),
                 min: 0,
                 max: 64,
                 divisions: 64,
-                label: '$_floodMax',
+                label: floodMax?.toString() ?? l10n.repeater_valueUnknown,
+                activeColor: floodMax == null
+                    ? Theme.of(context).colorScheme.tertiary
+                    : null,
+                inactiveColor: floodMax == null
+                    ? Theme.of(context).colorScheme.tertiaryContainer
+                    : null,
                 onChanged: (v) {
                   setState(() => _floodMax = v.toInt());
                   _markChanged(_SettingField.floodMax);
@@ -1635,6 +2018,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
 
   Widget _buildNetworkHealthCard() {
     final l10n = context.l10n;
+    final dutyCycle = _dutyCycle;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1648,12 +2032,15 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 children: [
                   Expanded(
                     child: DropdownButtonFormField<String>(
+                      key: ValueKey('loop-detect-${_loopDetect ?? 'unknown'}'),
                       initialValue: _loopDetect,
-                      decoration: InputDecoration(
+                      decoration: _settingDecoration(
+                        field: _SettingField.loopDetect,
                         labelText: l10n.repeater_loopDetect,
                         helperText: l10n.repeater_loopDetectHelper,
                         helperMaxLines: 3,
                       ),
+                      hint: _unknownValue(_SettingField.loopDetect),
                       items: [
                         DropdownMenuItem(
                           value: 'off',
@@ -1694,10 +2081,14 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                     child: ListTile(
                       title: Text(l10n.repeater_dutyCycle),
                       subtitle: Text(l10n.repeater_dutyCycleHelper),
-                      trailing: Text(
-                        l10n.repeater_dutyCyclePercent(_dutyCycle),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      trailing: dutyCycle == null
+                          ? _unknownValue(_SettingField.dutyCycle)
+                          : Text(
+                              l10n.repeater_dutyCyclePercent(dutyCycle),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                       contentPadding: EdgeInsets.zero,
                     ),
                   ),
@@ -1716,16 +2107,26 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                 ],
               ),
               Slider(
-                value: _dutyCycle.toDouble(),
+                value: (dutyCycle ?? 1).toDouble(),
                 min: 1,
                 max: 100,
                 divisions: 99,
-                label: l10n.repeater_dutyCyclePercent(_dutyCycle),
+                label: dutyCycle == null
+                    ? l10n.repeater_valueUnknown
+                    : l10n.repeater_dutyCyclePercent(dutyCycle),
+                activeColor: dutyCycle == null
+                    ? Theme.of(context).colorScheme.tertiary
+                    : null,
+                inactiveColor: dutyCycle == null
+                    ? Theme.of(context).colorScheme.tertiaryContainer
+                    : null,
                 onChanged: (v) {
                   setState(() => _dutyCycle = v.toInt());
                   _markChanged(_SettingField.dutyCycle);
                 },
               ),
+              const SizedBox(height: 12),
+              _buildPathHashModeField(),
             ],
           ),
         ),
@@ -1755,7 +2156,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
         MeshCard(
           child: TextField(
             controller: _ownerInfoController,
-            decoration: InputDecoration(
+            decoration: _settingDecoration(
+              field: _SettingField.ownerInfo,
               labelText: l10n.repeater_ownerInfo,
               helperText: l10n.repeater_ownerInfoHelper,
               helperMaxLines: 3,
@@ -1764,6 +2166,46 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             minLines: 2,
             onChanged: (_) => _markChanged(_SettingField.ownerInfo),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPathHashModeField() {
+    final l10n = context.l10n;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: DropdownButtonFormField<int>(
+            key: ValueKey('path-hash-mode-${_pathHashMode ?? 'unknown'}'),
+            initialValue: _pathHashMode,
+            decoration: _settingDecoration(
+              field: _SettingField.pathHashMode,
+              labelText: l10n.repeater_pathHashMode,
+              helperText: l10n.repeater_pathHashModeHelper,
+              helperMaxLines: 5,
+            ),
+            hint: _unknownValue(_SettingField.pathHashMode),
+            items: [
+              for (var mode = 0; mode <= 2; mode++)
+                DropdownMenuItem(
+                  value: mode,
+                  child: Text(l10n.repeater_pathHashModeOption(mode, mode + 1)),
+                ),
+            ],
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => _pathHashMode = v);
+                _markChanged(_SettingField.pathHashMode);
+              }
+            },
+          ),
+        ),
+        _buildInlineRefreshButton(
+          isRefreshing: _refreshingPathHashMode,
+          onRefresh: _refreshPathHashMode,
+          tooltip: l10n.repeater_pathHashMode,
         ),
       ],
     );
@@ -1821,6 +2263,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
 
   Widget _buildAdvancedCard() {
     final l10n = context.l10n;
+    final agcResetInterval = _agcResetInterval;
     return MeshCard(
       child: ExpansionTile(
         leading: const Icon(Icons.tune),
@@ -1835,41 +2278,10 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _pathHashMode,
-                  decoration: InputDecoration(
-                    labelText: l10n.repeater_pathHashMode,
-                    helperText: l10n.repeater_pathHashModeHelper,
-                    helperMaxLines: 5,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 0, child: Text('0')),
-                    DropdownMenuItem(value: 1, child: Text('1')),
-                    DropdownMenuItem(value: 2, child: Text('2')),
-                  ],
-                  onChanged: (v) {
-                    if (v != null) {
-                      setState(() => _pathHashMode = v);
-                      _markChanged(_SettingField.pathHashMode);
-                    }
-                  },
-                ),
-              ),
-              _buildInlineRefreshButton(
-                isRefreshing: _refreshingPathHashMode,
-                onRefresh: _refreshPathHashMode,
-                tooltip: l10n.repeater_pathHashMode,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
                 child: TextField(
                   controller: _txDelayController,
-                  decoration: InputDecoration(
+                  decoration: _settingDecoration(
+                    field: _SettingField.txDelay,
                     labelText: l10n.repeater_txDelay,
                     helperText: l10n.repeater_txDelayHelper,
                     helperMaxLines: 3,
@@ -1894,7 +2306,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               Expanded(
                 child: TextField(
                   controller: _directTxDelayController,
-                  decoration: InputDecoration(
+                  decoration: _settingDecoration(
+                    field: _SettingField.directTxDelay,
                     labelText: l10n.repeater_directTxDelay,
                     helperText: l10n.repeater_directTxDelayHelper,
                     helperMaxLines: 3,
@@ -1919,7 +2332,8 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
               Expanded(
                 child: TextField(
                   controller: _intThreshController,
-                  decoration: InputDecoration(
+                  decoration: _settingDecoration(
+                    field: _SettingField.intThresh,
                     labelText: l10n.repeater_intThresh,
                     helperText: l10n.repeater_intThreshHelper,
                     helperMaxLines: 3,
@@ -1936,16 +2350,32 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          _buildFeatureToggleRow(
+            field: _SettingField.channelActivityDetection,
+            title: l10n.repeater_channelActivityDetection,
+            subtitle: l10n.repeater_channelActivityDetectionHelper,
+            value: _channelActivityDetectionEnabled,
+            isRefreshing: _refreshingChannelActivityDetection,
+            onChanged: (value) {
+              setState(() => _channelActivityDetectionEnabled = value);
+              _markChanged(_SettingField.channelActivityDetection);
+            },
+            onRefresh: _refreshChannelActivityDetection,
+            refreshTooltip: l10n.repeater_channelActivityDetection,
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: ListTile(
                   title: Text(l10n.repeater_agcResetInterval),
                   subtitle: Text(l10n.repeater_agcResetIntervalHelper),
-                  trailing: Text(
-                    '${_agcResetInterval}s',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                  trailing: agcResetInterval == null
+                      ? _unknownValue(_SettingField.agcResetInterval)
+                      : Text(
+                          '${agcResetInterval}s',
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
                   contentPadding: EdgeInsets.zero,
                 ),
               ),
@@ -1966,11 +2396,19 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
             ],
           ),
           Slider(
-            value: _agcResetInterval.toDouble(),
+            value: (agcResetInterval ?? 0).toDouble(),
             min: 0,
             max: 240,
             divisions: 60,
-            label: '${_agcResetInterval}s',
+            label: agcResetInterval == null
+                ? l10n.repeater_valueUnknown
+                : '${agcResetInterval}s',
+            activeColor: agcResetInterval == null
+                ? Theme.of(context).colorScheme.tertiary
+                : null,
+            inactiveColor: agcResetInterval == null
+                ? Theme.of(context).colorScheme.tertiaryContainer
+                : null,
             onChanged: (v) {
               setState(() {
                 // Clamp to multiple of 4 to match firmware semantics.

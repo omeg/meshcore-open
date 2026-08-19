@@ -2633,6 +2633,17 @@ class AppLocalizationsKo extends AppLocalizations {
   String get repeater_settingsTitle => '리피터 설정';
 
   @override
+  String get repeater_valueUnknown => 'Unknown';
+
+  @override
+  String get repeater_channelActivityDetection =>
+      'Channel Activity Detection (CAD)';
+
+  @override
+  String get repeater_channelActivityDetectionHelper =>
+      'Check for LoRa channel activity before transmitting and defer while the channel is busy. This operates independently of the interference threshold.';
+
+  @override
   String get repeater_basicSettings => '기본 설정';
 
   @override
@@ -2861,6 +2872,11 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get repeater_pathHashMode => '패스 해시 모드';
+
+  @override
+  String repeater_pathHashModeOption(int mode, int bytes) {
+    return '$mode ($bytes byte hash)';
+  }
 
   @override
   String get repeater_pathHashModeHelper =>
