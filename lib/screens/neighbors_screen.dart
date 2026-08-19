@@ -10,8 +10,10 @@ import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../services/repeater_command_service.dart';
 import '../theme/mesh_theme.dart';
+import '../utils/platform_info.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
+import '../widgets/nearby_repeater_actions.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
 
@@ -351,24 +353,32 @@ class _NeighborsScreenState extends State<NeighborsScreen> {
         for (var i = 0; i < _parsedNeighbors!.length; i++)
           ListEntrance(
             index: i,
-            child: _buildNeighborRow(_parsedNeighbors![i], connector.currentSf),
+            child: _buildNeighborRow(_parsedNeighbors![i], connector),
           ),
       ],
     );
   }
 
-  Widget _buildNeighborRow(Map<String, dynamic> data, int? spreadingFactor) {
+  Widget _buildNeighborRow(
+    Map<String, dynamic> data,
+    MeshCoreConnector connector,
+  ) {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final Contact? contact = data['contact'] as Contact?;
     final double snr = data['snr'] as double;
     final int lastHeardSeconds = data['lastHeard'] as int;
+    final keyPrefixHex = pubKeyToHex(data['publicKey'] as Uint8List);
+    final isSavedContact =
+        contact != null &&
+        connector.contacts.any(
+          (saved) => saved.publicKeyHex == contact.publicKeyHex,
+        );
+    final identityHex = contact?.publicKeyHex ?? keyPrefixHex;
 
     final name = contact != null
         ? contact.name
-        : l10n.neighbors_unknownContact(
-            '<${pubKeyToHex(data['publicKey'] as Uint8List)}>',
-          );
+        : l10n.neighbors_unknownContact('<$keyPrefixHex>');
 
     final snrColor = MeshTheme.snrColor(snr, blocked: false);
     final heardLabel = l10n.neighbors_heardAgo(
@@ -376,6 +386,22 @@ class _NeighborsScreenState extends State<NeighborsScreen> {
     );
 
     return MeshCard(
+      onLongPress: () => showNearbyRepeaterActions(
+        context,
+        identityHex: identityHex,
+        hasFullPublicKey: contact != null,
+        isSavedContact: isSavedContact,
+        contact: contact,
+      ),
+      onSecondaryTap: PlatformInfo.isDesktop
+          ? () => showNearbyRepeaterActions(
+              context,
+              identityHex: identityHex,
+              hasFullPublicKey: contact != null,
+              isSavedContact: isSavedContact,
+              contact: contact,
+            )
+          : null,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
