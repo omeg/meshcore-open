@@ -24,6 +24,10 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   Uint8List? sentFrame;
   Contact? removedContact;
   bool removeAllContactsCalled = false;
+  bool contactSyncSlow = false;
+  bool contactSyncFailure = false;
+  bool contactPersistenceSuspended = false;
+  int getContactsCalls = 0;
   final Uint8List _selfKey = Uint8List.fromList(
     List<int>.filled(pubKeySize, 0xA5),
   );
@@ -36,6 +40,15 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   @override
   bool get hasLoadedContacts => true;
+
+  @override
+  bool get isContactSyncSlow => contactSyncSlow;
+
+  @override
+  bool get contactSyncFailed => contactSyncFailure;
+
+  @override
+  bool get isContactPersistenceSuspended => contactPersistenceSuspended;
 
   @override
   String? get selfName => 'My Companion';
@@ -70,6 +83,11 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
   @override
   Future<void> removeAllContacts() async {
     removeAllContactsCalled = true;
+  }
+
+  @override
+  Future<void> getContacts({int? since, bool preserveExisting = false}) async {
+    getContactsCalls++;
   }
 }
 
@@ -144,6 +162,61 @@ void main() {
     final link = MeshCoreShareLink.tryParse(clipboardText!);
     expect(link, isA<MeshCoreContactShareLink>());
     expect((link! as MeshCoreContactShareLink).name, 'My Companion');
+  });
+
+  testWidgets('failed contact sync shows rollback warning and retry', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector(
+      Contact(
+        publicKey: Uint8List.fromList(List<int>.filled(pubKeySize, 1)),
+        name: 'Cached Contact',
+        type: advTypeChat,
+        pathLength: 0,
+        path: Uint8List(0),
+        lastSeen: DateTime.now(),
+      ),
+    )..contactSyncFailure = true;
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ContactsScreen)),
+    );
+
+    expect(find.byKey(const ValueKey('contact_sync_notice')), findsOneWidget);
+    expect(find.text(l10n.contacts_syncFailedWarning), findsOneWidget);
+
+    await tester.tap(find.text(l10n.common_retry));
+    await tester.pump();
+
+    expect(connector.getContactsCalls, 1);
+  });
+
+  testWidgets('contact add explains why changes are blocked during sync', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector(
+      Contact(
+        publicKey: Uint8List.fromList(List<int>.filled(pubKeySize, 2)),
+        name: 'Contact',
+        type: advTypeChat,
+        pathLength: 0,
+        path: Uint8List(0),
+        lastSeen: DateTime.now(),
+      ),
+    )..contactPersistenceSuspended = true;
+
+    await tester.pumpWidget(_buildTestApp(connector));
+    await tester.pumpAndSettle();
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(ContactsScreen)),
+    );
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pump();
+
+    expect(find.text(l10n.contacts_syncChangesDisabled), findsOneWidget);
   });
 
   testWidgets('Delete key confirms removal of the selected contact', (

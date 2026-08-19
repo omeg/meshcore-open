@@ -5059,4 +5059,16 @@ class AppLocalizationsSl extends AppLocalizations {
 
   @override
   String get pathMap_unfollowPacket => 'Odkleni pogled od paketa';
+
+  @override
+  String get contacts_syncSlowWarning =>
+      'Contact sync is taking longer than expected. Contact changes are temporarily disabled so an incomplete list cannot overwrite saved contacts.';
+
+  @override
+  String get contacts_syncFailedWarning =>
+      'Contact sync did not finish. Cached contacts were restored and the incomplete list was not saved.';
+
+  @override
+  String get contacts_syncChangesDisabled =>
+      'Wait for contact sync to finish before changing contacts.';
 }

@@ -8697,6 +8697,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unlock view from packet'**
   String get pathMap_unfollowPacket;
+
+  /// No description provided for @contacts_syncSlowWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact sync is taking longer than expected. Contact changes are temporarily disabled so an incomplete list cannot overwrite saved contacts.'**
+  String get contacts_syncSlowWarning;
+
+  /// No description provided for @contacts_syncFailedWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact sync did not finish. Cached contacts were restored and the incomplete list was not saved.'**
+  String get contacts_syncFailedWarning;
+
+  /// No description provided for @contacts_syncChangesDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Wait for contact sync to finish before changing contacts.'**
+  String get contacts_syncChangesDisabled;
 }
 
 class _AppLocalizationsDelegate

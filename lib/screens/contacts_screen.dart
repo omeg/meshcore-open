@@ -250,6 +250,13 @@ class _ContactsScreenState extends State<ContactsScreen>
 
   Future<void> _contactImport() async {
     final connector = Provider.of<MeshCoreConnector>(context, listen: false);
+    if (connector.isContactPersistenceSuspended) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.contacts_syncChangesDisabled),
+      );
+      return;
+    }
     final clipboardData = await Clipboard.getData('text/plain');
     if (clipboardData == null || clipboardData.text == null) {
       if (mounted) {
@@ -548,9 +555,24 @@ class _ContactsScreenState extends State<ContactsScreen>
             ),
           ],
         ),
-        body: _buildContactsBody(context, connector),
+        body: Column(
+          children: [
+            if (connector.isContactSyncSlow || connector.contactSyncFailed)
+              _buildContactSyncNotice(context, connector),
+            Expanded(child: _buildContactsBody(context, connector)),
+          ],
+        ),
         floatingActionButton: FloatingActionButton(
-          onPressed: () => _showAddContactSheet(context),
+          onPressed: () {
+            if (connector.isContactPersistenceSuspended) {
+              showDismissibleSnackBar(
+                context,
+                content: Text(context.l10n.contacts_syncChangesDisabled),
+              );
+              return;
+            }
+            _showAddContactSheet(context);
+          },
           child: const Icon(Icons.person_add),
         ),
         bottomNavigationBar: SafeArea(
@@ -563,6 +585,42 @@ class _ContactsScreenState extends State<ContactsScreen>
             channelsUnreadCount: connector.getTotalChannelsUnreadCount(),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildContactSyncNotice(
+    BuildContext context,
+    MeshCoreConnector connector,
+  ) {
+    final scheme = Theme.of(context).colorScheme;
+    final failed = connector.contactSyncFailed;
+    return MeshCard(
+      key: const ValueKey('contact_sync_notice'),
+      color: scheme.errorContainer.withValues(alpha: 0.55),
+      borderColor: scheme.error.withValues(alpha: 0.4),
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      child: Row(
+        children: [
+          Icon(Icons.warning_amber_rounded, color: scheme.error),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              failed
+                  ? context.l10n.contacts_syncFailedWarning
+                  : context.l10n.contacts_syncSlowWarning,
+              style: TextStyle(color: scheme.onErrorContainer),
+            ),
+          ),
+          if (failed) ...[
+            const SizedBox(width: 8),
+            TextButton(
+              onPressed: () => connector.getContacts(),
+              child: Text(context.l10n.common_retry),
+            ),
+          ],
+        ],
       ),
     );
   }

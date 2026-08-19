@@ -311,6 +311,12 @@ class MeshCoreConnector extends ChangeNotifier {
   final List<DirectRepeater> _directRepeaters = List.empty(growable: true);
   bool _isLoadingContacts = false;
   bool _hasLoadedContacts = false;
+  bool _isContactSyncSlow = false;
+  bool _contactSyncFailed = false;
+  Timer? _contactSyncTimeout;
+  Timer? _contactSyncWarningTimer;
+  List<Contact>? _contactsBeforeSync;
+  bool _discardLateContactSyncFrames = false;
   bool _isLoadingChannels = false;
   bool _hasLoadedChannels = false;
   TimeoutPredictionService? _timeoutPredictionService;
@@ -362,6 +368,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
   static const int _defaultMaxContacts = 350;
   static const int _defaultMaxChannels = 40;
+  static const Duration _contactSyncInactivityTimeout = Duration(seconds: 10);
+  static const Duration _contactSyncWarningDelay = Duration(seconds: 5);
   int _maxContacts = _defaultMaxContacts;
   int _maxChannels = _defaultMaxChannels;
   int? _contactSyncTotal;
@@ -531,6 +539,9 @@ class MeshCoreConnector extends ChangeNotifier {
   bool get isConnected => _state == MeshCoreConnectionState.connected;
   bool get isLoadingContacts => _isLoadingContacts;
   bool get hasLoadedContacts => _hasLoadedContacts;
+  bool get isContactPersistenceSuspended => _isLoadingContacts;
+  bool get isContactSyncSlow => _isContactSyncSlow;
+  bool get contactSyncFailed => _contactSyncFailed;
   bool get isLoadingChannels => _isLoadingChannels;
   bool get hasLoadedChannels => _hasLoadedChannels;
   Stream<Uint8List> get receivedFrames => _receivedFramesController.stream;
@@ -2897,6 +2908,14 @@ class MeshCoreConnector extends ChangeNotifier {
     _contactSyncTotal = null;
     _contactSyncReceived = 0;
     _contactSyncUsesSinceFilter = false;
+    _contactSyncTimeout?.cancel();
+    _contactSyncTimeout = null;
+    _contactSyncWarningTimer?.cancel();
+    _contactSyncWarningTimer = null;
+    _contactsBeforeSync = null;
+    _discardLateContactSyncFrames = false;
+    _isContactSyncSlow = false;
+    _contactSyncFailed = false;
     _isLoadingContacts = false;
     _hasLoadedContacts = false;
     _isLoadingChannels = false;
@@ -3367,9 +3386,13 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   Future<void> getContacts({int? since, bool preserveExisting = false}) async {
-    if (!isConnected) return;
+    if (!isConnected || _isLoadingContacts) return;
 
+    _contactsBeforeSync = List<Contact>.from(_contacts);
+    _discardLateContactSyncFrames = false;
     _isLoadingContacts = true;
+    _isContactSyncSlow = false;
+    _contactSyncFailed = false;
     _preserveContactsOnRefresh = preserveExisting;
     _contactSyncTotal = null;
     _contactSyncReceived = 0;
@@ -3380,7 +3403,133 @@ class MeshCoreConnector extends ChangeNotifier {
     }
     notifyListeners();
 
-    await sendFrame(buildGetContactsFrame(since: since));
+    _armContactSyncTimers();
+    try {
+      await sendFrame(buildGetContactsFrame(since: since));
+    } catch (error) {
+      _abortContactSync('Could not request contacts: $error');
+      rethrow;
+    }
+  }
+
+  void _armContactSyncTimers() {
+    _contactSyncTimeout?.cancel();
+    _contactSyncTimeout = Timer(
+      _contactSyncInactivityTimeout,
+      () => _abortContactSync(
+        'Contact sync timed out after '
+        '${_contactSyncInactivityTimeout.inSeconds}s without a response',
+      ),
+    );
+    _contactSyncWarningTimer?.cancel();
+    _contactSyncWarningTimer = Timer(_contactSyncWarningDelay, () {
+      if (!_isLoadingContacts) return;
+      _isContactSyncSlow = true;
+      notifyListeners();
+    });
+  }
+
+  void _refreshContactSyncInactivityTimeout() {
+    if (!_isLoadingContacts) return;
+    _contactSyncTimeout?.cancel();
+    _contactSyncTimeout = Timer(
+      _contactSyncInactivityTimeout,
+      () => _abortContactSync(
+        'Contact sync timed out after '
+        '${_contactSyncInactivityTimeout.inSeconds}s without a response',
+      ),
+    );
+  }
+
+  void _abortContactSync(String reason) {
+    if (!_isLoadingContacts) return;
+    _contactSyncTimeout?.cancel();
+    _contactSyncTimeout = null;
+    _contactSyncWarningTimer?.cancel();
+    _contactSyncWarningTimer = null;
+
+    final previousContacts = _contactsBeforeSync;
+    if (previousContacts != null) {
+      _contacts
+        ..clear()
+        ..addAll(previousContacts);
+      _knownContactKeys
+        ..clear()
+        ..addAll(previousContacts.map((contact) => contact.publicKeyHex));
+    }
+    _contactsBeforeSync = null;
+    _isLoadingContacts = false;
+    _hasLoadedContacts = true;
+    _isContactSyncSlow = false;
+    _contactSyncFailed = true;
+    _discardLateContactSyncFrames = true;
+    _preserveContactsOnRefresh = false;
+    _contactSyncTotal = null;
+    _contactSyncReceived = 0;
+    _contactSyncUsesSinceFilter = false;
+    _appDebugLogService?.warn(
+      '$reason; restored ${_contacts.length} cached contacts',
+      tag: 'ContactSync',
+    );
+    unawaited(updateKnownDiscovered());
+    notifyListeners();
+    _continueAfterContactSync();
+  }
+
+  void _completeContactSync() {
+    if (!_isLoadingContacts) return;
+    _contactSyncTimeout?.cancel();
+    _contactSyncTimeout = null;
+    _contactSyncWarningTimer?.cancel();
+    _contactSyncWarningTimer = null;
+    _contactsBeforeSync = null;
+    _isLoadingContacts = false;
+    _hasLoadedContacts = true;
+    _isContactSyncSlow = false;
+    _contactSyncFailed = false;
+    _preserveContactsOnRefresh = false;
+    _contactSyncUsesSinceFilter = false;
+    _knownContactKeys
+      ..clear()
+      ..addAll(_contacts.map((contact) => contact.publicKeyHex));
+    unawaited(updateKnownDiscovered());
+    notifyListeners();
+    unawaited(_persistContacts());
+    _continueAfterContactSync();
+  }
+
+  void _continueAfterContactSync() {
+    if (PlatformInfo.isWeb &&
+        _activeTransport == MeshCoreTransportType.bluetooth &&
+        _isSyncingChannels &&
+        !_channelSyncInFlight) {
+      unawaited(_requestNextChannel());
+    }
+    if (_deferQueuedContactMessagesUntilContacts) {
+      unawaited(_processDeferredQueuedContactMessages());
+    } else if (_pendingQueueSync) {
+      _pendingQueueSync = false;
+      unawaited(syncQueuedMessages(force: true));
+    }
+  }
+
+  @visibleForTesting
+  void replaceContactsForTesting(Iterable<Contact> contacts) {
+    _contacts
+      ..clear()
+      ..addAll(contacts);
+  }
+
+  @visibleForTesting
+  void triggerContactSyncWarningForTesting() {
+    if (!_isLoadingContacts) return;
+    _isContactSyncSlow = true;
+    notifyListeners();
+  }
+
+  @visibleForTesting
+  void triggerContactSyncTimeoutForTesting() {
+    _abortContactSync('Contact sync test timeout');
   }
 
   Future<void> refreshContacts() async {
@@ -3973,7 +4122,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   Future<void> removeContact(Contact contact) async {
-    if (!isConnected) return;
+    if (!isConnected || _isLoadingContacts) return;
 
     _handleDiscovery(
       contact,
@@ -4030,7 +4179,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   Future<bool> importDiscoveredContact(Contact contact) async {
-    if (!isConnected) return false;
+    if (!isConnected || _isLoadingContacts) return false;
     final encodedPathLen = encodePathLenForHashWidth(
       contact.path.isEmpty ? 0 : contact.pathLength,
       _pathHashByteWidth,
@@ -4605,6 +4754,8 @@ class MeshCoreConnector extends ChangeNotifier {
         break;
       case respCodeContactsStart:
         debugPrint('Got CONTACTS_START');
+        if (!_isLoadingContacts) break;
+        _refreshContactSyncInactivityTimeout();
         if (!_preserveContactsOnRefresh) {
           _contacts.clear();
         }
@@ -4635,29 +4786,19 @@ class MeshCoreConnector extends ChangeNotifier {
         break;
       case respCodeContact:
         debugPrint('Got CONTACT');
+        if (!_isLoadingContacts && _discardLateContactSyncFrames) {
+          break;
+        }
+        _refreshContactSyncInactivityTimeout();
         _handleContact(frame);
         break;
       case respCodeEndOfContacts:
         debugPrint('Got END_OF_CONTACTS');
-        _isLoadingContacts = false;
-        _hasLoadedContacts = true;
-        _preserveContactsOnRefresh = false;
-        _contactSyncUsesSinceFilter = false;
-        unawaited(updateKnownDiscovered());
-        notifyListeners();
-        unawaited(_persistContacts());
-        if (PlatformInfo.isWeb &&
-            _activeTransport == MeshCoreTransportType.bluetooth &&
-            _isSyncingChannels &&
-            !_channelSyncInFlight) {
-          unawaited(_requestNextChannel());
+        if (!_isLoadingContacts) {
+          _discardLateContactSyncFrames = false;
+          break;
         }
-        if (_deferQueuedContactMessagesUntilContacts) {
-          unawaited(_processDeferredQueuedContactMessages());
-        } else if (_pendingQueueSync) {
-          _pendingQueueSync = false;
-          unawaited(syncQueuedMessages(force: true));
-        }
+        _completeContactSync();
         break;
       case respCodeContactMsgRecv:
       case respCodeContactMsgRecvV3:
@@ -5516,6 +5657,7 @@ class MeshCoreConnector extends ChangeNotifier {
   }
 
   Future<void> _persistContacts() async {
+    if (_isLoadingContacts) return;
     await _contactStore.saveContacts(_contacts);
   }
 
@@ -7396,6 +7538,8 @@ class MeshCoreConnector extends ChangeNotifier {
     _usbFrameSubscription?.cancel();
     _notifySubscription?.cancel();
     _notifyListenersTimer?.cancel();
+    _contactSyncTimeout?.cancel();
+    _contactSyncWarningTimer?.cancel();
     _reconnectTimer?.cancel();
     _batteryPollTimer?.cancel();
     _gpsLocationPollTimer?.cancel();

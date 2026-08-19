@@ -41,6 +41,12 @@ The full or shortened public key is not shown in the normal Contacts row. It rem
 
 Pull down on the list to fetch the complete contact list from the companion again.
 
+Contact changes are temporarily blocked while this fetch is in progress so a
+partial list cannot overwrite the saved contact cache. If no contact-sync frame
+arrives for 10 seconds, the app aborts the fetch, restores the pre-sync cache,
+and shows a warning with a Retry action. A sync that remains active for more
+than five seconds also shows a warning that contact persistence is suspended.
+
 ## Search, sort, and filter
 
 Tap the search icon to expand the search field. Search matches a contact name case-insensitively or a hexadecimal public-key prefix. A key search may optionally begin with `0x` or `<`; spaces are ignored. Input is debounced by 300 ms.

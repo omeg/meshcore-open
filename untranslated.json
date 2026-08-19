@@ -125,7 +125,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "de": [
@@ -241,7 +244,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "es": [
@@ -370,7 +376,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "fr": [
@@ -499,7 +508,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "hu": [
@@ -628,7 +640,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "it": [
@@ -757,7 +772,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "ja": [
@@ -886,7 +904,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "ko": [
@@ -1015,7 +1036,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "nl": [
@@ -1144,7 +1168,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "pl": [
@@ -1273,7 +1300,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "pt": [
@@ -1402,7 +1432,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "ru": [
@@ -1531,7 +1564,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "sk": [
@@ -1660,7 +1696,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "sl": [
@@ -1789,7 +1828,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "sv": [
@@ -1918,7 +1960,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "uk": [
@@ -2047,7 +2092,10 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ],
 
   "zh": [
@@ -2176,6 +2224,9 @@
     "appSettings_discoveredContactTapActionShowActionsSubtitle",
     "companionTelemetry_title",
     "companionTelemetry_settingsTile",
-    "companionTelemetry_settingsSubtitle"
+    "companionTelemetry_settingsSubtitle",
+    "contacts_syncSlowWarning",
+    "contacts_syncFailedWarning",
+    "contacts_syncChangesDisabled"
   ]
 }

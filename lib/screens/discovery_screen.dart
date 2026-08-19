@@ -328,6 +328,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     Contact contact,
     MeshCoreConnector connector,
   ) async {
+    if (connector.isContactPersistenceSuspended) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.contacts_syncChangesDisabled),
+      );
+      return;
+    }
     try {
       final imported = await connector.importDiscoveredContact(contact);
       if (!mounted) return;
