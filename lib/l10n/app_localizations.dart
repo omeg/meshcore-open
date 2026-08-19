@@ -1813,13 +1813,13 @@ abstract class AppLocalizations {
   /// No description provided for @appSettings_showChatNodes.
   ///
   /// In en, this message translates to:
-  /// **'Show Chat Nodes'**
+  /// **'Show Users'**
   String get appSettings_showChatNodes;
 
   /// No description provided for @appSettings_showChatNodesSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Display chat nodes on the map'**
+  /// **'Display users on the map'**
   String get appSettings_showChatNodesSubtitle;
 
   /// No description provided for @appSettings_showOtherNodes.
@@ -3859,7 +3859,7 @@ abstract class AppLocalizations {
   /// No description provided for @map_chatNodes.
   ///
   /// In en, this message translates to:
-  /// **'Chat Nodes'**
+  /// **'Users'**
   String get map_chatNodes;
 
   /// No description provided for @map_repeaters.

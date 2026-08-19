@@ -953,11 +953,11 @@ class AppLocalizationsIt extends AppLocalizations {
       'Mostra i nodi ripetitori sulla mappa';
 
   @override
-  String get appSettings_showChatNodes => 'Mostra Nodi Chat';
+  String get appSettings_showChatNodes => 'Mostra utenti';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Mostra i nodi di chat sulla mappa';
+      'Mostra gli utenti sulla mappa';
 
   @override
   String get appSettings_showOtherNodes => 'Mostra altri nodi';
@@ -2123,7 +2123,7 @@ class AppLocalizationsIt extends AppLocalizations {
   String get map_nodeTypes => 'Tipi di nodo';
 
   @override
-  String get map_chatNodes => 'Nodi chat';
+  String get map_chatNodes => 'Utenti';
 
   @override
   String get map_repeaters => 'Ripetitori';

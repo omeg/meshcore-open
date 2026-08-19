@@ -906,10 +906,10 @@ class AppLocalizationsKo extends AppLocalizations {
   String get appSettings_showRepeatersSubtitle => '지도에 리피터 노드를 표시';
 
   @override
-  String get appSettings_showChatNodes => '채팅 노드 표시';
+  String get appSettings_showChatNodes => '사용자 표시';
 
   @override
-  String get appSettings_showChatNodesSubtitle => '지도에 채팅 노드를 표시';
+  String get appSettings_showChatNodesSubtitle => '지도에 사용자 표시';
 
   @override
   String get appSettings_showOtherNodes => '다른 노드 표시';
@@ -2042,7 +2042,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get map_nodeTypes => '노드 유형';
 
   @override
-  String get map_chatNodes => '채팅 노드';
+  String get map_chatNodes => '사용자';
 
   @override
   String get map_repeaters => '다시 보내는 장치';

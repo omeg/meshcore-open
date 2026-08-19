@@ -78,7 +78,7 @@ Standard pinch-to-zoom (range 2–18) is supported. The initial camera is calcul
 
 ### Tap on a Node Marker
 Selects the node and opens a bottom summary card showing activity status, type, last-seen time, route, shortened public key, and confirmed or estimated coordinates. **Details** opens the full information sheet with the complete public key. Action buttons vary by type:
-- **Chat nodes**: "Open Chat"
+- **Users**: "Open Chat"
 - **Repeaters**: "Manage Repeater"
 - **Rooms**: "Join Room"
 
@@ -88,7 +88,7 @@ Shows a bottom sheet with:
 - **Set as my location**: Updates your device's advertised location
 
 ### Filter Dialog (FAB)
-Toggle visibility of chat nodes, repeaters, other nodes, guessed locations, discovered contacts, shared map pins, and key-prefix-collision highlighting.
+Toggle visibility of users, repeaters, other nodes, guessed locations, discovered contacts, shared map pins, and key-prefix-collision highlighting.
 Additional filters:
 - **Key prefix filter**: Show only contacts whose public key starts with a given prefix
 - **Last-seen time slider**: Exponential scale from near-zero to 6 months, with "all time" at the top end

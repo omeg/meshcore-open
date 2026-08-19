@@ -954,11 +954,11 @@ class AppLocalizationsFr extends AppLocalizations {
       'Afficher les nœuds répéteurs sur la carte';
 
   @override
-  String get appSettings_showChatNodes => 'Afficher les nœuds de discussion';
+  String get appSettings_showChatNodes => 'Afficher les utilisateurs';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Afficher les nœuds de chat sur la carte';
+      'Afficher les utilisateurs sur la carte';
 
   @override
   String get appSettings_showOtherNodes => 'Afficher d\'autres nœuds';
@@ -2125,7 +2125,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get map_nodeTypes => 'Types de nœuds';
 
   @override
-  String get map_chatNodes => 'Nœuds de chat';
+  String get map_chatNodes => 'Utilisateurs';
 
   @override
   String get map_repeaters => 'Répéteurs';

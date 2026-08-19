@@ -948,11 +948,11 @@ class AppLocalizationsUk extends AppLocalizations {
       'Відображати вузли-ретранслятори на карті';
 
   @override
-  String get appSettings_showChatNodes => 'Показувати вузли чату';
+  String get appSettings_showChatNodes => 'Показувати користувачів';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Відображати вузли чату на карті';
+      'Відображати користувачів на карті';
 
   @override
   String get appSettings_showOtherNodes => 'Показувати інші вузли';
@@ -2120,7 +2120,7 @@ class AppLocalizationsUk extends AppLocalizations {
   String get map_nodeTypes => 'Типи вузлів';
 
   @override
-  String get map_chatNodes => 'Вузли чату';
+  String get map_chatNodes => 'Користувачі';
 
   @override
   String get map_repeaters => 'Ретранслятори';

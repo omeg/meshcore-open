@@ -945,11 +945,11 @@ class AppLocalizationsNl extends AppLocalizations {
       'Toon repeaternodes op de kaart';
 
   @override
-  String get appSettings_showChatNodes => 'Chat Nodes tonen';
+  String get appSettings_showChatNodes => 'Gebruikers tonen';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Chatnodes weergeven op de kaart';
+      'Gebruikers weergeven op de kaart';
 
   @override
   String get appSettings_showOtherNodes => 'Toon Andere Nodes';
@@ -2109,7 +2109,7 @@ class AppLocalizationsNl extends AppLocalizations {
   String get map_nodeTypes => 'Nodetypes';
 
   @override
-  String get map_chatNodes => 'Chatnodes';
+  String get map_chatNodes => 'Gebruikers';
 
   @override
   String get map_repeaters => 'Herhaalders';

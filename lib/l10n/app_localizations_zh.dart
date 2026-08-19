@@ -891,10 +891,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_showRepeatersSubtitle => '在地图上显示转发节点';
 
   @override
-  String get appSettings_showChatNodes => '显示聊天节点';
+  String get appSettings_showChatNodes => '显示用户';
 
   @override
-  String get appSettings_showChatNodesSubtitle => '在地图上显示聊天节点';
+  String get appSettings_showChatNodesSubtitle => '在地图上显示用户';
 
   @override
   String get appSettings_showOtherNodes => '显示其他节点';
@@ -2018,7 +2018,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get map_nodeTypes => '节点类型';
 
   @override
-  String get map_chatNodes => '聊天节点';
+  String get map_chatNodes => '用户';
 
   @override
   String get map_repeaters => '转发节点';

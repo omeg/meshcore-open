@@ -904,10 +904,10 @@ class AppLocalizationsJa extends AppLocalizations {
   String get appSettings_showRepeatersSubtitle => '地図上にリピータノードを表示する';
 
   @override
-  String get appSettings_showChatNodes => 'チャットノードを表示';
+  String get appSettings_showChatNodes => 'ユーザーを表示';
 
   @override
-  String get appSettings_showChatNodesSubtitle => '地図上にチャットノードを表示する';
+  String get appSettings_showChatNodesSubtitle => '地図上にユーザーを表示する';
 
   @override
   String get appSettings_showOtherNodes => 'その他のノードを表示';
@@ -2039,7 +2039,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get map_nodeTypes => 'ノードの種類';
 
   @override
-  String get map_chatNodes => 'チャットノード';
+  String get map_chatNodes => 'ユーザー';
 
   @override
   String get map_repeaters => 'リピータ';

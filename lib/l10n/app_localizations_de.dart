@@ -953,11 +953,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Repeater-Knoten auf der Karte anzeigen';
 
   @override
-  String get appSettings_showChatNodes => 'Chat-Knoten anzeigen';
+  String get appSettings_showChatNodes => 'Benutzer anzeigen';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Chat-Knoten auf der Karte anzeigen';
+      'Benutzer auf der Karte anzeigen';
 
   @override
   String get appSettings_showOtherNodes => 'Andere Knoten anzeigen';
@@ -2125,7 +2125,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get map_nodeTypes => 'Knotentypen';
 
   @override
-  String get map_chatNodes => 'Chat-Knoten';
+  String get map_chatNodes => 'Benutzer';
 
   @override
   String get map_repeaters => 'Repeater';

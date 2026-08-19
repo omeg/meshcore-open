@@ -954,11 +954,11 @@ class AppLocalizationsRu extends AppLocalizations {
       'Отображать репитеры на карте';
 
   @override
-  String get appSettings_showChatNodes => 'Показывать чат-ноды';
+  String get appSettings_showChatNodes => 'Показывать пользователей';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Отображать чат-ноды на карте';
+      'Отображать пользователей на карте';
 
   @override
   String get appSettings_showOtherNodes => 'Показывать другие ноды';
@@ -2127,7 +2127,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get map_nodeTypes => 'Типы нод';
 
   @override
-  String get map_chatNodes => 'Чат-ноды';
+  String get map_chatNodes => 'Пользователи';
 
   @override
   String get map_repeaters => 'Репитеры';

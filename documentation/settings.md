@@ -156,7 +156,7 @@ On native platforms, this section selects the Android export folder, opens the d
 
 ### Map Display
 - **Show Repeaters**: Toggle repeater markers on map
-- **Show Chat Nodes**: Toggle chat node markers
+- **Show Users**: Toggle user markers
 - **Show Other Nodes**: Toggle room/sensor markers
 - **Time Filter**: All time / Last 1h / Last 6h / Last 24h / Last week
 - **Units**: Metric / Imperial

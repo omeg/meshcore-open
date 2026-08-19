@@ -943,11 +943,11 @@ class AppLocalizationsSl extends AppLocalizations {
   String get appSettings_showRepeatersSubtitle => 'Prikaži repetitorje na mapi';
 
   @override
-  String get appSettings_showChatNodes => 'Prikaži naprave za klepet';
+  String get appSettings_showChatNodes => 'Prikaži uporabnike';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Prikaži naprave na zemljevidu';
+      'Prikaži uporabnike na zemljevidu';
 
   @override
   String get appSettings_showOtherNodes => 'Pokaži druge naprave';
@@ -2109,7 +2109,7 @@ class AppLocalizationsSl extends AppLocalizations {
   String get map_nodeTypes => 'Vrste knope';
 
   @override
-  String get map_chatNodes => 'Čuti zvezde';
+  String get map_chatNodes => 'Uporabniki';
 
   @override
   String get map_repeaters => 'Ponovljalniki';

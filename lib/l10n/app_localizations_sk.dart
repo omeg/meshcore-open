@@ -941,11 +941,11 @@ class AppLocalizationsSk extends AppLocalizations {
       'Zobraziť opakujúce sa uzly na mape';
 
   @override
-  String get appSettings_showChatNodes => 'Zobraziť uzly chatových správ';
+  String get appSettings_showChatNodes => 'Zobraziť používateľov';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Zobraziť chatové uzly na mape';
+      'Zobraziť používateľov na mape';
 
   @override
   String get appSettings_showOtherNodes => 'Zobraziť ďalšie uzly';
@@ -2114,7 +2114,7 @@ class AppLocalizationsSk extends AppLocalizations {
   String get map_nodeTypes => 'Typy uzlov';
 
   @override
-  String get map_chatNodes => 'Chatové uzly';
+  String get map_chatNodes => 'Používatelia';
 
   @override
   String get map_repeaters => 'Opakovadlá';

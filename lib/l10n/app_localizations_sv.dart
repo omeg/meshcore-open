@@ -936,10 +936,10 @@ class AppLocalizationsSv extends AppLocalizations {
       'Visa återspelsnoder på kartan';
 
   @override
-  String get appSettings_showChatNodes => 'Visa Chattnoder';
+  String get appSettings_showChatNodes => 'Visa användare';
 
   @override
-  String get appSettings_showChatNodesSubtitle => 'Visa chattnoder på kartan';
+  String get appSettings_showChatNodesSubtitle => 'Visa användare på kartan';
 
   @override
   String get appSettings_showOtherNodes => 'Visa andra noder';
@@ -2100,7 +2100,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get map_nodeTypes => 'Nodtyper';
 
   @override
-  String get map_chatNodes => 'Chatnoder';
+  String get map_chatNodes => 'Användare';
 
   @override
   String get map_repeaters => 'Upprepare';

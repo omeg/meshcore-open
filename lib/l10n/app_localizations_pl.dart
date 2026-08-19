@@ -955,11 +955,11 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wyświetl węzły przekaźników na mapie';
 
   @override
-  String get appSettings_showChatNodes => 'Pokaż Węzły Rozmowy';
+  String get appSettings_showChatNodes => 'Pokaż użytkowników';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Wyświetl węzły czatu na mapie';
+      'Wyświetl użytkowników na mapie';
 
   @override
   String get appSettings_showOtherNodes => 'Pokaż inne węzły';
@@ -2138,7 +2138,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get map_nodeTypes => 'Typy węzłów';
 
   @override
-  String get map_chatNodes => 'Węzły czatu';
+  String get map_chatNodes => 'Użytkownicy';
 
   @override
   String get map_repeaters => 'Przekaźniki';

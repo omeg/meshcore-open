@@ -936,11 +936,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Display repeater nodes on the map';
 
   @override
-  String get appSettings_showChatNodes => 'Show Chat Nodes';
+  String get appSettings_showChatNodes => 'Show Users';
 
   @override
-  String get appSettings_showChatNodesSubtitle =>
-      'Display chat nodes on the map';
+  String get appSettings_showChatNodesSubtitle => 'Display users on the map';
 
   @override
   String get appSettings_showOtherNodes => 'Show Other Nodes';
@@ -2091,7 +2090,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get map_nodeTypes => 'Node Types';
 
   @override
-  String get map_chatNodes => 'Chat Nodes';
+  String get map_chatNodes => 'Users';
 
   @override
   String get map_repeaters => 'Repeaters';

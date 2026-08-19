@@ -950,11 +950,10 @@ class AppLocalizationsEs extends AppLocalizations {
       'Mostrar nodos de repetidor en el mapa';
 
   @override
-  String get appSettings_showChatNodes => 'Mostrar nodos de chat';
+  String get appSettings_showChatNodes => 'Mostrar usuarios';
 
   @override
-  String get appSettings_showChatNodesSubtitle =>
-      'Mostrar nodos de chat en el mapa';
+  String get appSettings_showChatNodesSubtitle => 'Mostrar usuarios en el mapa';
 
   @override
   String get appSettings_showOtherNodes => 'Mostrar otros nodos';
@@ -2120,7 +2119,7 @@ class AppLocalizationsEs extends AppLocalizations {
   String get map_nodeTypes => 'Tipos de nodo';
 
   @override
-  String get map_chatNodes => 'Nodos de chat';
+  String get map_chatNodes => 'Usuarios';
 
   @override
   String get map_repeaters => 'Repetidores';

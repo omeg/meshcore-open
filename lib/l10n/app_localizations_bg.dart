@@ -956,11 +956,11 @@ class AppLocalizationsBg extends AppLocalizations {
       'Показване на възпроизвеждащи се възли на картата';
 
   @override
-  String get appSettings_showChatNodes => 'Покажи Възли на Чат';
+  String get appSettings_showChatNodes => 'Покажи потребители';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'Показване на чат възли на картата';
+      'Показване на потребители на картата';
 
   @override
   String get appSettings_showOtherNodes => 'Покажи други възли';
@@ -2126,7 +2126,7 @@ class AppLocalizationsBg extends AppLocalizations {
   String get map_nodeTypes => 'Типове възли';
 
   @override
-  String get map_chatNodes => 'Възли на чата';
+  String get map_chatNodes => 'Потребители';
 
   @override
   String get map_repeaters => 'Повторители';

@@ -945,11 +945,11 @@ class AppLocalizationsHu extends AppLocalizations {
       'Az átjátszó csomópontok megjelenítése a térképen';
 
   @override
-  String get appSettings_showChatNodes => 'Chat csomópontok megjelenítése';
+  String get appSettings_showChatNodes => 'Felhasználók megjelenítése';
 
   @override
   String get appSettings_showChatNodesSubtitle =>
-      'A csevegési csomópontok megjelenítése a térképen';
+      'Felhasználók megjelenítése a térképen';
 
   @override
   String get appSettings_showOtherNodes => 'Más csomópontok megjelenítése';
@@ -2117,7 +2117,7 @@ class AppLocalizationsHu extends AppLocalizations {
   String get map_nodeTypes => 'Csomópont típusok';
 
   @override
-  String get map_chatNodes => 'Chat csomópontok';
+  String get map_chatNodes => 'Felhasználók';
 
   @override
   String get map_repeaters => 'Ismétlők';
