@@ -164,6 +164,22 @@ class AppSettingsService extends ChangeNotifier {
     await updateSettings(_settings.copyWith(languageOverride: value));
   }
 
+  Future<void> setTimeFormatPreference(TimeFormatPreference value) async {
+    await updateSettings(_settings.copyWith(timeFormatPreference: value));
+  }
+
+  Future<void> setCustomTimePattern(String value) async {
+    await updateSettings(_settings.copyWith(customTimePattern: value.trim()));
+  }
+
+  Future<void> setDateFormatPreference(DateFormatPreference value) async {
+    await updateSettings(_settings.copyWith(dateFormatPreference: value));
+  }
+
+  Future<void> setCustomDatePattern(String value) async {
+    await updateSettings(_settings.copyWith(customDatePattern: value.trim()));
+  }
+
   Future<void> setAppDebugLogEnabled(bool value) async {
     await updateSettings(_settings.copyWith(appDebugLogEnabled: value));
     // Update the global logger

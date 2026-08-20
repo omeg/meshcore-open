@@ -713,6 +713,58 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appSettings_languageSystem => '跟随系统';
 
   @override
+  String get appSettings_timeFormat => 'Time format';
+
+  @override
+  String get appSettings_timeFormatSystem => 'System default';
+
+  @override
+  String get appSettings_timeFormat12Hour => '12-hour';
+
+  @override
+  String get appSettings_timeFormat24Hour => '24-hour';
+
+  @override
+  String get appSettings_timeFormatCustom => 'Custom';
+
+  @override
+  String get appSettings_customTimePattern => 'Custom time pattern';
+
+  @override
+  String get appSettings_customTimePatternHelp =>
+      'Use date/time pattern symbols, for example HH:mm:ss or h:mm a.';
+
+  @override
+  String get appSettings_customTimePatternPreview => 'Preview';
+
+  @override
+  String get appSettings_customTimePatternInvalid =>
+      'Enter a valid time pattern.';
+
+  @override
+  String get appSettings_dateFormat => 'Date format';
+
+  @override
+  String get appSettings_dateFormatDayMonthYear => 'Day/month/year';
+
+  @override
+  String get appSettings_dateFormatMonthDayYear => 'Month/day/year';
+
+  @override
+  String get appSettings_dateFormatYearMonthDay => 'Year-month-day';
+
+  @override
+  String get appSettings_customDatePattern => 'Custom date pattern';
+
+  @override
+  String get appSettings_customDatePatternHelp =>
+      'Use date pattern symbols, for example dd/MM/yyyy or EEE, MMM d.';
+
+  @override
+  String get appSettings_customDatePatternInvalid =>
+      'Enter a valid date pattern.';
+
+  @override
   String get appSettings_languageEn => '英语';
 
   @override

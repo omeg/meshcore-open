@@ -12,6 +12,7 @@ import '../connector/meshcore_connector.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/path_hop_resolver.dart';
 import '../helpers/path_helper.dart';
+import '../helpers/localized_time.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../services/map_tile_cache_service.dart';
 import '../services/app_settings_service.dart';
@@ -494,15 +495,12 @@ class _ChannelMessagePathScreenState extends State<ChannelMessagePathScreen> {
   String _formatTime(DateTime time, AppLocalizations l10n) {
     final now = DateTime.now();
     final diff = now.difference(time);
+    final timeLabel = formatLocalizedTime(context, time);
 
     if (diff.inDays > 0) {
-      final timeLabel =
-          '${time.hour}:${time.minute.toString().padLeft(2, '0')}';
       return l10n.channelPath_timeWithDate(time.day, time.month, timeLabel);
     }
-    return l10n.channelPath_timeOnly(
-      '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
-    );
+    return l10n.channelPath_timeOnly(timeLabel);
   }
 
   String _formatPathLabel(int? pathLength, AppLocalizations l10n) {

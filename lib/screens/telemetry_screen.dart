@@ -16,6 +16,7 @@ import '../utils/app_logger.dart';
 import '../widgets/routing_sheet.dart';
 import '../widgets/remote_node_auth.dart';
 import '../helpers/cayenne_lpp.dart';
+import '../helpers/localized_time.dart';
 import '../utils/battery_utils.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/sync_progress_overlay.dart';
@@ -918,11 +919,9 @@ class _TelemetryScreenState extends State<TelemetryScreen> {
       value.toInt() * 1000,
       isUtc: true,
     ).toLocal();
-    final localizations = MaterialLocalizations.of(context);
-    final time = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime),
-    );
-    return '${localizations.formatFullDate(dateTime)} $time';
+    final date = formatLocalizedFullDate(context, dateTime);
+    final time = formatLocalizedTime(context, dateTime);
+    return '$date $time';
   }
 
   Widget _buildInfoRow(String label, String value) {

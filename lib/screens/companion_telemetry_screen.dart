@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/cayenne_lpp.dart';
+import '../helpers/localized_time.dart';
 import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
 import '../services/app_settings_service.dart';
@@ -380,10 +381,8 @@ class _CompanionTelemetryScreenState extends State<CompanionTelemetryScreen> {
       value.toInt() * 1000,
       isUtc: true,
     ).toLocal();
-    final localizations = MaterialLocalizations.of(context);
-    final time = localizations.formatTimeOfDay(
-      TimeOfDay.fromDateTime(dateTime),
-    );
-    return '${localizations.formatFullDate(dateTime)} $time';
+    final date = formatLocalizedFullDate(context, dateTime);
+    final time = formatLocalizedTime(context, dateTime);
+    return '$date $time';
   }
 }

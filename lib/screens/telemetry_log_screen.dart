@@ -9,6 +9,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/localized_time.dart';
 import '../helpers/telemetry_log.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
@@ -980,9 +981,8 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
   String _fmtFileMeta(TelemetryLogFile file) {
     final kb = (file.sizeBytes / 1024).toStringAsFixed(1);
     final m = file.modified.toLocal();
-    String two(int v) => v.toString().padLeft(2, '0');
     final when =
-        '${m.year}-${two(m.month)}-${two(m.day)} ${two(m.hour)}:${two(m.minute)}';
+        '${formatLocalizedNumericDate(context, m)} ${formatLocalizedTime(context, m)}';
     return '$kb KB · $when';
   }
 
@@ -996,8 +996,7 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
       epochSeconds * 1000,
       isUtc: true,
     ).toLocal();
-    String two(int v) => v.toString().padLeft(2, '0');
-    return '${two(dt.month)}-${two(dt.day)} ${two(dt.hour)}:${two(dt.minute)}';
+    return '${formatLocalizedMonthDay(context, dt)} ${formatLocalizedTime(context, dt)}';
   }
 }
 

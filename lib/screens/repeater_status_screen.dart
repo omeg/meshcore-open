@@ -9,6 +9,7 @@ import '../models/contact.dart';
 import '../models/path_selection.dart';
 import '../connector/meshcore_connector.dart';
 import '../connector/meshcore_protocol.dart';
+import '../helpers/localized_time.dart';
 import '../services/app_settings_service.dart';
 import '../services/repeater_command_service.dart';
 import '../theme/mesh_theme.dart';
@@ -367,9 +368,8 @@ class _RepeaterStatusScreenState extends State<RepeaterStatusScreen> {
     final dt = connector.repeaterClockAtLogin(widget.repeater.publicKey);
     if (dt == null) return '—';
     final local = dt.toLocal();
-    final date = '${local.day}/${local.month}/${local.year}';
-    final time =
-        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+    final date = formatLocalizedNumericDate(context, local);
+    final time = formatLocalizedTime(context, local);
     return '$date $time';
   }
 

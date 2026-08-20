@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../connector/meshcore_connector.dart';
+import '../helpers/localized_time.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
@@ -404,6 +405,132 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
             ),
           ),
         ),
+        const Divider(height: 1, indent: 16),
+        InkWell(
+          onTap: () => _showTimeFormatSheet(context, settingsService),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.schedule_outlined,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.appSettings_timeFormat,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _timeFormatLabel(
+                          context,
+                          settingsService.settings.timeFormatPreference,
+                        ),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (settingsService.settings.timeFormatPreference ==
+            TimeFormatPreference.custom) ...[
+          const Divider(height: 1, indent: 16),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: const Icon(Icons.edit_calendar_outlined, size: 20),
+            title: Text(context.l10n.appSettings_customTimePattern),
+            subtitle: Text(
+              settingsService.settings.customTimePattern,
+              style: MeshTheme.mono(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 16),
+            onTap: () => _showCustomTimePatternDialog(context, settingsService),
+          ),
+        ],
+        const Divider(height: 1, indent: 16),
+        InkWell(
+          onTap: () => _showDateFormatSheet(context, settingsService),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.calendar_today_outlined,
+                  size: 20,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        context.l10n.appSettings_dateFormat,
+                        style: textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _dateFormatLabel(
+                          context,
+                          settingsService.settings.dateFormatPreference,
+                        ),
+                        style: textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: scheme.onSurfaceVariant,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (settingsService.settings.dateFormatPreference ==
+            DateFormatPreference.custom) ...[
+          const Divider(height: 1, indent: 16),
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 4,
+            ),
+            leading: const Icon(Icons.edit_calendar_outlined, size: 20),
+            title: Text(context.l10n.appSettings_customDatePattern),
+            subtitle: Text(
+              settingsService.settings.customDatePattern,
+              style: MeshTheme.mono(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right, size: 16),
+            onTap: () => _showCustomDatePatternDialog(context, settingsService),
+          ),
+        ],
       ],
     );
   }
@@ -1666,6 +1793,126 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
     }
   }
 
+  String _timeFormatLabel(
+    BuildContext context,
+    TimeFormatPreference preference,
+  ) {
+    switch (preference) {
+      case TimeFormatPreference.system:
+        return context.l10n.appSettings_timeFormatSystem;
+      case TimeFormatPreference.twelveHour:
+        return context.l10n.appSettings_timeFormat12Hour;
+      case TimeFormatPreference.twentyFourHour:
+        return context.l10n.appSettings_timeFormat24Hour;
+      case TimeFormatPreference.custom:
+        return context.l10n.appSettings_timeFormatCustom;
+    }
+  }
+
+  void _showTimeFormatSheet(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) {
+    showMeshSheet(
+      context,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BottomSheetHeader(title: context.l10n.appSettings_timeFormat),
+          for (final preference in TimeFormatPreference.values)
+            _sheetOption<TimeFormatPreference>(
+              ctx,
+              label: _timeFormatLabel(context, preference),
+              value: preference,
+              selected:
+                  settingsService.settings.timeFormatPreference == preference,
+              onTap: () {
+                settingsService.setTimeFormatPreference(preference);
+                Navigator.pop(ctx);
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCustomTimePatternDialog(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) async {
+    final pattern = await showDialog<String>(
+      context: context,
+      builder: (context) => _CustomTimePatternDialog(
+        initialPattern: settingsService.settings.customTimePattern,
+      ),
+    );
+    if (pattern == null) return;
+    await settingsService.setCustomTimePattern(pattern);
+    await settingsService.setTimeFormatPreference(TimeFormatPreference.custom);
+  }
+
+  String _dateFormatLabel(
+    BuildContext context,
+    DateFormatPreference preference,
+  ) {
+    switch (preference) {
+      case DateFormatPreference.system:
+        return context.l10n.appSettings_timeFormatSystem;
+      case DateFormatPreference.dayMonthYear:
+        return context.l10n.appSettings_dateFormatDayMonthYear;
+      case DateFormatPreference.monthDayYear:
+        return context.l10n.appSettings_dateFormatMonthDayYear;
+      case DateFormatPreference.yearMonthDay:
+        return context.l10n.appSettings_dateFormatYearMonthDay;
+      case DateFormatPreference.custom:
+        return context.l10n.appSettings_timeFormatCustom;
+    }
+  }
+
+  void _showDateFormatSheet(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) {
+    showMeshSheet(
+      context,
+      builder: (ctx) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          BottomSheetHeader(title: context.l10n.appSettings_dateFormat),
+          for (final preference in DateFormatPreference.values)
+            _sheetOption<DateFormatPreference>(
+              ctx,
+              label: _dateFormatLabel(context, preference),
+              value: preference,
+              selected:
+                  settingsService.settings.dateFormatPreference == preference,
+              onTap: () {
+                settingsService.setDateFormatPreference(preference);
+                Navigator.pop(ctx);
+              },
+            ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showCustomDatePatternDialog(
+    BuildContext context,
+    AppSettingsService settingsService,
+  ) async {
+    final pattern = await showDialog<String>(
+      context: context,
+      builder: (context) => _CustomDatePatternDialog(
+        initialPattern: settingsService.settings.customDatePattern,
+      ),
+    );
+    if (pattern == null) return;
+    await settingsService.setCustomDatePattern(pattern);
+    await settingsService.setDateFormatPreference(DateFormatPreference.custom);
+  }
+
   void _showLanguageSheet(
     BuildContext context,
     AppSettingsService settingsService,
@@ -2334,6 +2581,182 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CustomTimePatternDialog extends StatefulWidget {
+  const _CustomTimePatternDialog({required this.initialPattern});
+
+  final String initialPattern;
+
+  @override
+  State<_CustomTimePatternDialog> createState() =>
+      _CustomTimePatternDialogState();
+}
+
+class _CustomTimePatternDialogState extends State<_CustomTimePatternDialog> {
+  late final TextEditingController _controller;
+  late String _pattern;
+
+  @override
+  void initState() {
+    super.initState();
+    _pattern = widget.initialPattern;
+    _controller = TextEditingController(text: _pattern);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final valid = isValidCustomTimePattern(_pattern);
+    final preview = valid
+        ? formatLocalizedTime(
+            context,
+            DateTime.now(),
+            timeFormatPreference: TimeFormatPreference.custom,
+            customTimePattern: _pattern.trim(),
+          )
+        : '—';
+    return AlertDialog(
+      title: Text(context.l10n.appSettings_customTimePattern),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 64,
+              style: MeshTheme.mono(),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: defaultCustomTimePattern,
+                errorText: _pattern.isNotEmpty && !valid
+                    ? context.l10n.appSettings_customTimePatternInvalid
+                    : null,
+              ),
+              onChanged: (value) => setState(() => _pattern = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.appSettings_customTimePatternHelp,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${context.l10n.appSettings_customTimePatternPreview}: $preview',
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.common_cancel),
+        ),
+        FilledButton(
+          onPressed: valid
+              ? () => Navigator.pop(context, _pattern.trim())
+              : null,
+          child: Text(context.l10n.common_save),
+        ),
+      ],
+    );
+  }
+}
+
+class _CustomDatePatternDialog extends StatefulWidget {
+  const _CustomDatePatternDialog({required this.initialPattern});
+
+  final String initialPattern;
+
+  @override
+  State<_CustomDatePatternDialog> createState() =>
+      _CustomDatePatternDialogState();
+}
+
+class _CustomDatePatternDialogState extends State<_CustomDatePatternDialog> {
+  late final TextEditingController _controller;
+  late String _pattern;
+
+  @override
+  void initState() {
+    super.initState();
+    _pattern = widget.initialPattern;
+    _controller = TextEditingController(text: _pattern);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final valid = isValidCustomDatePattern(_pattern);
+    final preview = valid
+        ? formatLocalizedNumericDate(
+            context,
+            DateTime.now(),
+            dateFormatPreference: DateFormatPreference.custom,
+            customDatePattern: _pattern.trim(),
+          )
+        : '—';
+    return AlertDialog(
+      title: Text(context.l10n.appSettings_customDatePattern),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 64,
+              style: MeshTheme.mono(),
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                hintText: defaultCustomDatePattern,
+                errorText: _pattern.isNotEmpty && !valid
+                    ? context.l10n.appSettings_customDatePatternInvalid
+                    : null,
+              ),
+              onChanged: (value) => setState(() => _pattern = value),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              context.l10n.appSettings_customDatePatternHelp,
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '${context.l10n.appSettings_customTimePatternPreview}: $preview',
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.common_cancel),
+        ),
+        FilledButton(
+          onPressed: valid
+              ? () => Navigator.pop(context, _pattern.trim())
+              : null,
+          child: Text(context.l10n.common_save),
+        ),
+      ],
     );
   }
 }

@@ -13,6 +13,51 @@ extension UnitSystemValue on UnitSystem {
   }
 }
 
+const defaultCustomTimePattern = 'HH:mm';
+const defaultCustomDatePattern = 'yyyy-MM-dd';
+
+enum TimeFormatPreference { system, twelveHour, twentyFourHour, custom }
+
+extension TimeFormatPreferenceValue on TimeFormatPreference {
+  String get value {
+    switch (this) {
+      case TimeFormatPreference.system:
+        return 'system';
+      case TimeFormatPreference.twelveHour:
+        return '12_hour';
+      case TimeFormatPreference.twentyFourHour:
+        return '24_hour';
+      case TimeFormatPreference.custom:
+        return 'custom';
+    }
+  }
+}
+
+enum DateFormatPreference {
+  system,
+  dayMonthYear,
+  monthDayYear,
+  yearMonthDay,
+  custom,
+}
+
+extension DateFormatPreferenceValue on DateFormatPreference {
+  String get value {
+    switch (this) {
+      case DateFormatPreference.system:
+        return 'system';
+      case DateFormatPreference.dayMonthYear:
+        return 'day_month_year';
+      case DateFormatPreference.monthDayYear:
+        return 'month_day_year';
+      case DateFormatPreference.yearMonthDay:
+        return 'year_month_day';
+      case DateFormatPreference.custom:
+        return 'custom';
+    }
+  }
+}
+
 enum DiscoveredContactTapAction { importContact, showActions }
 
 extension DiscoveredContactTapActionValue on DiscoveredContactTapAction {
@@ -156,6 +201,10 @@ class AppSettings {
   final int maxMessageRetries;
   final String themeMode;
   final String? languageOverride; // null = system default
+  final TimeFormatPreference timeFormatPreference;
+  final String customTimePattern;
+  final DateFormatPreference dateFormatPreference;
+  final String customDatePattern;
   final bool appDebugLogEnabled;
   final Map<String, String> batteryChemistryByDeviceId;
   final Map<String, String> batteryChemistryByRepeaterId;
@@ -212,6 +261,10 @@ class AppSettings {
     this.maxMessageRetries = 5,
     this.themeMode = 'system',
     this.languageOverride,
+    this.timeFormatPreference = TimeFormatPreference.system,
+    this.customTimePattern = defaultCustomTimePattern,
+    this.dateFormatPreference = DateFormatPreference.system,
+    this.customDatePattern = defaultCustomDatePattern,
     this.appDebugLogEnabled = false,
     Map<String, String>? batteryChemistryByDeviceId,
     Map<String, String>? batteryChemistryByRepeaterId,
@@ -275,6 +328,10 @@ class AppSettings {
       'max_message_retries': maxMessageRetries,
       'theme_mode': themeMode,
       'language_override': languageOverride,
+      'time_format': timeFormatPreference.value,
+      'custom_time_pattern': customTimePattern,
+      'date_format': dateFormatPreference.value,
+      'custom_date_pattern': customDatePattern,
       'app_debug_log_enabled': appDebugLogEnabled,
       'battery_chemistry_by_device_id': batteryChemistryByDeviceId,
       'battery_chemistry_by_repeater_id': batteryChemistryByRepeaterId,
@@ -317,6 +374,34 @@ class AppSettings {
       return DiscoveredContactTapAction.importContact;
     }
 
+    TimeFormatPreference parseTimeFormatPreference(dynamic value) {
+      switch (value) {
+        case '12_hour':
+          return TimeFormatPreference.twelveHour;
+        case '24_hour':
+          return TimeFormatPreference.twentyFourHour;
+        case 'custom':
+          return TimeFormatPreference.custom;
+        default:
+          return TimeFormatPreference.system;
+      }
+    }
+
+    DateFormatPreference parseDateFormatPreference(dynamic value) {
+      switch (value) {
+        case 'day_month_year':
+          return DateFormatPreference.dayMonthYear;
+        case 'month_day_year':
+          return DateFormatPreference.monthDayYear;
+        case 'year_month_day':
+          return DateFormatPreference.yearMonthDay;
+        case 'custom':
+          return DateFormatPreference.custom;
+        default:
+          return DateFormatPreference.system;
+      }
+    }
+
     return AppSettings(
       clearPathOnMaxRetry: json['clear_path_on_max_retry'] as bool? ?? false,
       mapShowRepeaters: json['map_show_repeaters'] as bool? ?? true,
@@ -353,6 +438,16 @@ class AppSettings {
       maxMessageRetries: json['max_message_retries'] as int? ?? 5,
       themeMode: json['theme_mode'] as String? ?? 'system',
       languageOverride: json['language_override'] as String?,
+      timeFormatPreference: parseTimeFormatPreference(json['time_format']),
+      customTimePattern:
+          (json['custom_time_pattern'] as String?)?.trim().isNotEmpty == true
+          ? (json['custom_time_pattern'] as String).trim()
+          : defaultCustomTimePattern,
+      dateFormatPreference: parseDateFormatPreference(json['date_format']),
+      customDatePattern:
+          (json['custom_date_pattern'] as String?)?.trim().isNotEmpty == true
+          ? (json['custom_date_pattern'] as String).trim()
+          : defaultCustomDatePattern,
       appDebugLogEnabled: json['app_debug_log_enabled'] as bool? ?? false,
       batteryChemistryByDeviceId:
           (json['battery_chemistry_by_device_id'] as Map?)?.map(
@@ -465,6 +560,10 @@ class AppSettings {
     int? maxMessageRetries,
     String? themeMode,
     Object? languageOverride = _unset,
+    TimeFormatPreference? timeFormatPreference,
+    String? customTimePattern,
+    DateFormatPreference? dateFormatPreference,
+    String? customDatePattern,
     bool? appDebugLogEnabled,
     Map<String, String>? batteryChemistryByDeviceId,
     Map<String, String>? batteryChemistryByRepeaterId,
@@ -522,6 +621,10 @@ class AppSettings {
       languageOverride: languageOverride == _unset
           ? this.languageOverride
           : languageOverride as String?,
+      timeFormatPreference: timeFormatPreference ?? this.timeFormatPreference,
+      customTimePattern: customTimePattern ?? this.customTimePattern,
+      dateFormatPreference: dateFormatPreference ?? this.dateFormatPreference,
+      customDatePattern: customDatePattern ?? this.customDatePattern,
       appDebugLogEnabled: appDebugLogEnabled ?? this.appDebugLogEnabled,
       batteryChemistryByDeviceId:
           batteryChemistryByDeviceId ?? this.batteryChemistryByDeviceId,

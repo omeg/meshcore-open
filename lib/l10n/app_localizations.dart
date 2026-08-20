@@ -1462,6 +1462,102 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get appSettings_languageSystem;
 
+  /// No description provided for @appSettings_timeFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Time format'**
+  String get appSettings_timeFormat;
+
+  /// No description provided for @appSettings_timeFormatSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System default'**
+  String get appSettings_timeFormatSystem;
+
+  /// No description provided for @appSettings_timeFormat12Hour.
+  ///
+  /// In en, this message translates to:
+  /// **'12-hour'**
+  String get appSettings_timeFormat12Hour;
+
+  /// No description provided for @appSettings_timeFormat24Hour.
+  ///
+  /// In en, this message translates to:
+  /// **'24-hour'**
+  String get appSettings_timeFormat24Hour;
+
+  /// No description provided for @appSettings_timeFormatCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get appSettings_timeFormatCustom;
+
+  /// No description provided for @appSettings_customTimePattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom time pattern'**
+  String get appSettings_customTimePattern;
+
+  /// No description provided for @appSettings_customTimePatternHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use date/time pattern symbols, for example HH:mm:ss or h:mm a.'**
+  String get appSettings_customTimePatternHelp;
+
+  /// No description provided for @appSettings_customTimePatternPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get appSettings_customTimePatternPreview;
+
+  /// No description provided for @appSettings_customTimePatternInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid time pattern.'**
+  String get appSettings_customTimePatternInvalid;
+
+  /// No description provided for @appSettings_dateFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Date format'**
+  String get appSettings_dateFormat;
+
+  /// No description provided for @appSettings_dateFormatDayMonthYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Day/month/year'**
+  String get appSettings_dateFormatDayMonthYear;
+
+  /// No description provided for @appSettings_dateFormatMonthDayYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Month/day/year'**
+  String get appSettings_dateFormatMonthDayYear;
+
+  /// No description provided for @appSettings_dateFormatYearMonthDay.
+  ///
+  /// In en, this message translates to:
+  /// **'Year-month-day'**
+  String get appSettings_dateFormatYearMonthDay;
+
+  /// No description provided for @appSettings_customDatePattern.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom date pattern'**
+  String get appSettings_customDatePattern;
+
+  /// No description provided for @appSettings_customDatePatternHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Use date pattern symbols, for example dd/MM/yyyy or EEE, MMM d.'**
+  String get appSettings_customDatePatternHelp;
+
+  /// No description provided for @appSettings_customDatePatternInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid date pattern.'**
+  String get appSettings_customDatePatternInvalid;
+
   /// No description provided for @appSettings_languageEn.
   ///
   /// In en, this message translates to:

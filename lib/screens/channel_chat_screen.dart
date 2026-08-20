@@ -5,7 +5,6 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:intl/intl.dart' hide TextDirection;
 import 'package:provider/provider.dart';
 
 import '../connector/meshcore_connector.dart';
@@ -16,6 +15,7 @@ import '../helpers/chat_scroll_controller.dart';
 import '../connector/meshcore_protocol.dart';
 import '../helpers/cyr2lat.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/localized_time.dart';
 import '../helpers/message_text.dart';
 import '../helpers/path_hash.dart';
 import '../helpers/path_helper.dart';
@@ -81,10 +81,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   DateTime? _lastChannelSendAt;
   bool _channelSkipNextBottomSnap = false;
   String? _unreadDividerMessageId;
-
-  String? _cachedFormatLocale;
-  late DateFormat _hmFormat;
-  late DateFormat _mdFormat;
 
   @override
   void initState() {
@@ -1431,20 +1427,14 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   String _formatTime(BuildContext context, DateTime time) {
     final now = DateTime.now();
-    final locale = Localizations.localeOf(context).toString();
-    if (locale != _cachedFormatLocale) {
-      _cachedFormatLocale = locale;
-      _hmFormat = DateFormat.Hm(locale);
-      _mdFormat = DateFormat.Md(locale);
-    }
-    final hm = _hmFormat.format(time);
+    final formattedTime = formatLocalizedTime(context, time);
     final isToday =
         now.year == time.year && now.month == time.month && now.day == time.day;
 
     if (!isToday) {
-      return '${_mdFormat.format(time)} $hm';
+      return '${formatLocalizedMonthDay(context, time)} $formattedTime';
     } else {
-      return hm;
+      return formattedTime;
     }
   }
 
@@ -1612,8 +1602,8 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
   }
 
   String _formatSenderTimestamp(BuildContext context, DateTime timestamp) {
-    final locale = Localizations.localeOf(context).toString();
-    return DateFormat.yMd(locale).add_Hm().format(timestamp);
+    final date = formatLocalizedNumericDate(context, timestamp);
+    return '$date ${formatLocalizedTime(context, timestamp)}';
   }
 
   void _showEmojiPicker(ChannelMessage message) {

@@ -17,6 +17,7 @@ import '../widgets/message_status_icon.dart';
 import '../widgets/empty_state.dart';
 import '../helpers/chat_scroll_controller.dart';
 import '../helpers/gif_helper.dart';
+import '../helpers/localized_time.dart';
 import '../helpers/message_text.dart';
 import '../helpers/path_helper.dart';
 import '../helpers/public_key.dart';
@@ -1587,7 +1588,10 @@ class _MessageBubble extends StatelessWidget {
                               crossAxisAlignment: WrapCrossAlignment.center,
                               children: [
                                 Text(
-                                  _formatTime(message.timestamp),
+                                  formatLocalizedTime(
+                                    context,
+                                    message.timestamp,
+                                  ),
                                   style: MeshTheme.mono(
                                     fontSize: 10 * textScale,
                                     color: metaColor,
@@ -1800,12 +1804,6 @@ class _MessageBubble extends StatelessWidget {
 
   Widget _buildAvatar(String senderName) {
     return AvatarCircle(name: senderName, size: 32);
-  }
-
-  String _formatTime(DateTime time) {
-    final hour = time.hour.toString().padLeft(2, '0');
-    final minute = time.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
   }
 }
 

@@ -12,6 +12,7 @@ import 'screens/chrome_required_screen.dart';
 import 'utils/platform_info.dart';
 
 import 'connector/meshcore_connector.dart';
+import 'helpers/locale_resolution.dart';
 import 'screens/scanner_screen.dart';
 import 'services/storage_service.dart';
 import 'services/message_retry_service.dart';
@@ -311,6 +312,9 @@ class MeshCoreApp extends StatelessWidget {
                 GlobalCupertinoLocalizations.delegate,
               ],
               supportedLocales: AppLocalizations.supportedLocales,
+              // Generated app translations match by language. Keep the
+              // platform region so en_GB, for example, does not become en_US.
+              localeListResolutionCallback: resolveAppLocale,
               locale: _localeFromSetting(
                 settingsService.settings.languageOverride,
               ),
@@ -390,7 +394,9 @@ class MeshCoreApp extends StatelessWidget {
   }
 
   Locale? _localeFromSetting(String? languageCode) {
-    if (languageCode == null) return null;
-    return Locale(languageCode);
+    return localeForLanguageOverride(
+      languageCode,
+      WidgetsBinding.instance.platformDispatcher.locales,
+    );
   }
 }

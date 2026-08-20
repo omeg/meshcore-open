@@ -609,6 +609,16 @@ void main() {
       expect(settings.routeWeightFailureDecrement, equals(0.2));
       expect(settings.maxMessageRetries, equals(5));
       expect(
+        settings.timeFormatPreference,
+        equals(TimeFormatPreference.system),
+      );
+      expect(settings.customTimePattern, equals(defaultCustomTimePattern));
+      expect(
+        settings.dateFormatPreference,
+        equals(DateFormatPreference.system),
+      );
+      expect(settings.customDatePattern, equals(defaultCustomDatePattern));
+      expect(
         settings.discoveredContactTapAction,
         equals(DiscoveredContactTapAction.importContact),
       );
@@ -622,12 +632,20 @@ void main() {
       expect(json.containsKey('route_weight_success_increment'), isTrue);
       expect(json.containsKey('route_weight_failure_decrement'), isTrue);
       expect(json.containsKey('max_message_retries'), isTrue);
+      expect(json.containsKey('time_format'), isTrue);
+      expect(json.containsKey('custom_time_pattern'), isTrue);
+      expect(json.containsKey('date_format'), isTrue);
+      expect(json.containsKey('custom_date_pattern'), isTrue);
       expect(json.containsKey('discovered_contact_tap_action'), isTrue);
       expect(json['max_route_weight'], equals(5.0));
       expect(json['initial_route_weight'], equals(3.0));
       expect(json['route_weight_success_increment'], equals(0.5));
       expect(json['route_weight_failure_decrement'], equals(0.2));
       expect(json['max_message_retries'], equals(5));
+      expect(json['time_format'], equals('system'));
+      expect(json['custom_time_pattern'], equals(defaultCustomTimePattern));
+      expect(json['date_format'], equals('system'));
+      expect(json['custom_date_pattern'], equals(defaultCustomDatePattern));
       expect(json['discovered_contact_tap_action'], equals('import_contact'));
     });
 
@@ -638,6 +656,10 @@ void main() {
         'route_weight_success_increment': 1.0,
         'route_weight_failure_decrement': 1.5,
         'max_message_retries': 8,
+        'time_format': '24_hour',
+        'custom_time_pattern': 'HH:mm:ss',
+        'date_format': 'day_month_year',
+        'custom_date_pattern': 'dd.MM.yyyy',
         'discovered_contact_tap_action': 'show_actions',
       };
       final settings = AppSettings.fromJson(json);
@@ -646,6 +668,16 @@ void main() {
       expect(settings.routeWeightSuccessIncrement, equals(1.0));
       expect(settings.routeWeightFailureDecrement, equals(1.5));
       expect(settings.maxMessageRetries, equals(8));
+      expect(
+        settings.timeFormatPreference,
+        equals(TimeFormatPreference.twentyFourHour),
+      );
+      expect(settings.customTimePattern, equals('HH:mm:ss'));
+      expect(
+        settings.dateFormatPreference,
+        equals(DateFormatPreference.dayMonthYear),
+      );
+      expect(settings.customDatePattern, equals('dd.MM.yyyy'));
       expect(
         settings.discoveredContactTapAction,
         equals(DiscoveredContactTapAction.showActions),
@@ -663,6 +695,16 @@ void main() {
         expect(settings.routeWeightSuccessIncrement, equals(0.5));
         expect(settings.routeWeightFailureDecrement, equals(0.2));
         expect(settings.maxMessageRetries, equals(5));
+        expect(
+          settings.timeFormatPreference,
+          equals(TimeFormatPreference.system),
+        );
+        expect(settings.customTimePattern, equals(defaultCustomTimePattern));
+        expect(
+          settings.dateFormatPreference,
+          equals(DateFormatPreference.system),
+        );
+        expect(settings.customDatePattern, equals(defaultCustomDatePattern));
         expect(
           settings.discoveredContactTapAction,
           equals(DiscoveredContactTapAction.importContact),
@@ -711,6 +753,52 @@ void main() {
       final updated = settings.copyWith(maxMessageRetries: 10);
       expect(updated.maxMessageRetries, equals(10));
       expect(updated.maxRouteWeight, equals(settings.maxRouteWeight));
+    });
+
+    test('time format preference persists and rejects unknown values', () {
+      final updated = AppSettings().copyWith(
+        timeFormatPreference: TimeFormatPreference.twelveHour,
+      );
+      expect(
+        AppSettings.fromJson(updated.toJson()).timeFormatPreference,
+        TimeFormatPreference.twelveHour,
+      );
+      expect(
+        AppSettings.fromJson({'time_format': 'unknown'}).timeFormatPreference,
+        TimeFormatPreference.system,
+      );
+    });
+
+    test('custom time pattern persists and empty values use the default', () {
+      final updated = AppSettings().copyWith(
+        timeFormatPreference: TimeFormatPreference.custom,
+        customTimePattern: 'HH:mm:ss',
+      );
+      final restored = AppSettings.fromJson(updated.toJson());
+      expect(restored.timeFormatPreference, TimeFormatPreference.custom);
+      expect(restored.customTimePattern, 'HH:mm:ss');
+      expect(
+        AppSettings.fromJson({'custom_time_pattern': '   '}).customTimePattern,
+        defaultCustomTimePattern,
+      );
+    });
+
+    test('date format and custom pattern persist with safe defaults', () {
+      final updated = AppSettings().copyWith(
+        dateFormatPreference: DateFormatPreference.custom,
+        customDatePattern: 'EEE, d MMM yyyy',
+      );
+      final restored = AppSettings.fromJson(updated.toJson());
+      expect(restored.dateFormatPreference, DateFormatPreference.custom);
+      expect(restored.customDatePattern, 'EEE, d MMM yyyy');
+      expect(
+        AppSettings.fromJson({'date_format': 'unknown'}).dateFormatPreference,
+        DateFormatPreference.system,
+      );
+      expect(
+        AppSettings.fromJson({'custom_date_pattern': '   '}).customDatePattern,
+        defaultCustomDatePattern,
+      );
     });
 
     test('copyWith works for discoveredContactTapAction', () {
