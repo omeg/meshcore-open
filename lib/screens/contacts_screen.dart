@@ -22,7 +22,6 @@ import '../utils/contact_search.dart';
 import '../storage/contact_group_store.dart';
 import '../utils/dialog_utils.dart';
 import '../utils/disconnect_navigation_mixin.dart';
-import '../utils/emoji_utils.dart';
 import '../utils/route_transitions.dart';
 import '../helpers/path_hash.dart';
 import '../widgets/list_filter_widget.dart';
@@ -1859,7 +1858,6 @@ class _ContactTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final emoji = firstEmoji(contact.name);
     final isChat = contact.type == advTypeChat;
     final routeHops = contact.pathOverride ?? contact.pathLength;
     final isDirect = routeHops >= 0;
@@ -1873,56 +1871,95 @@ class _ContactTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            // Avatar
-            if (emoji != null)
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: scheme.surfaceContainerHigh,
-                  border: Border.all(color: scheme.outlineVariant),
-                ),
-                alignment: Alignment.center,
-                child: Text(emoji, style: const TextStyle(fontSize: 20)),
-              )
-            else
-              AvatarCircle(
-                name: contact.name,
-                size: 42,
-                color: isChat ? null : _avatarColor(),
-                icon: _avatarIcon(),
-              ),
+            AvatarCircle(
+              name: contact.name,
+              size: 42,
+              color: isChat ? null : _avatarColor(),
+              icon: _avatarIcon(),
+            ),
             const SizedBox(width: 12),
-            // Main content
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Name row + route chip
+                  // Name + last seen time
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                contact.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontWeight: unreadCount > 0
+                                      ? FontWeight.w700
+                                      : FontWeight.w500,
+                                  fontSize: 15,
+                                  color: scheme.onSurface,
+                                ),
+                              ),
+                            ),
+                            if (isFavorite) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.star,
+                                size: 13,
+                                color: MeshPalette.warn,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      if (unreadCount > 0) ...[
+                        const SizedBox(width: 8),
+                        UnreadBadge(count: unreadCount),
+                      ],
+                      const SizedBox(width: 10),
+                      MediaQuery(
+                        data: MediaQuery.of(context).copyWith(
+                          textScaler: TextScaler.linear(
+                            MediaQuery.textScalerOf(
+                              context,
+                            ).scale(1.0).clamp(1.0, 1.3),
+                          ),
+                        ),
+                        child: Text(
+                          _formatLastSeen(lastSeen),
+                          maxLines: 1,
+                          textAlign: TextAlign.right,
+                          style: MeshTheme.mono(
+                            fontSize: 11,
+                            color: Color.lerp(
+                              scheme.onSurfaceVariant,
+                              MeshPalette.activity,
+                              0.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  // Short public key + route
                   Row(
                     children: [
                       Expanded(
                         child: Text(
-                          contact.name,
+                          contact.shortPubKeyHex,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontWeight: unreadCount > 0
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            fontSize: 15,
-                            color: scheme.onSurface,
+                          style: MeshTheme.mono(
+                            fontSize: 11,
+                            color: scheme.onSurfaceVariant,
                           ),
                         ),
                       ),
-                      if (isFavorite) ...[
-                        const SizedBox(width: 4),
-                        Icon(Icons.star, size: 13, color: MeshPalette.warn),
-                      ],
                       if (contact.hasLocation) ...[
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Icon(
                           Icons.location_on,
                           size: 13,
@@ -1931,64 +1968,23 @@ class _ContactTile extends StatelessWidget {
                           ),
                         ),
                       ],
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  // Path / subtitle row
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          contact.pathLabel(context.l10n),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: scheme.onSurfaceVariant,
+                      if (contact.rawPacket != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.cell_tower,
+                          size: 13,
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: 0.55,
                           ),
                         ),
-                      ),
-                      if (PlatformInfo.isDesktop) ...[
-                        const SizedBox(width: 6),
-                        RouteChip(
-                          isDirect: isDirect,
-                          hops: isDirect ? routeHops : null,
-                        ),
                       ],
+                      const SizedBox(width: 6),
+                      RouteChip(
+                        isDirect: isDirect,
+                        hops: isDirect ? routeHops : null,
+                        showDirectIcon: false,
+                      ),
                     ],
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            // Trailing: time + unread badge
-            // Clamp text scale to prevent overflow in trailing section.
-            MediaQuery(
-              data: MediaQuery.of(context).copyWith(
-                textScaler: TextScaler.linear(
-                  MediaQuery.textScalerOf(context).scale(1.0).clamp(1.0, 1.3),
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (unreadCount > 0) ...[
-                    UnreadBadge(count: unreadCount),
-                    const SizedBox(height: 4),
-                  ],
-                  Text(
-                    _formatLastSeen(context, lastSeen),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.right,
-                    style: MeshTheme.mono(
-                      fontSize: 11,
-                      color: unreadCount > 0
-                          ? MeshPalette.blue
-                          : scheme.onSurfaceVariant,
-                    ),
                   ),
                 ],
               ),
@@ -1999,26 +1995,14 @@ class _ContactTile extends StatelessWidget {
     );
   }
 
-  String _formatLastSeen(BuildContext context, DateTime lastSeen) {
+  String _formatLastSeen(DateTime lastSeen) {
     final now = DateTime.now();
     final diff = now.difference(lastSeen);
+    final elapsed = diff.isNegative ? Duration.zero : diff;
 
-    if (diff.isNegative || diff.inMinutes < 5) {
-      return context.l10n.contacts_lastSeenNow;
-    }
-    if (diff.inMinutes < 60) {
-      return context.l10n.contacts_lastSeenMinsAgo(diff.inMinutes);
-    }
-    if (diff.inHours < 24) {
-      final hours = diff.inHours;
-      return hours == 1
-          ? context.l10n.contacts_lastSeenHourAgo
-          : context.l10n.contacts_lastSeenHoursAgo(hours);
-    }
-    final days = diff.inDays;
-    return days == 1
-        ? context.l10n.contacts_lastSeenDayAgo
-        : context.l10n.contacts_lastSeenDaysAgo(days);
+    if (elapsed.inMinutes < 60) return '${elapsed.inMinutes} m';
+    if (elapsed.inHours < 24) return '${elapsed.inHours} h';
+    return '${elapsed.inDays} d';
   }
 }
 

@@ -343,7 +343,7 @@ class SignalBars extends StatelessWidget {
   }
 }
 
-/// Chip describing how a message was routed: direct (with hop count) vs flood.
+/// Chip describing a route: direct (with hop count) vs flood.
 class RouteChip extends StatelessWidget {
   final bool isDirect;
   final int? hops;
@@ -367,9 +367,14 @@ class RouteChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
+        color: Color.alphaBlend(
+          MeshPalette.blueBg,
+          scheme.surfaceContainerHigh,
+        ),
         borderRadius: BorderRadius.circular(MeshRadii.xs),
-        border: Border.all(color: scheme.outlineVariant),
+        border: Border.all(
+          color: Color.lerp(scheme.outlineVariant, MeshPalette.blue, 0.25)!,
+        ),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -386,7 +391,7 @@ class RouteChip extends StatelessWidget {
             label,
             style: MeshTheme.accentLabel(
               color: scheme.onSurfaceVariant,
-              fontSize: 8.5,
+              fontSize: 9.5,
             ),
           ),
         ],

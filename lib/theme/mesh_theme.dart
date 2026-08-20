@@ -44,6 +44,9 @@ class MeshPalette {
   static const blueBg = Color(0x290EA5E9);
   static const blueLine = Color(0x800EA5E9);
 
+  // Contact activity accent
+  static const activity = Color(0xFF3FAE72);
+
   // Magenta
   static const magenta = Color(0xFFDE7FDB);
   static const magentaBg = Color(0x1CDE7FDB);

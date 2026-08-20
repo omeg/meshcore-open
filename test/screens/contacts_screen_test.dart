@@ -15,6 +15,8 @@ import 'package:meshcore_open/screens/telemetry_screen.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
 import 'package:meshcore_open/services/ui_view_state_service.dart';
 import 'package:meshcore_open/storage/prefs_manager.dart';
+import 'package:meshcore_open/theme/mesh_theme.dart';
+import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:meshcore_open/widgets/repeater_login_dialog.dart';
 
 class _FakeMeshCoreConnector extends MeshCoreConnector {
@@ -119,6 +121,38 @@ void main() {
   });
 
   tearDown(PrefsManager.reset);
+
+  testWidgets('saved contact uses compact metadata layout', (tester) async {
+    final contact = Contact(
+      publicKey: Uint8List.fromList(
+        List<int>.generate(pubKeySize, (index) => index + 1),
+      ),
+      name: 'Saved Repeater',
+      type: advTypeRepeater,
+      pathLength: 4,
+      path: Uint8List.fromList([1, 2, 3, 4]),
+      lastSeen: DateTime.now().subtract(
+        const Duration(minutes: 2, seconds: 30),
+      ),
+    );
+
+    await tester.pumpWidget(_buildTestApp(_FakeMeshCoreConnector(contact)));
+    await tester.pumpAndSettle();
+
+    expect(find.text('2 m'), findsOneWidget);
+    expect(find.text('4 HOPS'), findsOneWidget);
+    expect(find.text('01020304..1d1e1f20'), findsOneWidget);
+    expect(find.byIcon(Icons.trending_flat), findsNothing);
+    final scheme = Theme.of(tester.element(find.byType(RouteChip))).colorScheme;
+    expect(
+      tester.widget<Text>(find.text('2 m')).style?.color,
+      Color.lerp(scheme.onSurfaceVariant, MeshPalette.activity, 0.5),
+    );
+
+    final timeRight = tester.getTopRight(find.text('2 m')).dx;
+    final hopsRight = tester.getTopRight(find.byType(RouteChip)).dx;
+    expect(hopsRight, closeTo(timeRight, 1));
+  });
 
   testWidgets('contacts menu copies the self contact URI', (tester) async {
     String? clipboardText;

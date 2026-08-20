@@ -735,11 +735,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                RouteChip(
-                                  isDirect: (message.pathLength ?? -1) >= 0,
-                                  hops: displayHopCount,
-                                ),
-                                const SizedBox(width: 4),
                                 Flexible(
                                   child: Text(
                                     context.l10n.channels_via(

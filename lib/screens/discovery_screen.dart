@@ -264,7 +264,11 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             textAlign: TextAlign.right,
                             style: MeshTheme.mono(
                               fontSize: 11,
-                              color: scheme.onSurfaceVariant,
+                              color: Color.lerp(
+                                scheme.onSurfaceVariant,
+                                MeshPalette.activity,
+                                0.5,
+                              ),
                             ),
                           ),
                         ),

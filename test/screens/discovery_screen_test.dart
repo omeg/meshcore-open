@@ -9,6 +9,7 @@ import 'package:meshcore_open/l10n/app_localizations.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/screens/discovery_screen.dart';
 import 'package:meshcore_open/services/app_settings_service.dart';
+import 'package:meshcore_open/theme/mesh_theme.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 
 class _FakeMeshCoreConnector extends MeshCoreConnector {
@@ -198,6 +199,26 @@ void main() {
     expect(find.text('4 HOPS'), findsOneWidget);
     expect(find.text('01020304..1d1e1f20'), findsOneWidget);
     expect(find.byIcon(Icons.trending_flat), findsNothing);
+    final chipContext = tester.element(find.byType(RouteChip));
+    final chipScheme = Theme.of(chipContext).colorScheme;
+    final hopsText = tester.widget<Text>(find.text('4 HOPS'));
+    expect(hopsText.style?.fontSize, 9.5);
+    expect(hopsText.style?.color, chipScheme.onSurfaceVariant);
+    expect(
+      tester.widget<Text>(find.text('2 m')).style?.color,
+      Color.lerp(chipScheme.onSurfaceVariant, MeshPalette.activity, 0.5),
+    );
+    final chipContainer = tester.widget<Container>(
+      find.descendant(
+        of: find.byType(RouteChip),
+        matching: find.byType(Container),
+      ),
+    );
+    final chipDecoration = chipContainer.decoration! as BoxDecoration;
+    expect(
+      chipDecoration.color,
+      Color.alphaBlend(MeshPalette.blueBg, chipScheme.surfaceContainerHigh),
+    );
 
     final timeRight = tester.getTopRight(find.text('2 m')).dx;
     final hopsRight = tester.getTopRight(find.byType(RouteChip)).dx;
