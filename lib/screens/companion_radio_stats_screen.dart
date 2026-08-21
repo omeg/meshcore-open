@@ -3,6 +3,7 @@ import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/models/companion_radio_stats.dart';
 import 'package:meshcore_open/l10n/l10n.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
+import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -75,7 +76,11 @@ class _CompanionRadioStatsScreenState extends State<CompanionRadioStatsScreen> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.radioStats_screenTitle),
+        title: AppBarTitle(
+          l10n.radioStats_screenTitle,
+          subtitle: false,
+          showRadioStatsIndicator: false,
+        ),
         centerTitle: true,
       ),
       body: Selector<MeshCoreConnector, ({bool connected, bool supported})>(

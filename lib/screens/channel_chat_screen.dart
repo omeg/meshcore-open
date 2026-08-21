@@ -24,11 +24,15 @@ import '../helpers/snack_bar_builder.dart';
 import '../l10n/l10n.dart';
 import '../models/channel.dart';
 import '../models/channel_message.dart';
+import '../models/meshcore_share_link.dart';
 import '../models/translation_support.dart';
 import '../services/app_settings_service.dart';
 import '../services/chat_text_scale_service.dart';
 import '../services/translation_service.dart';
 import '../utils/desktop_text_input_focus.dart';
+import '../utils/dialog_utils.dart';
+import '../utils/disconnect_navigation_mixin.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/byte_count_input.dart';
 import '../widgets/desktop_emoji_picker_button.dart';
 import '../widgets/desktop_page_scroll.dart';
@@ -40,7 +44,6 @@ import '../widgets/jump_to_bottom_button.dart';
 import '../widgets/gif_picker.dart';
 import '../widgets/message_translation_button.dart';
 import '../widgets/message_status_icon.dart';
-import '../widgets/radio_stats_entry.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/translated_message_content.dart';
 import '../widgets/unread_divider.dart';
@@ -49,6 +52,7 @@ import '../widgets/mesh_ui.dart';
 import 'channel_message_path_screen.dart';
 import 'map_screen.dart';
 import 'region_management_screen.dart';
+import 'settings_screen.dart';
 import '../storage/region_store.dart';
 
 class ChannelChatScreen extends StatefulWidget {
@@ -65,7 +69,8 @@ class ChannelChatScreen extends StatefulWidget {
   State<ChannelChatScreen> createState() => _ChannelChatScreenState();
 }
 
-class _ChannelChatScreenState extends State<ChannelChatScreen> {
+class _ChannelChatScreenState extends State<ChannelChatScreen>
+    with DisconnectNavigationMixin {
   final TextEditingController _textController = TextEditingController();
   final ChatScrollController _scrollController = ChatScrollController();
   final FocusNode _textFieldFocusNode = FocusNode();
@@ -275,12 +280,17 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final connector = context.watch<MeshCoreConnector>();
+    if (!checkConnectionAndNavigate(connector)) {
+      return const SizedBox.shrink();
+    }
+
     final screen = Scaffold(
       appBar: AppBar(
-        title: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () => openRegionSelectDialog(widget.channel),
-          child: Row(
+        leadingWidth: PlatformInfo.isMobile ? 48 : null,
+        titleSpacing: PlatformInfo.isMobile ? 0 : null,
+        title: AppBarTitle.custom(
+          Row(
             children: [
               _channelIcon(widget.channel),
               const SizedBox(width: 8),
@@ -304,9 +314,6 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             .getUnreadCountForChannelIndex(
                               widget.channel.index,
                             );
-                        final privacy = widget.channel.isPublicChannel
-                            ? context.l10n.channels_public
-                            : context.l10n.channels_private;
                         final region = connector.getChannelRegion(
                           widget.channel.index,
                         );
@@ -314,7 +321,7 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
                             ? ' • ${context.l10n.channels_regionSetTo(region)}'
                             : '';
                         return Text(
-                          '$privacy • ${context.l10n.chat_unread(unreadCount)}$regionText',
+                          '${context.l10n.chat_unread(unreadCount)}$regionText',
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontSize: 12),
                         );
@@ -329,40 +336,76 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
         centerTitle: false,
         bottom: const SyncProgressAppBarBottom(),
         actions: [
-          IconButton(
-            tooltip: context.l10n.channels_regionSelect_Title,
-            icon: const Icon(Icons.landscape),
-            onPressed: () => openRegionSelectDialog(widget.channel),
-          ),
-          const RadioStatsIconButton(),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.more_vert),
-            onSelected: (value) {
-              if (value == 'clearChat') {
-                _confirmClearChat();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'clearChat',
+          MainScreenOverflowMenu(
+            itemBuilder: (menuContext) => [
+              PopupMenuItem<void>(
+                onTap: () => openRegionSelectDialog(widget.channel),
+                child: Row(
+                  children: [
+                    const Icon(Icons.landscape, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        menuContext.l10n.channels_regionSelect_Title,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<void>(
+                enabled:
+                    menuContext.read<MeshCoreConnector>().selfPublicKey !=
+                        null &&
+                    (menuContext
+                            .read<MeshCoreConnector>()
+                            .selfName
+                            ?.trim()
+                            .isNotEmpty ??
+                        false),
+                onTap: _insertSelfContactShareLink,
+                child: Row(
+                  children: [
+                    const Icon(Icons.contact_page_outlined, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        menuContext.l10n.shareLink_shareMyContact,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem<void>(
+                onTap: _confirmClearChat,
                 child: Row(
                   children: [
                     Icon(
                       Icons.delete,
                       size: 20,
-                      color: Theme.of(context).colorScheme.error,
+                      color: Theme.of(menuContext).colorScheme.error,
                     ),
                     const SizedBox(width: 12),
-                    Text(
-                      context.l10n.contact_clearChat,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    Expanded(
+                      child: Text(
+                        menuContext.l10n.contact_clearChat,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Theme.of(menuContext).colorScheme.error,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
             ],
+            onSettings: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const SettingsScreen()),
+            ),
+            onDisconnect: _disconnect,
           ),
         ],
       ),
@@ -499,6 +542,47 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
       ),
     );
     return DesktopPageScroll(controller: _scrollController, child: screen);
+  }
+
+  void _insertSelfContactShareLink() {
+    final connector = context.read<MeshCoreConnector>();
+    final publicKey = connector.selfPublicKey;
+    final name = connector.selfName?.trim();
+    if (publicKey == null || name == null || name.isEmpty) {
+      showDismissibleSnackBar(
+        context,
+        content: Text(context.l10n.shareLink_unavailable),
+      );
+      return;
+    }
+
+    final link = MeshCoreContactShareLink(
+      name: name,
+      publicKey: Uint8List.fromList(publicKey),
+      type: advTypeChat,
+    ).toUriString();
+    final value = _textController.value;
+    final selection = value.selection;
+    final start = selection.isValid ? selection.start : value.text.length;
+    final end = selection.isValid ? selection.end : value.text.length;
+    final addLeadingSpace =
+        start > 0 &&
+        !RegExp(r'\s').hasMatch(value.text.substring(start - 1, start));
+    final addTrailingSpace =
+        end < value.text.length &&
+        !RegExp(r'\s').hasMatch(value.text.substring(end, end + 1));
+    final inserted =
+        '${addLeadingSpace ? ' ' : ''}$link${addTrailingSpace ? ' ' : ''}';
+    final updatedText = value.text.replaceRange(start, end, inserted);
+    _textController.value = TextEditingValue(
+      text: updatedText,
+      selection: TextSelection.collapsed(offset: start + inserted.length),
+    );
+    _desktopTextInputFocus.requestFocus();
+  }
+
+  Future<void> _disconnect() async {
+    await showDisconnectDialog(context, context.read<MeshCoreConnector>());
   }
 
   void _markAsUnread(ChannelMessage message) {
@@ -1746,9 +1830,11 @@ class _ChannelChatScreenState extends State<ChannelChatScreen> {
     // The AppBar subtitle reads the region from the connector inside a
     // Consumer, so setChannelRegion's notifyListeners refreshes it directly —
     // no post-dialog setState needed.
-    await showDialog(
-      context: context,
-      builder: (BuildContext context) => _RegionSelectDialog(channel: channel),
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (context) => _RegionSelectDialog(channel: channel),
+      ),
     );
   }
 }
@@ -1786,70 +1872,62 @@ class _RegionSelectDialogState extends State<_RegionSelectDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      child: Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            AppBar(
-              backgroundColor: Colors.transparent,
-              title: Text(context.l10n.channels_regionSelect_Title),
-              centerTitle: true,
-              actions: [
-                IconButton(
-                  tooltip: context.l10n.channels_clearRegion,
-                  icon: const Icon(Icons.backspace_outlined),
-                  onPressed: () {
-                    context.read<MeshCoreConnector>().setChannelRegion(
-                      widget.channel.index,
-                      '',
-                    );
-                    Navigator.pop(context);
-                  },
-                ),
-                IconButton(
-                  tooltip: context.l10n.settings_regionSettingsSubtitle,
-                  icon: const Icon(Icons.settings),
-                  onPressed: () async {
-                    await pushRegionManagementScreen(context);
-                    if (!mounted) return;
-                    loadRegions();
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            Expanded(
-              child: ListView.builder(
-                itemCount: regions.length,
-                itemBuilder: (context, index) {
-                  final selected = selectedIndex == index;
-                  return ListTile(
-                    leading: Icon(
-                      Icons.landscape,
-                      color: selected ? MeshPalette.blue : null,
-                    ),
-                    title: Text(regions[index]),
-                    trailing: selected
-                        ? const Icon(Icons.check, color: MeshPalette.blue)
-                        : null,
-                    tileColor: selected ? MeshPalette.blueBg : null,
-                    onTap: () {
-                      // Tapping the already-selected region clears it.
-                      context.read<MeshCoreConnector>().setChannelRegion(
-                        widget.channel.index,
-                        selected ? '' : regions[index],
-                      );
-                      Navigator.pop(context);
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          context.l10n.channels_regionSelect_Title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: context.l10n.channels_clearRegion,
+            icon: const Icon(Icons.backspace_outlined),
+            onPressed: () {
+              context.read<MeshCoreConnector>().setChannelRegion(
+                widget.channel.index,
+                '',
+              );
+              Navigator.pop(context);
+            },
+          ),
+          IconButton(
+            tooltip: context.l10n.settings_regionSettingsSubtitle,
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              await pushRegionManagementScreen(context);
+              if (!mounted) return;
+              loadRegions();
+            },
+          ),
+        ],
+      ),
+      body: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 15),
+        itemCount: regions.length,
+        itemBuilder: (context, index) {
+          final selected = selectedIndex == index;
+          return ListTile(
+            leading: Icon(
+              Icons.landscape,
+              color: selected ? MeshPalette.blue : null,
+            ),
+            title: Text(regions[index]),
+            trailing: selected
+                ? const Icon(Icons.check, color: MeshPalette.blue)
+                : null,
+            tileColor: selected ? MeshPalette.blueBg : null,
+            onTap: () {
+              // Tapping the already-selected region clears it.
+              context.read<MeshCoreConnector>().setChannelRegion(
+                widget.channel.index,
+                selected ? '' : regions[index],
+              );
+              Navigator.pop(context);
+            },
+          );
+        },
       ),
     );
   }

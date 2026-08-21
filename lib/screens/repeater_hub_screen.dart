@@ -10,6 +10,7 @@ import '../models/contact.dart';
 import '../l10n/contact_localization.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/remote_node_auth.dart';
 import 'repeater_status_screen.dart';
@@ -48,12 +49,13 @@ class RepeaterHubScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: AppBarTitle(
           repeater.type == advTypeRepeater
               ? (effectiveIsAdmin
                     ? l10n.repeater_management
                     : l10n.repeater_guest)
               : (effectiveIsAdmin ? l10n.room_management : l10n.room_guest),
+          subtitle: false,
         ),
         centerTitle: true,
         actions: [

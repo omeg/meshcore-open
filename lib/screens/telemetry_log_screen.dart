@@ -22,6 +22,7 @@ import '../storage/prefs_manager.dart';
 import '../storage/telemetry_log_store.dart';
 import '../utils/app_logger.dart';
 import '../utils/platform_info.dart';
+import '../widgets/app_bar.dart';
 
 class TelemetryLogScreen extends StatefulWidget {
   final Contact repeater;
@@ -507,17 +508,19 @@ class _TelemetryLogScreenState extends State<TelemetryLogScreen> {
     return Scaffold(
       appBar: AppBar(
         centerTitle: true,
-        title: Column(
-          children: [
-            Text(l10n.telemetryLog_title),
-            Text(
-              widget.repeater.name,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.normal,
+        title: AppBarTitle.custom(
+          Column(
+            children: [
+              Text(l10n.telemetryLog_title),
+              Text(
+                widget.repeater.name,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.normal,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
         actions: [
           if (myFile != null)

@@ -390,20 +390,21 @@ class _ContactsScreenState extends State<ContactsScreen>
       child: Scaffold(
         appBar: AppBar(
           title: AppBarTitle(context.l10n.contacts_title),
+          centerTitle: true,
           automaticallyImplyLeading: false,
           bottom: const SyncProgressAppBarBottom(),
           actions: [
-            PopupMenuButton(
+            MainScreenOverflowMenu(
               tooltip: context.l10n.contacts_moreOptions,
-              itemBuilder: (context) => <PopupMenuEntry<dynamic>>[
-                PopupMenuItem(
+              itemBuilder: (menuContext) => <PopupMenuEntry<void>>[
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.wifi_find),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n.nearbyNodes_menu,
+                          menuContext.l10n.nearbyNodes_menu,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -416,14 +417,14 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ),
                   ),
                 ),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.person_add_rounded),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n.discoveredContacts_Title,
+                          menuContext.l10n.discoveredContacts_Title,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -436,14 +437,14 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ),
                   ),
                 ),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.paste),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n.contacts_addContactFromClipboard,
+                          menuContext.l10n.contacts_addContactFromClipboard,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -452,12 +453,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                   onTap: () => _contactImport(),
                 ),
                 const PopupMenuDivider(),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.connect_without_contact),
                       const SizedBox(width: 8),
-                      Text(context.l10n.contacts_zeroHopAdvert),
+                      Text(menuContext.l10n.contacts_zeroHopAdvert),
                     ],
                   ),
                   onTap: () => {
@@ -468,12 +469,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ),
                   },
                 ),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.cell_tower),
                       const SizedBox(width: 8),
-                      Text(context.l10n.contacts_floodAdvert),
+                      Text(menuContext.l10n.contacts_floodAdvert),
                     ],
                   ),
                   onTap: () => {
@@ -484,7 +485,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ),
                   },
                 ),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   enabled:
                       connector.selfPublicKey != null &&
                       (connector.selfName?.trim().isNotEmpty ?? false),
@@ -494,7 +495,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n.shareLink_copySelfShareLink,
+                          menuContext.l10n.shareLink_copySelfShareLink,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -503,7 +504,7 @@ class _ContactsScreenState extends State<ContactsScreen>
                   onTap: () => _copySelfShareLink(connector),
                 ),
                 const PopupMenuDivider(),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   enabled: connector.contacts.isNotEmpty,
                   onTap: () => _confirmDeleteAllContacts(context, connector),
                   child: Row(
@@ -511,17 +512,19 @@ class _ContactsScreenState extends State<ContactsScreen>
                       Icon(
                         Icons.delete_sweep,
                         color: connector.contacts.isNotEmpty
-                            ? Theme.of(context).colorScheme.error
+                            ? Theme.of(menuContext).colorScheme.error
                             : null,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          context.l10n.contacts_deleteAllContacts,
+                          menuContext.l10n.contacts_deleteAllContacts,
                           overflow: TextOverflow.ellipsis,
                           style: connector.contacts.isNotEmpty
                               ? TextStyle(
-                                  color: Theme.of(context).colorScheme.error,
+                                  color: Theme.of(
+                                    menuContext,
+                                  ).colorScheme.error,
                                 )
                               : null,
                         ),
@@ -529,37 +532,12 @@ class _ContactsScreenState extends State<ContactsScreen>
                     ],
                   ),
                 ),
-                const PopupMenuDivider(),
-                PopupMenuItem(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.logout,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(context.l10n.common_disconnect),
-                    ],
-                  ),
-                  onTap: () => _disconnect(context, connector),
-                ),
-                PopupMenuItem(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.settings),
-                      const SizedBox(width: 8),
-                      Text(context.l10n.settings_title),
-                    ],
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  ),
-                ),
               ],
-              icon: const Icon(Icons.more_vert),
+              onSettings: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              ),
+              onDisconnect: () => _disconnect(context, connector),
             ),
           ],
         ),
@@ -569,19 +547,6 @@ class _ContactsScreenState extends State<ContactsScreen>
               _buildContactSyncNotice(context, connector),
             Expanded(child: _buildContactsBody(context, connector)),
           ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            if (connector.isContactPersistenceSuspended) {
-              showDismissibleSnackBar(
-                context,
-                content: Text(context.l10n.contacts_syncChangesDisabled),
-              );
-              return;
-            }
-            _showAddContactSheet(context);
-          },
-          child: const Icon(Icons.person_add),
         ),
         bottomNavigationBar: SafeArea(
           top: false,
@@ -630,42 +595,6 @@ class _ContactsScreenState extends State<ContactsScreen>
             ),
           ],
         ],
-      ),
-    );
-  }
-
-  void _showAddContactSheet(BuildContext context) {
-    showMeshSheet(
-      context,
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            BottomSheetHeader(title: context.l10n.contacts_title),
-            ListTile(
-              leading: const Icon(Icons.paste),
-              title: Text(context.l10n.contacts_addContactFromClipboard),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                _contactImport();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.person_add_rounded),
-              title: Text(context.l10n.discoveredContacts_Title),
-              onTap: () {
-                Navigator.pop(sheetContext);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DiscoveryScreen(),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
       ),
     );
   }

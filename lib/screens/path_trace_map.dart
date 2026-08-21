@@ -19,6 +19,7 @@ import 'package:meshcore_open/services/app_settings_service.dart';
 import 'package:meshcore_open/services/map_tile_cache_service.dart';
 import 'package:meshcore_open/services/path_history_service.dart';
 import 'package:meshcore_open/utils/app_logger.dart';
+import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:meshcore_open/widgets/path_map_ui.dart';
 import 'package:meshcore_open/widgets/snr_indicator.dart';
 import 'package:meshcore_open/widgets/themed_map_tile_layer.dart';
@@ -886,7 +887,7 @@ class _PathTraceMapScreenState extends State<PathTraceMapScreen>
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(widget.title),
+            title: AppBarTitle(widget.title, subtitle: false),
             centerTitle: true,
             actions: [
               IconButton(

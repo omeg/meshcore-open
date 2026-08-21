@@ -12,6 +12,7 @@ import '../l10n/l10n.dart';
 import '../models/app_settings.dart';
 import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 
 class CompanionTelemetryScreen extends StatefulWidget {
@@ -107,7 +108,7 @@ class _CompanionTelemetryScreenState extends State<CompanionTelemetryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.companionTelemetry_title),
+        title: AppBarTitle(l10n.companionTelemetry_title, subtitle: false),
         centerTitle: true,
         actions: [
           IconButton(

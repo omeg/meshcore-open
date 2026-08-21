@@ -12,7 +12,9 @@ sealed class MeshCoreShareLink {
 
   static MeshCoreShareLink? tryParse(String text) {
     final trimmed = text.trim();
-    return _tryParseUri(trimmed) ?? _tryParseCompactContact(trimmed);
+    return _tryParseUri(trimmed) ??
+        _tryParseCompactContact(trimmed) ??
+        _tryParseRawContactPublicKey(trimmed);
   }
 
   static List<MeshCoreShareLinkMatch> findInText(String text) {
@@ -141,6 +143,20 @@ sealed class MeshCoreShareLink {
       name: name,
       publicKey: hex2Uint8List(match.group(1)!),
       type: int.parse(fields[typeIndex]),
+    );
+  }
+
+  static MeshCoreShareLink? _tryParseRawContactPublicKey(String text) {
+    if (!_isHex(text, expectedLength: pubKeySize * 2)) return null;
+
+    // A bare public key carries no display metadata. Treat it as a chat
+    // contact and use the same concise key representation shown in the UI as
+    // its editable contact name.
+    final name = '${text.substring(0, 8)}..${text.substring(text.length - 8)}';
+    return MeshCoreContactShareLink(
+      name: name,
+      publicKey: hex2Uint8List(text),
+      type: advTypeChat,
     );
   }
 

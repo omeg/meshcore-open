@@ -614,6 +614,7 @@
   "shareLink_channelAddFailed": "Failed to add channel.",
   "shareLink_copyShareLink": "Copy share link",
   "shareLink_copySelfShareLink": "Copy self share link",
+  "shareLink_shareMyContact": "Share my contact",
   "shareLink_copied": "Share link copied to Clipboard.",
   "shareLink_unavailable": "Device contact details are not available.",
   "channels_title": "Channels",

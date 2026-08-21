@@ -7,6 +7,7 @@ import '../connector/meshcore_protocol.dart';
 import '../helpers/public_key.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../helpers/snack_bar_builder.dart';
 
 enum _BleLogView { frames, rawLogRx }
@@ -33,7 +34,9 @@ class _BleDebugLogScreenState extends State<BleDebugLogScreen> {
             : rawEntries.isNotEmpty;
         return Scaffold(
           appBar: AppBar(
-            title: AdaptiveAppBarTitle(context.l10n.debugLog_bleTitle),
+            title: AppBarTitle.custom(
+              AdaptiveAppBarTitle(context.l10n.debugLog_bleTitle),
+            ),
             centerTitle: true,
             actions: [
               IconButton(

@@ -24,6 +24,7 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
 
   final Contact contact;
   Uint8List? sentFrame;
+  Contact? importedContact;
   Contact? removedContact;
   bool removeAllContactsCalled = false;
   bool contactSyncSlow = false;
@@ -75,6 +76,12 @@ class _FakeMeshCoreConnector extends MeshCoreConnector {
     bool waitForGenericAck = false,
   }) async {
     sentFrame = Uint8List.fromList(data);
+  }
+
+  @override
+  Future<bool> importDiscoveredContact(Contact contact) async {
+    importedContact = contact;
+    return true;
   }
 
   @override
@@ -198,6 +205,74 @@ void main() {
     expect((link! as MeshCoreContactShareLink).name, 'My Companion');
   });
 
+  testWidgets('clipboard import accepts contact links and a raw public key', (
+    tester,
+  ) async {
+    const publicKeyHex =
+        '4563b1621b584de5e922de7f75c01d3ffafeb5e7450406065c15a61e016aed09';
+    final advert = Uint8List.fromList([
+      (payloadTypeADVERT << 2) | 1,
+      0,
+      ...hex2Uint8List(publicKeyHex),
+      1,
+      2,
+      3,
+      4,
+      ...List<int>.filled(64, 0),
+      0x80 | advTypeChat,
+      ...'Legacy Contact'.codeUnits,
+      0,
+    ]);
+    final clipboardValues = <String>[
+      'meshcore://contact/add?name=Structured&public_key=$publicKeyHex&type=1',
+      '<$publicKeyHex:1:Compact>',
+      'meshcore://${pubKeyToHex(advert)}',
+      publicKeyHex,
+    ];
+    String clipboardText = clipboardValues.first;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.getData') {
+          return <String, Object?>{'text': clipboardText};
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+
+    for (final value in clipboardValues) {
+      clipboardText = value;
+      final savedContact = Contact(
+        publicKey: Uint8List.fromList(List<int>.filled(pubKeySize, 0xA4)),
+        name: 'Saved Contact',
+        type: advTypeChat,
+        pathLength: 0,
+        path: Uint8List(0),
+        lastSeen: DateTime.now(),
+      );
+      final connector = _FakeMeshCoreConnector(savedContact);
+      await tester.pumpWidget(_buildTestApp(connector));
+      await tester.pumpAndSettle();
+      final l10n = AppLocalizations.of(
+        tester.element(find.byType(ContactsScreen)),
+      );
+
+      await tester.tap(find.byTooltip(l10n.contacts_moreOptions));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(l10n.contacts_addContactFromClipboard));
+      await tester.pumpAndSettle();
+
+      expect(connector.importedContact, isNotNull, reason: value);
+      expect(connector.importedContact!.publicKeyHex, publicKeyHex);
+    }
+  });
+
   testWidgets('contact context menu copies the complete public key', (
     tester,
   ) async {
@@ -292,7 +367,10 @@ void main() {
       tester.element(find.byType(ContactsScreen)),
     );
 
-    await tester.tap(find.byType(FloatingActionButton));
+    expect(find.byType(FloatingActionButton), findsNothing);
+    await tester.tap(find.byTooltip(l10n.contacts_moreOptions));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.contacts_addContactFromClipboard));
     await tester.pump();
 
     expect(find.text(l10n.contacts_syncChangesDisabled), findsOneWidget);

@@ -1346,6 +1346,9 @@ class AppLocalizationsUk extends AppLocalizations {
   String get shareLink_copySelfShareLink => 'Copy self share link';
 
   @override
+  String get shareLink_shareMyContact => 'Share my contact';
+
+  @override
   String get shareLink_copied => 'Share link copied to Clipboard.';
 
   @override

@@ -21,6 +21,7 @@ import '../storage/telemetry_log_store.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/platform_info.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/sync_progress_overlay.dart';
 import 'map_cache_screen.dart';
@@ -51,7 +52,9 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: AdaptiveAppBarTitle(context.l10n.appSettings_title),
+        title: AppBarTitle.custom(
+          AdaptiveAppBarTitle(context.l10n.appSettings_title),
+        ),
         centerTitle: true,
         bottom: const SyncProgressAppBarBottom(),
       ),

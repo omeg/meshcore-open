@@ -120,11 +120,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
     final screen = Scaffold(
       appBar: AppBar(
-        title: AppBarTitle(
-          l10n.discoveredContacts_Title,
-          indicators: false,
-          subtitle: false,
-        ),
+        title: AppBarTitle(l10n.discoveredContacts_Title, subtitle: false),
         centerTitle: true,
         actions: [
           PopupMenuButton(

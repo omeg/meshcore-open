@@ -9,6 +9,7 @@ import '../l10n/l10n.dart';
 import '../services/app_settings_service.dart';
 import '../services/map_tile_cache_service.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
@@ -299,7 +300,7 @@ class _MapCacheScreenState extends State<MapCacheScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: AdaptiveAppBarTitle(l10n.mapCache_title),
+        title: AppBarTitle.custom(AdaptiveAppBarTitle(l10n.mapCache_title)),
         centerTitle: true,
       ),
       body: Column(

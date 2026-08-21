@@ -2512,6 +2512,12 @@ abstract class AppLocalizations {
   /// **'Copy self share link'**
   String get shareLink_copySelfShareLink;
 
+  /// No description provided for @shareLink_shareMyContact.
+  ///
+  /// In en, this message translates to:
+  /// **'Share my contact'**
+  String get shareLink_shareMyContact;
+
   /// No description provided for @shareLink_copied.
   ///
   /// In en, this message translates to:

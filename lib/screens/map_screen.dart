@@ -748,17 +748,22 @@ class _MapScreenState extends State<MapScreen> {
               automaticallyImplyLeading: !widget.hideBackButton,
               bottom: const SyncProgressAppBarBottom(),
               actions: [
-                PopupMenuButton(
-                  itemBuilder: (context) => [
+                MainScreenOverflowMenu(
+                  itemBuilder: (menuContext) => [
                     if (!_isBuildingPathTrace &&
                         connector.selfLatitude != null &&
                         connector.selfLongitude != null)
-                      PopupMenuItem(
+                      PopupMenuItem<void>(
                         child: Row(
                           children: [
                             const Icon(Icons.radar),
                             const SizedBox(width: 8),
-                            Text(context.l10n.contacts_pathTrace),
+                            Expanded(
+                              child: Text(
+                                menuContext.l10n.contacts_pathTrace,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                         onTap: () => _startPath(
@@ -769,12 +774,17 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ),
                     if (!_isBuildingPathTrace)
-                      PopupMenuItem(
+                      PopupMenuItem<void>(
                         child: Row(
                           children: [
                             const LosIcon(),
                             const SizedBox(width: 8),
-                            Text(context.l10n.map_lineOfSight),
+                            Expanded(
+                              child: Text(
+                                menuContext.l10n.map_lineOfSight,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                         onTap: () {
@@ -814,25 +824,17 @@ class _MapScreenState extends State<MapScreen> {
                           );
                         },
                       ),
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.logout,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.common_disconnect),
-                        ],
-                      ),
-                      onTap: () => _disconnect(context, connector),
-                    ),
-                    PopupMenuItem(
+                    PopupMenuItem<void>(
                       child: Row(
                         children: [
                           const Icon(Icons.person_add_rounded),
                           const SizedBox(width: 8),
-                          Text(context.l10n.discoveredContacts_Title),
+                          Expanded(
+                            child: Text(
+                              menuContext.l10n.discoveredContacts_Title,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                       onTap: () => Navigator.push(
@@ -842,23 +844,14 @@ class _MapScreenState extends State<MapScreen> {
                         ),
                       ),
                     ),
-                    PopupMenuItem(
-                      child: Row(
-                        children: [
-                          const Icon(Icons.settings),
-                          const SizedBox(width: 8),
-                          Text(context.l10n.settings_title),
-                        ],
-                      ),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SettingsScreen(),
-                        ),
-                      ),
-                    ),
                   ],
-                  icon: const Icon(Icons.more_vert),
+                  onSettings: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  ),
+                  onDisconnect: () => _disconnect(context, connector),
                 ),
               ],
             ),

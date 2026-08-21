@@ -9,6 +9,7 @@ import 'package:meshcore_open/l10n/l10n.dart';
 import 'package:meshcore_open/models/contact.dart';
 import 'package:meshcore_open/storage/region_store.dart';
 import 'package:meshcore_open/theme/mesh_theme.dart';
+import 'package:meshcore_open/widgets/app_bar.dart';
 import 'package:meshcore_open/widgets/mesh_ui.dart';
 import 'package:provider/provider.dart';
 
@@ -57,7 +58,10 @@ class _RegionManagementScreenState extends State<RegionManagementScreen> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.settings_regionManagement_screenTitle),
+        title: AppBarTitle(
+          l10n.settings_regionManagement_screenTitle,
+          subtitle: false,
+        ),
         centerTitle: true,
         actions: [
           IconButton(

@@ -104,11 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final l10n = context.l10n;
     return Scaffold(
       appBar: AppBar(
-        title: AppBarTitle(
-          l10n.settings_title,
-          indicators: false,
-          subtitle: false,
-        ),
+        title: AppBarTitle(l10n.settings_title, subtitle: false),
         centerTitle: true,
         bottom: const SyncProgressAppBarBottom(),
       ),

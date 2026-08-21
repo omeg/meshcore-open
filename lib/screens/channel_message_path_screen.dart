@@ -25,6 +25,7 @@ import '../models/display_path.dart';
 import '../models/path_playback.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/path_map_ui.dart';
 import '../widgets/themed_map_tile_layer.dart';
@@ -116,7 +117,9 @@ class _ChannelMessagePathScreenState extends State<ChannelMessagePathScreen> {
             : extraPaths;
         return Scaffold(
           appBar: AppBar(
-            title: AdaptiveAppBarTitle(l10n.channelPath_title),
+            title: AppBarTitle.custom(
+              AdaptiveAppBarTitle(l10n.channelPath_title),
+            ),
             actions: [
               IconButton(
                 icon: const Icon(Icons.radar_outlined),
@@ -1013,7 +1016,9 @@ class _ChannelMessagePathMapScreenState
 
         return Scaffold(
           appBar: AppBar(
-            title: AdaptiveAppBarTitle(context.l10n.channelPath_mapTitle),
+            title: AppBarTitle.custom(
+              AdaptiveAppBarTitle(context.l10n.channelPath_mapTitle),
+            ),
           ),
           body: SafeArea(
             top: false,

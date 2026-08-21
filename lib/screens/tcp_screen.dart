@@ -10,6 +10,7 @@ import '../services/app_settings_service.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/platform_info.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../helpers/snack_bar_builder.dart';
 import 'channels_screen.dart';
@@ -88,7 +89,9 @@ class _TcpScreenState extends State<TcpScreen> {
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: AdaptiveAppBarTitle(context.l10n.tcpScreenTitle),
+        title: AppBarTitle.custom(
+          AdaptiveAppBarTitle(context.l10n.tcpScreenTitle),
+        ),
         centerTitle: true,
       ),
       body: SafeArea(

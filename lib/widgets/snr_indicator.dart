@@ -157,7 +157,7 @@ class _SNRIndicatorState extends State<SNRIndicator> {
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       child: InkWell(
         onTap: directRepeater != null
-            ? () => _showFullPathDialog(context)
+            ? () => _showNearbyRepeatersScreen(context)
             : null,
         borderRadius: BorderRadius.circular(8),
         child: Padding(
@@ -208,71 +208,38 @@ class _SNRIndicatorState extends State<SNRIndicator> {
     return "${days}d";
   }
 
-  void _showFullPathDialog(BuildContext context) {
+  void _showNearbyRepeatersScreen(BuildContext context) {
     final l10n = context.l10n;
-    final isCompact = MediaQuery.sizeOf(context).width < 600;
-
-    if (isCompact) {
-      Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          fullscreenDialog: true,
-          builder: (context) => Scaffold(
-            appBar: AppBar(
-              title: Text(l10n.snrIndicator_nearByRepeaters),
-              leading: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.pop(context),
-              ),
-              actions: [
-                IconButton(
-                  tooltip: 'Reset',
-                  icon: const Icon(Icons.restart_alt),
-                  onPressed: widget.connector.clearDirectRepeaters,
-                ),
-              ],
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            title: Text(l10n.snrIndicator_nearByRepeaters),
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => Navigator.pop(context),
             ),
-            body: SafeArea(
-              child: AnimatedBuilder(
-                animation: widget.connector,
-                builder: (context, _) =>
-                    _buildNearbyRepeatersList(context, shrinkWrap: false),
+            actions: [
+              IconButton(
+                tooltip: 'Reset',
+                icon: const Icon(Icons.restart_alt),
+                onPressed: widget.connector.clearDirectRepeaters,
               ),
+            ],
+          ),
+          body: SafeArea(
+            child: AnimatedBuilder(
+              animation: widget.connector,
+              builder: (context, _) => _buildNearbyRepeatersList(context),
             ),
           ),
         ),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(l10n.snrIndicator_nearByRepeaters),
-        content: SizedBox(
-          width: 560,
-          child: AnimatedBuilder(
-            animation: widget.connector,
-            builder: (context, _) => _buildNearbyRepeatersList(context),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: widget.connector.clearDirectRepeaters,
-            child: const Text('Reset'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(l10n.common_close),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _buildNearbyRepeatersList(
-    BuildContext context, {
-    bool shrinkWrap = true,
-  }) {
+  Widget _buildNearbyRepeatersList(BuildContext context) {
     final l10n = context.l10n;
     final directBestRepeaters = List.of(widget.connector.directRepeaters)
       ..sort(DirectRepeater.compareByPacketCount);
@@ -288,7 +255,6 @@ class _SNRIndicatorState extends State<SNRIndicator> {
 
     return Scrollbar(
       child: ListView.separated(
-        shrinkWrap: shrinkWrap,
         padding: const EdgeInsets.symmetric(vertical: 4),
         itemCount: directBestRepeaters.length,
         separatorBuilder: (_, _) => const Divider(height: 1),

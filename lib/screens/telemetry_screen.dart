@@ -18,6 +18,7 @@ import '../widgets/remote_node_auth.dart';
 import '../helpers/cayenne_lpp.dart';
 import '../helpers/localized_time.dart';
 import '../utils/battery_utils.dart';
+import '../widgets/app_bar.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../widgets/sync_progress_overlay.dart';
 import '../widgets/telemetry_location_map.dart';
@@ -359,22 +360,27 @@ class _TelemetryScreenState extends State<TelemetryScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              l10n.repeater_telemetry,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            Text(
-              widget.contact.name,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.normal,
+        title: AppBarTitle.custom(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.repeater_telemetry,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ],
+              Text(
+                widget.contact.name,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+            ],
+          ),
         ),
         centerTitle: false,
         bottom: const SyncProgressAppBarBottom(),

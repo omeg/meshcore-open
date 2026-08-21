@@ -13,6 +13,7 @@ import '../services/storage_service.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
 import '../utils/desktop_text_input_focus.dart';
+import '../widgets/app_bar.dart';
 
 class RepeaterCliScreen extends StatefulWidget {
   final Contact repeater;
@@ -464,7 +465,7 @@ class _RepeaterCliScreenState extends State<RepeaterCliScreen> {
       backgroundColor: MeshPalette.bg,
       appBar: AppBar(
         backgroundColor: MeshPalette.bg1,
-        title: Text(l10n.repeater_cliTitle),
+        title: AppBarTitle(l10n.repeater_cliTitle, subtitle: false),
         centerTitle: true,
         actions: [
           IconButton(

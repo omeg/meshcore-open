@@ -6,6 +6,7 @@ import '../l10n/l10n.dart';
 import '../services/app_debug_log_service.dart';
 import '../theme/mesh_theme.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../helpers/snack_bar_builder.dart';
 
 class AppDebugLogScreen extends StatelessWidget {
@@ -20,7 +21,9 @@ class AppDebugLogScreen extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(
-            title: AdaptiveAppBarTitle(context.l10n.debugLog_appTitle),
+            title: AppBarTitle.custom(
+              AdaptiveAppBarTitle(context.l10n.debugLog_appTitle),
+            ),
             centerTitle: true,
             actions: [
               IconButton(

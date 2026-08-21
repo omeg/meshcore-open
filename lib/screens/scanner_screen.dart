@@ -10,6 +10,7 @@ import '../l10n/l10n.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/app_logger.dart';
 import '../widgets/adaptive_app_bar_title.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/device_tile.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
@@ -154,7 +155,9 @@ class _ScannerScreenState extends State<ScannerScreen> {
                 },
               )
             : null,
-        title: AdaptiveAppBarTitle(context.l10n.scanner_title),
+        title: AppBarTitle.custom(
+          AdaptiveAppBarTitle(context.l10n.scanner_title),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
         actions: [

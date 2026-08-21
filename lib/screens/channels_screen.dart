@@ -123,17 +123,37 @@ class _ChannelsScreenState extends State<ChannelsScreen>
           automaticallyImplyLeading: false,
           bottom: const SyncProgressAppBarBottom(),
           actions: [
-            PopupMenuButton(
+            MainScreenOverflowMenu(
               // onTap handlers run after the menu route pops, so they must
               // capture the screen's context — not the itemBuilder's menu
               // context, which is deactivated by then.
               itemBuilder: (menuContext) => [
-                PopupMenuItem(
+                PopupMenuItem<void>(
+                  child: Row(
+                    children: [
+                      const Icon(Icons.add),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          menuContext.l10n.channels_addChannel,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _showAddChannelDialog(context),
+                ),
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.wifi_find),
                       const SizedBox(width: 8),
-                      Text(menuContext.l10n.nearbyNodes_menu),
+                      Expanded(
+                        child: Text(
+                          menuContext.l10n.nearbyNodes_menu,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   onTap: () => Navigator.push(
@@ -143,25 +163,17 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                     ),
                   ),
                 ),
-                PopupMenuItem(
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.logout,
-                        color: Theme.of(menuContext).colorScheme.error,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(menuContext.l10n.common_disconnect),
-                    ],
-                  ),
-                  onTap: () => _disconnect(context),
-                ),
-                PopupMenuItem(
+                PopupMenuItem<void>(
                   child: Row(
                     children: [
                       const Icon(Icons.person_add_rounded),
                       const SizedBox(width: 8),
-                      Text(menuContext.l10n.discoveredContacts_Title),
+                      Expanded(
+                        child: Text(
+                          menuContext.l10n.discoveredContacts_Title,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                   onTap: () => Navigator.push(
@@ -172,33 +184,27 @@ class _ChannelsScreenState extends State<ChannelsScreen>
                   ),
                 ),
                 if (_communities.isNotEmpty)
-                  PopupMenuItem(
+                  PopupMenuItem<void>(
                     child: Row(
                       children: [
                         const Icon(Icons.groups),
                         const SizedBox(width: 8),
-                        Text(menuContext.l10n.community_manageCommunities),
+                        Expanded(
+                          child: Text(
+                            menuContext.l10n.community_manageCommunities,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                     onTap: () => _showManageCommunitiesDialog(context),
                   ),
-                PopupMenuItem(
-                  child: Row(
-                    children: [
-                      const Icon(Icons.settings),
-                      const SizedBox(width: 8),
-                      Text(menuContext.l10n.settings_title),
-                    ],
-                  ),
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  ),
-                ),
               ],
-              icon: const Icon(Icons.more_vert),
+              onSettings: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const SettingsScreen()),
+              ),
+              onDisconnect: () => _disconnect(context),
             ),
           ],
         ),
@@ -375,11 +381,6 @@ class _ChannelsScreenState extends State<ChannelsScreen>
               ],
             );
           }(),
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showAddChannelDialog(context),
-          tooltip: context.l10n.channels_addChannel,
-          child: const Icon(Icons.add),
         ),
         bottomNavigationBar: SafeArea(
           top: false,

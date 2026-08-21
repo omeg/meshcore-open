@@ -12,6 +12,7 @@ import '../models/contact.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/disconnect_navigation_mixin.dart';
 import '../utils/platform_info.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/nearby_repeater_actions.dart';
@@ -122,7 +123,7 @@ class _NearbyNodesScreenState extends State<NearbyNodesScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.nearbyNodes_title),
+        title: AppBarTitle(context.l10n.nearbyNodes_title, subtitle: false),
         actions: [
           IconButton(
             tooltip: context.l10n.repeater_refresh,

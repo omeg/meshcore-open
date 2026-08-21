@@ -11,6 +11,7 @@ import '../connector/meshcore_protocol.dart';
 import '../services/repeater_command_service.dart';
 import '../services/storage_service.dart';
 import '../theme/mesh_theme.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -1385,7 +1386,7 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.repeater_settingsTitle),
+        title: AppBarTitle(l10n.repeater_settingsTitle, subtitle: false),
         centerTitle: true,
         actions: [
           IconButton(

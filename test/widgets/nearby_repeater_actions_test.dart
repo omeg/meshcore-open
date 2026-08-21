@@ -190,13 +190,19 @@ void main() {
     await tester.pumpWidget(
       _testApp(connector, Scaffold(body: SNRIndicator(connector: connector))),
     );
+    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     await tester.tap(find.byType(SNRIndicator));
     await tester.pumpAndSettle();
 
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(
+      tester.getSize(find.byType(Scaffold)),
+      tester.view.physicalSize / tester.view.devicePixelRatio,
+    );
     await tester.longPress(find.text(contact.name));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     expect(find.text(l10n.nearbyNodes_goToContact), findsOneWidget);
     expect(find.text(l10n.nearbyNodes_copyPublicKey), findsOneWidget);
     expect(find.text(l10n.settings_locationShowOnMap), findsOneWidget);
@@ -218,12 +224,12 @@ void main() {
     await tester.pumpWidget(
       _testApp(connector, Scaffold(body: SNRIndicator(connector: connector))),
     );
+    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     await tester.tap(find.byType(SNRIndicator));
     await tester.pumpAndSettle();
     await tester.longPress(find.text('1122').first);
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     expect(find.text(l10n.nearbyNodes_goToContact), findsNothing);
     expect(find.text(l10n.nearbyNodes_copyPublicKeyPrefix), findsOneWidget);
     expect(find.text(l10n.settings_locationShowOnMap), findsNothing);
@@ -242,12 +248,12 @@ void main() {
     await tester.pumpWidget(
       _testApp(connector, Scaffold(body: SNRIndicator(connector: connector))),
     );
+    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     await tester.tap(find.byType(SNRIndicator));
     await tester.pumpAndSettle();
     await tester.longPress(find.text(contact.name));
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(tester.element(find.byType(SNRIndicator)));
     await tester.tap(find.text(l10n.nearbyNodes_goToContact));
     await tester.pumpAndSettle();
 

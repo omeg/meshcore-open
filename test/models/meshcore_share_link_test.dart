@@ -45,6 +45,16 @@ void main() {
       expect(repeater.type, advTypeRepeater);
     });
 
+    test('parses a raw public key as a chat contact', () {
+      final parsed = MeshCoreShareLink.tryParse(publicKeyHex);
+
+      expect(parsed, isA<MeshCoreContactShareLink>());
+      final contact = parsed! as MeshCoreContactShareLink;
+      expect(contact.name, '4563b162..016aed09');
+      expect(contact.type, advTypeChat);
+      expect(pubKeyToHex(contact.publicKey!), publicKeyHex);
+    });
+
     test('parses legacy hex advertisement and extracts its preview', () {
       final advert = Uint8List.fromList([
         (payloadTypeADVERT << 2) | 1,

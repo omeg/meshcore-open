@@ -14,6 +14,7 @@ import '../services/app_settings_service.dart';
 import '../services/repeater_command_service.dart';
 import '../theme/mesh_theme.dart';
 import '../utils/battery_utils.dart';
+import '../widgets/app_bar.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
@@ -443,7 +444,7 @@ class _RepeaterStatusScreenState extends State<RepeaterStatusScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.repeater_statusTitle),
+        title: AppBarTitle(l10n.repeater_statusTitle, subtitle: false),
         centerTitle: true,
         actions: [
           IconButton(

@@ -133,7 +133,7 @@ Advertisements that are not auto-added can still be retained in Discovered Conta
 
 ### Import from the clipboard
 
-Choose **Add Contact from Clipboard** from the overflow menu or the person-add shortcut. The app reads a supported contact link from the clipboard, validates it, and imports the contact to the companion. Empty, malformed, channel, or otherwise unsupported clipboard content is rejected.
+Choose **Add Contact from Clipboard** from the overflow menu or the person-add shortcut. The app reads a supported contact link or raw public key from the clipboard, validates it, and imports the contact to the companion. Empty, malformed, channel, or otherwise unsupported clipboard content is rejected.
 
 ### Import from Discovered Contacts
 
@@ -185,6 +185,8 @@ The app also accepts:
 - Legacy business-card links containing a raw hexadecimal advertisement: `meshcore://<hex-encoded-advertisement>`
 - Compact contact strings: `<64-hex-public-key:type:name>`
 - The older compact variant with one extra field before `type`
+- A bare 64-character hexadecimal public key; it is added as a chat contact
+  with a shortened public key as its initial name
 
 A structured or compact link contains a public identity, contact type, and descriptive name; it does not contain a private identity key. A legacy advertisement may also carry signed public metadata such as location.
 
