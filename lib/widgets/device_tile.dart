@@ -13,12 +13,14 @@ import 'signal_ui.dart';
 /// While connecting, shows a small progress ring instead of signal bars.
 class DeviceTile extends StatelessWidget {
   final ScanResult scanResult;
+  final String displayName;
   final VoidCallback? onTap;
   final bool isConnecting;
 
   const DeviceTile({
     super.key,
     required this.scanResult,
+    required this.displayName,
     required this.onTap,
     this.isConnecting = false,
   });
@@ -27,11 +29,8 @@ class DeviceTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final device = scanResult.device;
     final rssi = scanResult.rssi;
-    final name = device.platformName.isNotEmpty
-        ? device.platformName
-        : scanResult.advertisementData.advName;
-    final displayName = name.isNotEmpty
-        ? name
+    final resolvedDisplayName = displayName.trim().isNotEmpty
+        ? displayName.trim()
         : context.l10n.common_unknownDevice;
     final mac = device.remoteId.toString();
     final scheme = Theme.of(context).colorScheme;
@@ -57,7 +56,7 @@ class DeviceTile extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          AvatarCircle(name: displayName, size: 42, icon: Icons.router),
+          AvatarCircle(name: resolvedDisplayName, size: 42, icon: Icons.router),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -65,7 +64,7 @@ class DeviceTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  displayName,
+                  resolvedDisplayName,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: scheme.onSurface,

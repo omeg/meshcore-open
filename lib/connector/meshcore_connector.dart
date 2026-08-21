@@ -45,6 +45,7 @@ import '../storage/channel_order_store.dart';
 import '../storage/channel_settings_store.dart';
 import '../storage/channel_region_store.dart';
 import '../storage/channel_store.dart';
+import '../storage/ble_device_name_store.dart';
 import '../storage/contact_discovery_store.dart';
 import '../storage/contact_settings_store.dart';
 import '../storage/contact_store.dart';
@@ -252,6 +253,8 @@ class MeshCoreConnector extends ChangeNotifier {
 
   final List<ScanResult> _scanResults = [];
   final List<ScanResult> _linuxSystemScanResults = [];
+  final BleDeviceNameStore _bleDeviceNameStore = BleDeviceNameStore();
+  final Map<String, String> _rememberedBleDeviceNames = {};
   final List<Contact> _contacts = [];
   final List<Contact> _discoveredContacts = [];
   final List<Channel> _channels = [];
@@ -503,14 +506,40 @@ class MeshCoreConnector extends ChangeNotifier {
     if (_selfName != null && _selfName!.isNotEmpty) {
       return _selfName!;
     }
+    if (_deviceDisplayName != null && _deviceDisplayName!.isNotEmpty) {
+      return _deviceDisplayName!;
+    }
     final platformName = _device?.platformName;
     if (platformName != null && platformName.isNotEmpty) {
       return platformName;
     }
-    if (_deviceDisplayName != null && _deviceDisplayName!.isNotEmpty) {
-      return _deviceDisplayName!;
-    }
     return 'Unknown Device';
+  }
+
+  String displayNameForScanResult(ScanResult result) {
+    return selectBleDeviceDisplayName(
+      rememberedName:
+          _rememberedBleDeviceNames[result.device.remoteId.toString()],
+      advertisedName: result.advertisementData.advName,
+      platformName: result.device.platformName,
+    );
+  }
+
+  @visibleForTesting
+  static String selectBleDeviceDisplayName({
+    String? rememberedName,
+    required String advertisedName,
+    required String platformName,
+  }) {
+    for (final candidate in <String?>[
+      rememberedName,
+      advertisedName,
+      platformName,
+    ]) {
+      final trimmed = candidate?.trim() ?? '';
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    return '';
   }
 
   List<ScanResult> get scanResults => List.unmodifiable(_scanResults);
@@ -1177,6 +1206,16 @@ class MeshCoreConnector extends ChangeNotifier {
     _backgroundService = backgroundService;
     _timeoutPredictionService = timeoutPredictionService;
     _stateSyncService = stateSyncService;
+    try {
+      _rememberedBleDeviceNames
+        ..clear()
+        ..addAll(_bleDeviceNameStore.loadNames());
+    } catch (error) {
+      _appDebugLogService?.warn(
+        'Could not load remembered BLE device names: $error',
+        tag: 'Storage',
+      );
+    }
     _usbManager.setDebugLogService(_appDebugLogService);
     _tcpConnector.setDebugLogService(_appDebugLogService);
 
@@ -1726,20 +1765,15 @@ class MeshCoreConnector extends ChangeNotifier {
     _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
       _scanResults
         ..clear()
-        ..addAll(results);
+        ..addAll(results.where(_isMeshCoreScanResult));
       _mergeLinuxSystemScanResults();
       notifyListeners();
     });
 
     try {
-      // Filter by the Nordic UART Service UUID rather than by advertised
-      // name. All MeshCore-compatible firmware (ESP32 + nRF52) advertises this
-      // service UUID, so this matches every device regardless of the name it
-      // chooses to advertise (e.g. community forks like the M5 Cardputer that
-      // do not use a "MeshCore-" name prefix). This mirrors how the official
-      // app discovers devices. Note: on Android `withKeywords` cannot be
-      // combined with any other filter, which is why name keywords are not
-      // used here.
+      // Ask the platform for NUS devices, then apply the MeshCore name filter
+      // above as well. NUS is shared by non-MeshCore products and some desktop
+      // backends return cached results that do not honor the service filter.
       await FlutterBluePlus.startScan(
         withServices: [Guid(MeshCoreUuids.service)],
         webOptionalServices: [Guid(MeshCoreUuids.service)],
@@ -1773,28 +1807,30 @@ class MeshCoreConnector extends ChangeNotifier {
       final systemDevices = await FlutterBluePlus.systemDevices([
         Guid(MeshCoreUuids.service),
       ]);
-      // systemDevices is already filtered by the NUS service UUID above, so no
-      // additional name-prefix filtering is applied here. This keeps Linux
-      // discovery name-agnostic and consistent with the main scan path.
       _linuxSystemScanResults
         ..clear()
         ..addAll(
-          systemDevices.map(
-            (device) => ScanResult(
-              device: device,
-              advertisementData: AdvertisementData(
-                advName: device.platformName,
-                txPowerLevel: null,
-                appearance: null,
-                connectable: true,
-                manufacturerData: const <int, List<int>>{},
-                serviceData: const <Guid, List<int>>{},
-                serviceUuids: <Guid>[Guid(MeshCoreUuids.service)],
+          systemDevices
+              .where(
+                (device) =>
+                    MeshCoreUuids.isKnownDeviceName(device.platformName),
+              )
+              .map(
+                (device) => ScanResult(
+                  device: device,
+                  advertisementData: AdvertisementData(
+                    advName: device.platformName,
+                    txPowerLevel: null,
+                    appearance: null,
+                    connectable: true,
+                    manufacturerData: const <int, List<int>>{},
+                    serviceData: const <Guid, List<int>>{},
+                    serviceUuids: <Guid>[Guid(MeshCoreUuids.service)],
+                  ),
+                  rssi: 0,
+                  timeStamp: DateTime.now(),
+                ),
               ),
-              rssi: 0,
-              timeStamp: DateTime.now(),
-            ),
-          ),
         );
       _mergeLinuxSystemScanResults();
       notifyListeners();
@@ -1804,6 +1840,13 @@ class MeshCoreConnector extends ChangeNotifier {
         tag: 'BLE Scan',
       );
     }
+  }
+
+  static bool _isMeshCoreScanResult(ScanResult result) {
+    return MeshCoreUuids.matchesDeviceNames(
+      platformName: result.device.platformName,
+      advertisedName: result.advertisementData.advName,
+    );
   }
 
   void _mergeLinuxSystemScanResults() {
@@ -5043,6 +5086,9 @@ class MeshCoreConnector extends ChangeNotifier {
       );
     }
     final selfName = _selfName?.trim();
+    if (_activeTransport == MeshCoreTransportType.bluetooth) {
+      _rememberConnectedBleDeviceName(selfName);
+    }
     if (_activeTransport == MeshCoreTransportType.usb &&
         selfName != null &&
         selfName.isNotEmpty) {
@@ -5073,6 +5119,33 @@ class MeshCoreConnector extends ChangeNotifier {
       _loadPersistedNodeStateAfterSelfInfo().whenComplete(
         _completeIdentityScopeReload,
       ),
+    );
+  }
+
+  void _rememberConnectedBleDeviceName(String? name) {
+    final deviceId = _deviceId?.trim();
+    final normalizedName = name?.trim();
+    if (deviceId == null ||
+        deviceId.isEmpty ||
+        normalizedName == null ||
+        normalizedName.isEmpty) {
+      return;
+    }
+
+    _deviceDisplayName = normalizedName;
+    _lastDeviceDisplayName = normalizedName;
+    if (_rememberedBleDeviceNames[deviceId] == normalizedName) return;
+
+    _rememberedBleDeviceNames[deviceId] = normalizedName;
+    unawaited(
+      _bleDeviceNameStore.saveNames(_rememberedBleDeviceNames).catchError((
+        error,
+      ) {
+        _appDebugLogService?.warn(
+          'Could not remember BLE device name: $error',
+          tag: 'Storage',
+        );
+      }),
     );
   }
 

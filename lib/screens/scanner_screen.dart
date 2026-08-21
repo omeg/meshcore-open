@@ -349,6 +349,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
           index: index,
           child: DeviceTile(
             scanResult: result,
+            displayName: connector.displayNameForScanResult(result),
             isConnecting: isConnecting && _connectingDeviceId == deviceId,
             onTap: isConnecting
                 ? null
@@ -364,9 +365,7 @@ class _ScannerScreenState extends State<ScannerScreen> {
     MeshCoreConnector connector,
     ScanResult result,
   ) async {
-    final name = result.device.platformName.isNotEmpty
-        ? result.device.platformName
-        : result.advertisementData.advName;
+    final name = connector.displayNameForScanResult(result);
     setState(() {
       _connectingDeviceId = result.device.remoteId.toString();
     });
