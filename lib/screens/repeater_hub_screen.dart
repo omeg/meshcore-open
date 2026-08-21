@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:provider/provider.dart';
 import '../connector/meshcore_connector.dart';
@@ -17,6 +18,7 @@ import 'repeater_settings_screen.dart';
 import 'telemetry_screen.dart';
 import 'telemetry_log_screen.dart';
 import 'neighbors_screen.dart';
+import 'map_screen.dart';
 
 class RepeaterHubScreen extends StatelessWidget {
   final Contact repeater;
@@ -133,26 +135,32 @@ class RepeaterHubScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              Expanded(
+                              Flexible(
+                                fit: FlexFit.loose,
                                 child: Text(
                                   formatPublicKeyHex(repeater.publicKeyHex),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                   style: MeshTheme.mono(
                                     fontSize: 11,
                                     color: scheme.onSurfaceVariant,
                                   ),
                                 ),
                               ),
+                              const SizedBox(width: 2),
                               IconButton(
                                 tooltip: l10n.common_copy,
-                                visualDensity: VisualDensity.compact,
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(
-                                  minWidth: 32,
-                                  minHeight: 32,
+                                style: IconButton.styleFrom(
+                                  minimumSize: const Size(24, 24),
+                                  maximumSize: const Size(24, 24),
+                                  padding: EdgeInsets.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
-                                icon: const Icon(Icons.copy_outlined, size: 16),
+                                alignment: Alignment.centerLeft,
+                                icon: const Icon(Icons.copy_outlined, size: 15),
                                 onPressed: () => copyPublicKeyHex(
                                   context,
                                   repeater.publicKeyHex,
@@ -176,16 +184,51 @@ class RepeaterHubScreen extends StatelessWidget {
                                   color: scheme.onSurfaceVariant,
                                 ),
                                 const SizedBox(width: 3),
-                                Expanded(
+                                Flexible(
+                                  fit: FlexFit.loose,
                                   child: Text(
                                     '${repeater.latitude?.toStringAsFixed(4)}, '
                                     '${repeater.longitude?.toStringAsFixed(4)}',
+                                    maxLines: 1,
                                     style: MeshTheme.mono(
                                       fontSize: 10,
                                       color: scheme.onSurfaceVariant,
                                     ),
                                     overflow: TextOverflow.ellipsis,
                                   ),
+                                ),
+                                const SizedBox(width: 2),
+                                IconButton(
+                                  key: const ValueKey('repeater_show_on_map'),
+                                  tooltip: l10n.settings_locationShowOnMap,
+                                  style: IconButton.styleFrom(
+                                    minimumSize: const Size(24, 24),
+                                    maximumSize: const Size(24, 24),
+                                    padding: EdgeInsets.zero,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  alignment: Alignment.centerLeft,
+                                  icon: const Icon(
+                                    Icons.map_outlined,
+                                    size: 15,
+                                  ),
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => MapScreen(
+                                          highlightPosition: LatLng(
+                                            repeater.latitude!,
+                                            repeater.longitude!,
+                                          ),
+                                          highlightLabel: repeater.name,
+                                          highlightMarkerKey:
+                                              repeater.publicKeyHex,
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ],
                             ),

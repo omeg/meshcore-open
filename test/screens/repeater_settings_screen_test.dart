@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:meshcore_open/connector/meshcore_connector.dart';
 import 'package:meshcore_open/connector/meshcore_protocol.dart';
 import 'package:meshcore_open/l10n/app_localizations.dart';
@@ -83,7 +84,11 @@ Contact _makeRepeater() {
   );
 }
 
-Widget _buildTestApp(MeshCoreConnector connector, Contact repeater) {
+Widget _buildTestApp(
+  MeshCoreConnector connector,
+  Contact repeater, {
+  RepeaterLocationPicker? locationPicker,
+}) {
   return ChangeNotifierProvider<MeshCoreConnector>.value(
     value: connector,
     child: MaterialApp(
@@ -93,6 +98,7 @@ Widget _buildTestApp(MeshCoreConnector connector, Contact repeater) {
       home: RepeaterSettingsScreen(
         repeater: repeater,
         password: 'test-password',
+        locationPicker: locationPicker,
       ),
     ),
   );
@@ -178,6 +184,61 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
     expect(connector.sentFrames, hasLength(1));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await connector.close();
+  });
+
+  testWidgets('picking a map location fills and dirties both coordinates', (
+    tester,
+  ) async {
+    final connector = _FakeMeshCoreConnector();
+    final repeater = _makeRepeater();
+    LatLng? pickerInitialLocation;
+
+    await tester.pumpWidget(
+      _buildTestApp(
+        connector,
+        repeater,
+        locationPicker: (context, initialLocation) async {
+          pickerInitialLocation = initialLocation;
+          return const LatLng(52.229676, 21.012229);
+        },
+      ),
+    );
+    await tester.pump();
+    final pickButton = find.byKey(
+      const ValueKey('repeater_location_pick_from_map'),
+    );
+    await tester.scrollUntilVisible(
+      pickButton,
+      300,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await Scrollable.ensureVisible(
+      tester.element(pickButton),
+      alignment: 0.5,
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(pickButton);
+    await tester.pump();
+
+    expect(pickerInitialLocation, const LatLng(51.1, 17.0));
+    expect(
+      tester
+          .widget<TextField>(_textFieldWithLabel('Latitude'))
+          .controller
+          ?.text,
+      '52.229676',
+    );
+    expect(
+      tester
+          .widget<TextField>(_textFieldWithLabel('Longitude'))
+          .controller
+          ?.text,
+      '21.012229',
+    );
+    expect(find.widgetWithText(TextButton, 'Save'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await connector.close();

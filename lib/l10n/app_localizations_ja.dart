@@ -468,6 +468,9 @@ class AppLocalizationsJa extends AppLocalizations {
   String get settings_locationShowOnMap => 'Show on map';
 
   @override
+  String get settings_locationPickFromMap => 'Pick from map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS を有効にする';
 
   @override
@@ -2039,6 +2042,12 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get map_location => '位置';
+
+  @override
+  String get map_pickLocation => 'Pick location';
+
+  @override
+  String get map_pickLocationHint => 'Tap the map to choose a location';
 
   @override
   String get map_estLocation => '推定位置';

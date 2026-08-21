@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 import '../l10n/l10n.dart';
 import '../models/contact.dart';
@@ -13,15 +14,21 @@ import '../theme/mesh_theme.dart';
 import '../widgets/mesh_ui.dart';
 import '../widgets/routing_sheet.dart';
 import '../helpers/snack_bar_builder.dart';
+import 'map_screen.dart';
+
+typedef RepeaterLocationPicker =
+    Future<LatLng?> Function(BuildContext context, LatLng? initialLocation);
 
 class RepeaterSettingsScreen extends StatefulWidget {
   final Contact repeater;
   final String password;
+  final RepeaterLocationPicker? locationPicker;
 
   const RepeaterSettingsScreen({
     super.key,
     required this.repeater,
     required this.password,
+    this.locationPicker,
   });
 
   @override
@@ -1208,6 +1215,52 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
     return value != null && value >= -max && value <= max;
   }
 
+  LatLng? _locationForMapPicker() {
+    final lat = double.tryParse(_latController.text.trim());
+    final lon = double.tryParse(_lonController.text.trim());
+    if (lat != null &&
+        lon != null &&
+        lat >= -90 &&
+        lat <= 90 &&
+        lon >= -180 &&
+        lon <= 180) {
+      return LatLng(lat, lon);
+    }
+
+    final repeater = _resolveRepeater(_sessionConnector);
+    if (repeater.hasLocation) {
+      return LatLng(repeater.latitude!, repeater.longitude!);
+    }
+    return null;
+  }
+
+  Future<void> _pickLocationFromMap() async {
+    final initialLocation = _locationForMapPicker();
+    final location = widget.locationPicker != null
+        ? await widget.locationPicker!(context, initialLocation)
+        : await Navigator.push<LatLng>(
+            context,
+            MaterialPageRoute<LatLng>(
+              builder: (_) => MapScreen(
+                pickLocation: true,
+                highlightPosition: initialLocation,
+              ),
+            ),
+          );
+    if (location == null || !mounted) return;
+
+    setState(() {
+      _latController.text = location.latitude.toStringAsFixed(6);
+      _lonController.text = location.longitude.toStringAsFixed(6);
+      _latInvalid = false;
+      _lonInvalid = false;
+      _knownFields.addAll({_SettingField.lat, _SettingField.lon});
+      _dirtyFields.addAll({_SettingField.lat, _SettingField.lon});
+      _hasChanges = true;
+    });
+    _rememberSettingsSessionSnapshot();
+  }
+
   void _flagHasChanges() {
     if (!_hasChanges) {
       setState(() {
@@ -1663,6 +1716,16 @@ class _RepeaterSettingsScreenState extends State<RepeaterSettingsScreen> {
                     tooltip: l10n.repeater_longitude,
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('repeater_location_pick_from_map'),
+                  onPressed: _pickLocationFromMap,
+                  icon: const Icon(Icons.map_outlined),
+                  label: Text(l10n.settings_locationPickFromMap),
+                ),
               ),
             ],
           ),

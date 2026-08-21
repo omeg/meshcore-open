@@ -46,6 +46,7 @@ class MapScreen extends StatefulWidget {
   final String? highlightMarkerKey;
   final double highlightZoom;
   final bool hideBackButton;
+  final bool pickLocation;
 
   const MapScreen({
     super.key,
@@ -54,6 +55,7 @@ class MapScreen extends StatefulWidget {
     this.highlightMarkerKey,
     this.highlightZoom = 15.0,
     this.hideBackButton = false,
+    this.pickLocation = false,
   });
 
   @override
@@ -94,6 +96,7 @@ class _MapScreenState extends State<MapScreen> {
   String _searchQuery = '';
   List<_GuessedLocation> _cachedGuessedLocations = [];
   String _guessedLocationsCacheKey = '';
+  LatLng? _pickedLocation;
   int? _sharedMarkersCacheSignature;
   Locale? _sharedMarkersCacheLocale;
   List<_SharedMarker> _cachedSharedMarkers = const [];
@@ -136,6 +139,11 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    _pickedLocation = widget.highlightPosition;
+    if (widget.pickLocation) {
+      _removedMarkersLoaded = true;
+      return;
+    }
     _loadRemovedMarkers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -311,8 +319,161 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  Widget _buildLocationPicker(BuildContext context) {
+    final connector = context.read<MeshCoreConnector>();
+    final tileCache = context.read<MapTileCacheService>();
+    final selfPosition =
+        connector.selfLatitude != null && connector.selfLongitude != null
+        ? LatLng(connector.selfLatitude!, connector.selfLongitude!)
+        : null;
+    final initialPosition = widget.highlightPosition ?? selfPosition;
+    final center = initialPosition ?? const LatLng(0, 0);
+    final initialZoom = initialPosition == null
+        ? _mapMinZoom
+        : widget.highlightZoom;
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: MapPalette.panelDark,
+        foregroundColor: MapPalette.textPrimary,
+        title: AppBarTitle(context.l10n.map_pickLocation),
+        centerTitle: true,
+      ),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: center,
+              initialZoom: initialZoom,
+              minZoom: _mapMinZoom,
+              maxZoom: _mapMaxZoom,
+              interactionOptions: InteractionOptions(
+                flags: ~InteractiveFlag.rotate,
+                scrollWheelVelocity:
+                    _isDesktopPlatform(Theme.of(context).platform)
+                    ? 0.012
+                    : 0.005,
+              ),
+              onTap: (_, position) {
+                HapticFeedback.selectionClick();
+                setState(() => _pickedLocation = position);
+              },
+            ),
+            children: [
+              ThemedMapTileLayer(tileCache: tileCache),
+              if (_pickedLocation != null)
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: _pickedLocation!,
+                      width: 48,
+                      height: 48,
+                      child: const IgnorePointer(
+                        child: Icon(
+                          Icons.location_on,
+                          color: MapPalette.selected,
+                          size: 44,
+                          shadows: [
+                            Shadow(
+                              color: MapPalette.markerShadow,
+                              blurRadius: 8,
+                              offset: Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          Positioned(
+            left: 12,
+            bottom: 24,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: MapPalette.panelDark,
+                borderRadius: BorderRadius.circular(MeshRadii.md),
+                border: Border.all(color: MapPalette.border),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    color: MapPalette.textPrimary,
+                    icon: const Icon(Icons.add),
+                    tooltip: context.l10n.map_zoomIn,
+                    onPressed: () => _zoomMapBy(1),
+                  ),
+                  IconButton(
+                    color: MapPalette.textPrimary,
+                    icon: const Icon(Icons.remove),
+                    tooltip: context.l10n.map_zoomOut,
+                    onPressed: () => _zoomMapBy(-1),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 72,
+            right: 16,
+            bottom: 24,
+            child: SafeArea(
+              top: false,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: MapPalette.panelDark,
+                  borderRadius: BorderRadius.circular(MeshRadii.md),
+                  border: Border.all(color: MapPalette.border),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: MapPalette.markerShadow,
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _pickedLocation == null
+                              ? context.l10n.map_pickLocationHint
+                              : '${_pickedLocation!.latitude.toStringAsFixed(6)}, '
+                                    '${_pickedLocation!.longitude.toStringAsFixed(6)}',
+                          style: const TextStyle(
+                            color: MapPalette.textPrimary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      FilledButton(
+                        key: const ValueKey('map_location_picker_done'),
+                        onPressed: _pickedLocation == null
+                            ? null
+                            : () => Navigator.pop(context, _pickedLocation),
+                        child: Text(context.l10n.common_done),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.pickLocation) return _buildLocationPicker(context);
+
     return Builder(
       builder: (context) {
         final connectorSnapshot = context

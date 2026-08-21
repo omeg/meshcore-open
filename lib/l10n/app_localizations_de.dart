@@ -487,6 +487,9 @@ class AppLocalizationsDe extends AppLocalizations {
   String get settings_locationShowOnMap => 'Show on map';
 
   @override
+  String get settings_locationPickFromMap => 'Pick from map';
+
+  @override
   String get settings_locationGPSEnable => 'GPS aktivieren';
 
   @override
@@ -2124,6 +2127,12 @@ class AppLocalizationsDe extends AppLocalizations {
 
   @override
   String get map_location => 'Standort';
+
+  @override
+  String get map_pickLocation => 'Pick location';
+
+  @override
+  String get map_pickLocationHint => 'Tap the map to choose a location';
 
   @override
   String get map_estLocation => 'Geschätzter Standort';

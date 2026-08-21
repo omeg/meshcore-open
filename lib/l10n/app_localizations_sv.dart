@@ -480,6 +480,9 @@ class AppLocalizationsSv extends AppLocalizations {
   String get settings_locationShowOnMap => 'Show on map';
 
   @override
+  String get settings_locationPickFromMap => 'Pick from map';
+
+  @override
   String get settings_locationGPSEnable => 'Aktivera GPS';
 
   @override
@@ -2099,6 +2102,12 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get map_location => 'Location';
+
+  @override
+  String get map_pickLocation => 'Pick location';
+
+  @override
+  String get map_pickLocationHint => 'Tap the map to choose a location';
 
   @override
   String get map_estLocation => 'Est. Location';

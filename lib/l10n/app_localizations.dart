@@ -982,6 +982,12 @@ abstract class AppLocalizations {
   /// **'Show on map'**
   String get settings_locationShowOnMap;
 
+  /// No description provided for @settings_locationPickFromMap.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick from map'**
+  String get settings_locationPickFromMap;
+
   /// No description provided for @settings_locationGPSEnable.
   ///
   /// In en, this message translates to:
@@ -3855,6 +3861,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Location'**
   String get map_location;
+
+  /// No description provided for @map_pickLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick location'**
+  String get map_pickLocation;
+
+  /// No description provided for @map_pickLocationHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the map to choose a location'**
+  String get map_pickLocationHint;
 
   /// No description provided for @map_estLocation.
   ///
